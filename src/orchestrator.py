@@ -26,14 +26,14 @@ class Orchestrator:
     def classify_intent(self, user_message: str) -> str:
         """classify user message into one of four intents."""
         system_prompt = f"""you are an intent classifier for a healthcare system.
-analyze the user message and classify it into exactly one of these four intents:
-{', '.join(INTENTS)}
-
-return only the intent name, nothing else."""
+        analyze the user message and classify it into exactly one of these four intents:
+        {", ".join(INTENTS)}
+        
+        return only the intent name, nothing else."""
 
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message)
+            HumanMessage(content=user_message),
         ]
 
         response = self.llm.invoke(messages)
@@ -55,16 +55,16 @@ return only the intent name, nothing else."""
     def extract_arguments(self, user_message: str, intent: str) -> Dict[str, Any]:
         """extract structured arguments from user message for the given intent."""
         system_prompt = f"""extract relevant information from the user message for the intent: {intent}.
-return a json object with the extracted information. only include information that is explicitly mentioned or can be reasonably inferred.
-return only valid json, no other text."""
+        return a json object with the extracted information. only include information that is explicitly mentioned or can be reasonably inferred.
+        return only valid json, no other text."""
 
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message)
+            HumanMessage(content=user_message),
         ]
 
         response = self.llm.invoke(messages)
-        
+
         try:
             # try to parse json from response
             content = response.content.strip()
@@ -82,17 +82,16 @@ return only valid json, no other text."""
     def process(self, user_message: str) -> Dict[str, Any]:
         """process user message: classify intent, extract args, call tool."""
         print(f"[ORCHESTRATOR] processing message: {user_message[:100]}...")
-        
+
         # classify intent
         intent = self.classify_intent(user_message)
         print(f"[ORCHESTRATOR] classified intent: {intent}")
-        
+
         # extract arguments
         arguments = self.extract_arguments(user_message, intent)
-        
+
         # call appropriate tool
         tool = self.tools[intent]
         result = tool(**arguments)
-        
-        return result
 
+        return result

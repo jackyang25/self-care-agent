@@ -16,7 +16,11 @@ def main():
 
     llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
     temperature = float(os.getenv("TEMPERATURE", "0.7"))
-    server_port = int(os.getenv("GRADIO_SERVER_PORT", "0")) if os.getenv("GRADIO_SERVER_PORT") else None
+    server_port = (
+        int(os.getenv("GRADIO_SERVER_PORT", "0"))
+        if os.getenv("GRADIO_SERVER_PORT")
+        else None
+    )
 
     interface = LLMInterface(llm_model=llm_model, temperature=temperature)
     interface.launch(server_port=server_port)
@@ -24,4 +28,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

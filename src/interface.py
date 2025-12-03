@@ -16,7 +16,9 @@ class LLMInterface:
         response = process_message(self.agent, message)
         return response
 
-    def launch(self, share: bool = False, server_name: str = "0.0.0.0", server_port: int = None):
+    def launch(
+        self, share: bool = False, server_name: str = "0.0.0.0", server_port: int = None
+    ):
         """launch the gradio interface."""
         interface = gr.ChatInterface(
             fn=self.respond,
@@ -28,4 +30,3 @@ class LLMInterface:
             clear_btn="Clear",
         )
         interface.launch(share=share, server_name=server_name, server_port=server_port)
-
