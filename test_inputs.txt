@@ -1,0 +1,43 @@
+
+"I have a headache and need pain medication"
+Should: Triage → Commodity/Pharmacy
+Tests: Symptom assessment → commodity ordering
+
+"I've been having chest pain for the past hour, what should I do?"
+Should: Triage (high risk) → Referrals
+Tests: Risk assessment → escalation to clinical care
+
+"I need to refill my diabetes medication and also check if I should see a doctor about my symptoms"
+Should: Triage → Pharmacy + possibly Referrals
+Tests: Multiple needs, multiple tools
+
+"I have a fever and want to order a COVID test kit"
+Should: Triage → Commodity
+Tests: Symptom assessment → commodity ordering
+
+"I'm feeling dizzy and nauseous, should I get medication or see a doctor?"
+Should: Triage → Referrals (likely) or Pharmacy
+Tests: Risk assessment → appropriate care pathway
+
+
+
+
+"I have severe chest pain and feel dizzy. Should I see a doctor?"
+Should: Triage → Referrals (based on triage result indicating high risk)
+Tests: Tool result triggers next tool, multi-step reasoning, conditional escalation
+
+"I'm having trouble breathing and my chest feels tight. What should I do?"
+Should: Triage → Emergency instructions → Ask for consent → Referrals (if consented)
+Tests: Critical risk handling, safety prioritization, consent flow, tool chaining based on severity
+
+"I need pain medication for my headache"
+Should: Triage → Commodity/Pharmacy (based on triage result)
+Tests: Assessment determines action, tool chaining from result
+
+"I've been having stomach pain for 3 days and I'm worried"
+Should: Triage → Ask if user wants to schedule → Referrals (if yes)
+Tests: Medium risk handling, consent before scheduling, result-based decision making
+
+"I have a fever and want a COVID test, but I'm not sure if I should see a doctor first"
+Should: Triage → Commodity (if low risk) OR Referrals (if high risk)
+Tests: Assessment determines next action, conditional tool selection based on result

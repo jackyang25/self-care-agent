@@ -13,7 +13,19 @@ class LLMInterface:
 
     def respond(self, message, history):
         """process user message and return response."""
-        response = process_message(self.agent, message)
+        # build conversation history from gradio history format
+        # history is list of tuples: [(user_msg, assistant_msg), ...]
+        conversation_history = []
+        for user_msg, assistant_msg in history:
+            conversation_history.append({"role": "user", "content": user_msg})
+            if assistant_msg:
+                # remove tool execution info from assistant message for history
+                clean_msg = assistant_msg.split("\n\n[tool execution:")[0].strip()
+                conversation_history.append({"role": "assistant", "content": clean_msg})
+
+        response = process_message(
+            self.agent, message, conversation_history=conversation_history
+        )
         return response
 
     def launch(

@@ -29,8 +29,16 @@ def triage_and_risk_flagging(
     )
 
     risk_level = urgency.lower() if urgency else "low"
+    
+    # determine recommendation based on risk level
+    if risk_level in ["high", "critical"]:
+        recommendation = "immediate clinical evaluation recommended"
+    elif risk_level == "medium":
+        recommendation = "clinical evaluation recommended within 24-48 hours"
+    else:
+        recommendation = "continue monitoring, self-care may be appropriate"
 
-    return f"triage assessment completed. risk level: {risk_level}. recommendation: continue monitoring. status: success"
+    return f"triage assessment completed. risk level: {risk_level}. recommendation: {recommendation}. status: success"
 
 
 triage_tool = StructuredTool.from_function(
