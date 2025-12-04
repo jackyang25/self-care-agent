@@ -52,7 +52,7 @@ important:
 - before ending, verify you have fulfilled every part of the user's original request"""
 
 
-def create_agent(llm_model: str = "gpt-3.5-turbo", temperature: float = 0.7):
+def create_agent(llm_model: str, temperature: float):
     """create a langgraph agent with native tool calling."""
     llm = ChatOpenAI(model=llm_model, temperature=temperature)
     llm_with_tools = llm.bind_tools(TOOLS)

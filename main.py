@@ -14,8 +14,8 @@ def main():
         print("please set it in a .env file or export it")
         return
 
-    llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
-    temperature = float(os.getenv("TEMPERATURE", "0.7"))
+    llm_model = os.getenv("LLM_MODEL", "gpt-4o")
+    temperature = float(os.getenv("TEMPERATURE", "0.3"))
     server_port = (
         int(os.getenv("GRADIO_SERVER_PORT", "0"))
         if os.getenv("GRADIO_SERVER_PORT")

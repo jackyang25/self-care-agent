@@ -7,7 +7,7 @@ from src.agent import create_agent, process_message
 class LLMInterface:
     """gradio interface wrapper."""
 
-    def __init__(self, llm_model: str = "gpt-3.5-turbo", temperature: float = 0.7):
+    def __init__(self, llm_model: str, temperature: float):
         """initialize the interface with agent."""
         self.agent = create_agent(llm_model=llm_model, temperature=temperature)
 
