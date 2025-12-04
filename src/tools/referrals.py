@@ -49,6 +49,12 @@ def referrals_and_scheduling(
 referral_tool = StructuredTool.from_function(
     func=referrals_and_scheduling,
     name="referrals_and_scheduling",
-    description="process referrals and schedule appointments. use for creating referrals to specialists, scheduling appointments, or managing patient appointments.",
+    description="""create referrals and schedule clinical appointments.
+
+use this tool when a user needs to be connected to a healthcare provider, book a clinic or telemedicine appointment, or follow up on a referral. the tool can generate structured referral information, confirm appointment times, and coordinate next steps with clinical partners.
+
+use when: user agrees to or requests a referral to clinical care; user wants to book, reschedule, or confirm an appointment; user needs information about where and when to receive care.
+
+do not use for: ordering commodities or medications; pharmacy refills or retail logistics; symptom triage or risk-level determination.""",
     args_schema=ReferralInput,
 )

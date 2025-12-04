@@ -35,6 +35,12 @@ def commodity_orders_and_fulfillment(
 commodity_tool = StructuredTool.from_function(
     func=commodity_orders_and_fulfillment,
     name="commodity_orders_and_fulfillment",
-    description="process commodity orders and fulfillment. use for ordering medical supplies, equipment, or other commodities.",
+    description="""help users order self-tests, medicines, or other health commodities.
+
+use this tool when a user wants to request, purchase, or refill a commodity such as a self-test kit, over-the-counter medicine, contraception, or related supplies. the tool orchestrates ordering, pickup, or home delivery through retail and pharmacy partners and can provide available fulfillment options.
+
+use when: user wants to order or reorder a health commodity; user asks about pickup, delivery, or availability of a specific item; user wants to check or manage the status of an existing commodity order.
+
+do not use for: prescription-only pharmacy orders; symptom assessment or medical triage; scheduling labs, teleconsults, or clinical appointments.""",
     args_schema=CommodityInput,
 )

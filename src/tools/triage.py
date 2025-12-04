@@ -36,6 +36,12 @@ def triage_and_risk_flagging(
 triage_tool = StructuredTool.from_function(
     func=triage_and_risk_flagging,
     name="triage_and_risk_flagging",
-    description="assess patient triage and risk level. use for evaluating symptoms, determining urgency, and flagging high-risk cases.",
+    description="""triage user health symptoms or questions and assign a risk category.
+
+use this tool when the user reports symptoms, asks about a possible medical condition, expresses concern about their health, or needs guidance on whether their situation requires self-care, pharmacy support, telemedicine, or clinical evaluation. the tool applies validated self-care protocols and red-flag rules to determine the safest recommended next step.
+
+use when: user describes symptoms, discomfort, or potential illnesses; user asks whether they should seek care, self-manage, or escalate; user needs a risk assessment before accessing services or commodities.
+
+do not use for: ordering medications, self-tests, or other commodities; booking labs, teleconsultations, or appointments; administrative questions unrelated to clinical symptoms or risk.""",
     args_schema=TriageInput,
 )
