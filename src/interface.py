@@ -1,6 +1,8 @@
 """streamlit interface for llm responses."""
 
 import streamlit as st
+from pathlib import Path
+from PIL import Image
 from src.agent import create_agent, process_message
 
 
@@ -33,9 +35,18 @@ class LLMInterface:
 
     def launch(self):
         """launch the streamlit interface."""
+        # load gates foundation logo
+        logo_path = Path("assets/gates_logo.png")
+        page_icon = None
+        if logo_path.exists():
+            try:
+                page_icon = Image.open(str(logo_path))
+            except Exception:
+                pass
+        
         st.set_page_config(
             page_title="Self-Care Agent",
-            page_icon="🏥",
+            page_icon=page_icon,
             layout="centered",
         )
 
