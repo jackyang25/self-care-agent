@@ -4,6 +4,7 @@ from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from src.db import get_db_cursor
+from src.utils.context import current_user_id
 
 
 class DatabaseQueryInput(BaseModel):
@@ -40,7 +41,14 @@ def database_query(
     - get user profile information
     - get user's interaction history
     - get complete user history (profile + interactions + consents)
+    
+    note: if user_id is not provided and query requires it, the tool will automatically
+    use the current user's id from session context.
     """
+    # automatically use current user_id from context if not provided
+    if not user_id:
+        user_id = current_user_id.get()
+    
     print(f"[TOOL CALLED] database_query")
     print(f"[ARGUMENTS] query_type={query_type}, user_id={user_id}, email={email}, phone={phone}, limit={limit}")
 

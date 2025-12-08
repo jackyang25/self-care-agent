@@ -1,20 +1,23 @@
 """langgraph agent with native tool calling."""
 
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from src.tools import TOOLS
 from src.utils.logger import get_logger
+from src.utils.context import current_user_id
 
 logger = get_logger("agent")
 
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     """state for the agent."""
 
     messages: Annotated[list, lambda x, y: x + y]
+    system_prompt: Optional[str]
+    user_id: Optional[str]
 
 
 SYSTEM_PROMPT = """you are a healthcare self-care assistant helping users access health services and commodities in low and middle income country settings.
@@ -71,8 +74,15 @@ def create_agent(llm_model: str, temperature: float):
 
     def call_model(state: AgentState):
         """call the llm with tools."""
+        # set user_id in context for tools to access
+        user_id = state.get("user_id")
+        if user_id:
+            current_user_id.set(user_id)
+        
+        # use system prompt from state if available, otherwise use default
+        system_prompt = state.get("system_prompt", SYSTEM_PROMPT)
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             *state["messages"],
         ]
         response = llm_with_tools.invoke(messages)
@@ -102,7 +112,7 @@ def create_agent(llm_model: str, temperature: float):
     return workflow.compile()
 
 
-def process_message(agent, user_input: str, conversation_history=None):
+def process_message(agent, user_input: str, conversation_history=None, user_id=None):
     """process a user message through the agent."""
     # build message history
     messages = []
@@ -118,7 +128,8 @@ def process_message(agent, user_input: str, conversation_history=None):
     # add current user message
     messages.append(HumanMessage(content=user_input))
 
-    state = {"messages": messages}
+    # pass user_id in state (tools can access via context var)
+    state = {"messages": messages, "user_id": user_id}
     result = agent.invoke(state)
 
     messages = result["messages"]
