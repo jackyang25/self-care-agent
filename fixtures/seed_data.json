@@ -2,16 +2,16 @@
   "users": [
     {
       "user_id": "550e8400-e29b-41d4-a716-446655440000",
-      "fhir_patient_id": "patient-001",
+      "fhir_patient_id": "patient-jack-yang",
       "primary_channel": "whatsapp",
-      "phone_e164": "+1234567890",
-      "email": "user1@example.com",
+      "phone_e164": "+12066608261",
+      "email": "jack.yang@gatesfoundation.org",
       "preferred_language": "en",
       "literacy_mode": "standard",
-      "country_context_id": "us",
+      "country_context_id": "262d1f8b-727c-5fd2-8e1b-867581bbaa2c",
       "demographics": {
-        "age": 35,
-        "gender": "female"
+        "age": 23,
+        "gender": "male"
       },
       "accessibility": {
         "hearing_aid": false,
