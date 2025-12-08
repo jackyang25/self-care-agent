@@ -1,0 +1,73 @@
+{
+  "users": [
+    {
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "fhir_patient_id": "patient-001",
+      "primary_channel": "whatsapp",
+      "phone_e164": "+1234567890",
+      "email": "user1@example.com",
+      "preferred_language": "en",
+      "literacy_mode": "standard",
+      "country_context_id": "us",
+      "demographics": {
+        "age": 35,
+        "gender": "female"
+      },
+      "accessibility": {
+        "hearing_aid": false,
+        "visual_aid": false
+      }
+    },
+    {
+      "user_id": "550e8400-e29b-41d4-a716-446655440001",
+      "fhir_patient_id": "patient-002",
+      "primary_channel": "sms",
+      "phone_e164": "+1234567891",
+      "email": "user2@example.com",
+      "preferred_language": "es",
+      "literacy_mode": "simplified",
+      "country_context_id": "mx",
+      "demographics": {
+        "age": 28,
+        "gender": "male"
+      },
+      "accessibility": {}
+    }
+  ],
+  "interactions": [
+    {
+      "interaction_id": "660e8400-e29b-41d4-a716-446655440000",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "channel": "whatsapp",
+      "input": "i have a headache and feel nauseous",
+      "protocol_invoked": "triage",
+      "protocol_version": "1.0",
+      "triage_result": {
+        "risk_level": "medium",
+        "symptoms": ["headache", "nausea"]
+      },
+      "risk_level": "medium",
+      "recommendations": [
+        "rest and hydration",
+        "monitor symptoms"
+      ],
+      "follow_up_at": null
+    }
+  ],
+  "consents": [
+    {
+      "consent_id": "770e8400-e29b-41d4-a716-446655440000",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "scope": "triage",
+      "status": "granted",
+      "version": "1.0",
+      "jurisdiction": "us",
+      "evidence": {
+        "method": "explicit",
+        "timestamp": "2024-01-01T00:00:00Z"
+      },
+      "recorded_at": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+
