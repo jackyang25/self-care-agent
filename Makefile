@@ -52,6 +52,32 @@ shell: ## open shell in app container
 shell-db: ## open psql shell in database container
 	docker-compose exec db psql -U postgres -d selfcare
 
+test-db: ## test database connection
+	docker-compose exec app python scripts/db_test_connection.py
+
+test-db-local: ## test database connection from local machine
+	python scripts/db_test_connection.py
+
+create-tables: ## create database tables
+	docker-compose exec app python scripts/db_create_tables.py
+
+seed-db: ## seed database with fixture data (idempotent)
+	docker-compose exec app python scripts/db_seed.py
+
+seed-db-auto: ## check if database is empty and seed automatically
+	docker-compose exec app python scripts/db_check_and_seed.py
+
+seed-db-clear: ## clear all data and reseed (destructive)
+	docker-compose exec app python scripts/db_seed.py --clear
+
+reset-db: ## completely reset database (deletes all data)
+	docker-compose down -v
+	docker-compose up -d
+	@echo "waiting for database to be ready..."
+	@sleep 5
+	docker-compose exec app python scripts/db_create_tables.py
+	docker-compose exec app python scripts/db_seed.py
+
 watch: ## start with file watching (requires watchfiles or similar)
 	docker-compose up --watch
 
