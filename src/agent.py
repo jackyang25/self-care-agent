@@ -6,7 +6,7 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from src.tools import TOOLS
-from src.logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger("agent")
 

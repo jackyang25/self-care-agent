@@ -62,9 +62,9 @@ make test-db
 
 ## Fixture Files
 
-Fixture data is in `src/fixtures/`:
+Fixture data is in `fixtures/`:
 - `seed_data.json` - default seed data
 - Add more fixture files as needed
 
-See `src/fixtures/README.md` for fixture templates and structure.
+See `docs/fixtures.md` for fixture templates and structure.
 
