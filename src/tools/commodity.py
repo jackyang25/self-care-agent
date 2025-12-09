@@ -1,5 +1,6 @@
 """commodity orders and fulfillment tool."""
 
+import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -32,7 +33,18 @@ def commodity_orders_and_fulfillment(
     order_id = "ORD-12345"
     estimated_delivery = "2025-12-10"
 
-    return f"order processed successfully. order_id: {order_id}, estimated_delivery: {estimated_delivery}. status: success"
+    # return structured json response
+    result = {
+        "status": "success",
+        "order_id": order_id,
+        "estimated_delivery": estimated_delivery,
+        "items": items,
+        "quantity": quantity,
+        "patient_id": patient_id,
+        "priority": priority or "normal",
+    }
+    
+    return json.dumps(result, indent=2)
 
 
 commodity_tool = StructuredTool.from_function(

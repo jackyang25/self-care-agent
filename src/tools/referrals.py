@@ -1,5 +1,6 @@
 """referrals and scheduling tool."""
 
+import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -46,7 +47,19 @@ def referrals_and_scheduling(
     date = preferred_date or "2025-12-15"
     time = preferred_time or "10:00 AM"
 
-    return f"appointment scheduled successfully. appointment_id: {appointment_id}, provider: {provider_name}, date: {date}, time: {time}. status: success"
+    # return structured json response
+    result = {
+        "status": "success",
+        "appointment_id": appointment_id,
+        "provider": provider_name,
+        "date": date,
+        "time": time,
+        "specialty": specialty,
+        "patient_id": patient_id,
+        "reason": reason,
+    }
+    
+    return json.dumps(result, indent=2)
 
 
 referral_tool = StructuredTool.from_function(

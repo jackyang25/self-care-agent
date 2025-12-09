@@ -1,5 +1,6 @@
 """pharmacy orders and fulfillment tool."""
 
+import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -35,7 +36,18 @@ def pharmacy_orders_and_fulfillment(
     pharmacy_name = pharmacy or "main pharmacy"
     ready_date = "2025-12-05"
 
-    return f"prescription order processed. prescription_id: {prescription_id}, pharmacy: {pharmacy_name}, ready_date: {ready_date}. status: success"
+    # return structured json response
+    result = {
+        "status": "success",
+        "prescription_id": prescription_id,
+        "pharmacy": pharmacy_name,
+        "ready_date": ready_date,
+        "medication": medication,
+        "dosage": dosage,
+        "patient_id": patient_id,
+    }
+    
+    return json.dumps(result, indent=2)
 
 
 pharmacy_tool = StructuredTool.from_function(
