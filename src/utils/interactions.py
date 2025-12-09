@@ -6,6 +6,9 @@ from typing import Optional, List, Dict, Any
 from langchain_core.messages import AIMessage, ToolMessage
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
+from src.utils.logger import get_logger
+
+logger = get_logger("interactions")
 
 
 def save_interaction(
@@ -80,8 +83,7 @@ def save_interaction(
     
     except Exception as e:
         # log error but don't fail the request
-        import logging
-        logging.error(f"failed to save interaction: {e}")
+        logger.error(f"failed to save interaction: {e}", exc_info=True)
         return None
 
 

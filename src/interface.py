@@ -5,6 +5,9 @@ from pathlib import Path
 from PIL import Image
 from src.agent import create_agent, process_message
 from src.tools.database import database_query
+from src.utils.logger import get_logger
+
+logger = get_logger("interface")
 
 
 class LLMInterface:
@@ -65,8 +68,10 @@ class LLMInterface:
                                   f"user {user_id[:8]}")
                     st.session_state.user_display = display_name
                     return True, f"welcome, {display_name}!"
-            except Exception:
-                pass
+                else:
+                    logger.warning(f"user found in database but uuid pattern did not match. result: {result[:200]}")
+            except Exception as e:
+                logger.error(f"failed to parse user identification result: {e}. result: {result[:200]}")
         
         return False, "user not found. please check your phone number or email."
 

@@ -205,6 +205,7 @@ def database_query(
                 return f"error: unknown query_type '{query_type}'. valid types: get_user_by_id, get_user_by_email, get_user_by_phone, get_user_interactions, get_user_history"
 
     except Exception as e:
+        logger.error(f"database query error: {e}", exc_info=True)
         return f"database query error: {str(e)}"
 
 
