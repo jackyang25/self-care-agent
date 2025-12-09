@@ -60,6 +60,211 @@ make test-db
 - **Data survives**: Container restarts, code changes, app restarts
 - **To clear**: Use `make down-volumes` or `make reset-db`
 
+## Database Schema
+
+### Connection Details
+
+- **Host**: `localhost` (from host) or `db` (from container)
+- **Port**: `5432`
+- **Database**: `selfcare`
+- **User**: `postgres`
+- **Password**: `postgres`
+- **pgAdmin**: `http://localhost:5050` (email: `admin@admin.com`, password: `admin`)
+
+### Tables
+
+#### 1. `users`
+
+Stores user profile information.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `user_id` | UUID | Primary key |
+| `fhir_patient_id` | TEXT | FHIR patient identifier (architectural slot) |
+| `primary_channel` | TEXT | Primary communication channel |
+| `phone_e164` | TEXT | Phone number in E.164 format |
+| `email` | TEXT | Email address |
+| `preferred_language` | TEXT | User's preferred language |
+| `literacy_mode` | TEXT | Literacy mode preference |
+| `country_context_id` | UUID | Country context identifier (required) |
+| `demographics` | JSONB | Demographic data (flexible structure) |
+| `accessibility` | JSONB | Accessibility preferences |
+| `is_deleted` | BOOLEAN | Soft delete flag (default: false) |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | Last update timestamp |
+
+**Indexes:**
+- Primary key on `user_id`
+- Foreign key references: `interactions.user_id`, `consents.user_id`
+
+#### 2. `interactions`
+
+Stores all user interactions with the agent, including tool invocations and results.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `interaction_id` | UUID | Primary key |
+| `user_id` | UUID | Foreign key to `users.user_id` |
+| `channel` | TEXT | Communication channel (e.g., `"streamlit"`) |
+| `input` | JSONB | User input and tool metadata |
+| `protocol_invoked` | TEXT | Protocol name if triage called (e.g., `"triage"`) |
+| `protocol_version` | TEXT | Protocol version (e.g., `"1.0"`) |
+| `triage_result` | JSONB | Triage assessment results (structured JSON) |
+| `risk_level` | TEXT | Extracted risk level (`"low"`, `"medium"`, `"high"`, `"critical"`) |
+| `recommendations` | JSONB | Array of recommendations from tool results |
+| `follow_up_at` | TIMESTAMP WITH TIME ZONE | Scheduled follow-up timestamp (optional) |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+
+**Indexes:**
+- Primary key on `interaction_id`
+- Foreign key to `users.user_id`
+
+**`input` JSONB Structure:**
+```json
+{
+  "text": "I have chest pain",
+  "tools_called": ["triage_and_risk_flagging", "referrals_and_scheduling"]
+}
+```
+
+**`triage_result` JSONB Structure (from structured JSON response):**
+```json
+{
+  "status": "success",
+  "risk_level": "high",
+  "recommendation": "immediate clinical evaluation recommended",
+  "symptoms": "chest pain for 2 hours",
+  "urgency": "high",
+  "patient_id": "uuid-here",
+  "notes": "patient has history of heart disease"
+}
+```
+
+**`recommendations` JSONB Structure:**
+```json
+["immediate clinical evaluation recommended"]
+```
+
+**Future Architectural Slot:**
+- `tools` JSONB column: Full tool invocation details including name, args, and results
+  ```json
+  [
+    {
+      "name": "triage_and_risk_flagging",
+      "args": {"symptoms": "...", "urgency": "high"},
+      "result": {"status": "success", "risk_level": "high", ...}
+    }
+  ]
+  ```
+- This will enable complete audit trail, easier querying, and analytics
+
+#### 3. `consents`
+
+Stores user consent records for various scopes.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `consent_id` | UUID | Primary key |
+| `user_id` | UUID | Foreign key to `users.user_id` |
+| `scope` | TEXT | Consent scope (e.g., `"data_sharing"`, `"treatment"`) |
+| `status` | TEXT | Consent status (e.g., `"granted"`, `"revoked"`) |
+| `version` | TEXT | Consent version identifier |
+| `jurisdiction` | TEXT | Legal jurisdiction |
+| `evidence` | JSONB | Consent evidence/record |
+| `recorded_at` | TIMESTAMP WITH TIME ZONE | Consent recording timestamp |
+
+**Indexes:**
+- Primary key on `consent_id`
+- Foreign key to `users.user_id`
+
+## Interaction Storage Architecture
+
+### Automatic Storage
+
+All interactions are automatically stored when `process_message()` is called:
+1. Tool information is extracted from the message chain
+2. Interaction record is created in `interactions` table
+3. Tool metadata (names, results, risk levels) is stored
+
+### Current Storage Pattern
+
+**Tool Names:**
+- Stored in `input.tools_called` as JSONB array
+- Example: `["triage_and_risk_flagging", "commodity_orders_and_fulfillment"]`
+
+**Tool Results:**
+- Triage tool: Structured JSON stored in `triage_result` JSONB
+- Other tools: Results extracted and stored in `recommendations` or parsed from tool messages
+- Risk level extracted and stored in `risk_level` column
+
+**Extraction Logic:**
+- `extract_tool_info_from_messages()` processes the message chain
+- Parses structured JSON responses (triage tool)
+- Falls back to string parsing for backward compatibility
+- Extracts protocol info, risk levels, and recommendations
+
+### Future Storage Pattern
+
+**Full Tool Invocation Details:**
+- `tools` JSONB column will store complete tool invocation data
+- Enables querying: `WHERE tools @> '[{"name": "triage_and_risk_flagging"}]'`
+- Provides complete audit trail for debugging and analytics
+
+## Query Examples
+
+### Get User Interactions
+```sql
+SELECT interaction_id, channel, input, risk_level, recommendations, created_at
+FROM interactions
+WHERE user_id = 'user-uuid-here'
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+### Find Interactions with Triage
+```sql
+SELECT interaction_id, triage_result, risk_level
+FROM interactions
+WHERE protocol_invoked = 'triage'
+ORDER BY created_at DESC;
+```
+
+### Find High-Risk Interactions
+```sql
+SELECT interaction_id, user_id, risk_level, recommendations, created_at
+FROM interactions
+WHERE risk_level IN ('high', 'critical')
+ORDER BY created_at DESC;
+```
+
+### Get Tool Usage (Current)
+```sql
+SELECT interaction_id, input->>'tools_called' as tools
+FROM interactions
+WHERE input->'tools_called' IS NOT NULL;
+```
+
+### Get Tool Usage (Future - with tools column)
+```sql
+SELECT interaction_id, tools
+FROM interactions
+WHERE tools @> '[{"name": "triage_and_risk_flagging"}]';
+```
+
+### User History (Complete)
+```sql
+SELECT 
+    u.user_id,
+    u.email,
+    u.phone_e164,
+    COUNT(i.interaction_id) as interaction_count,
+    MAX(i.created_at) as last_interaction
+FROM users u
+LEFT JOIN interactions i ON u.user_id = i.user_id
+WHERE u.user_id = 'user-uuid-here'
+GROUP BY u.user_id, u.email, u.phone_e164;
+```
+
 ## Fixture Files
 
 Fixture data is in `fixtures/`:
@@ -68,3 +273,63 @@ Fixture data is in `fixtures/`:
 
 See `docs/fixtures.md` for fixture templates and structure.
 
+## Database Access
+
+### Command Line (psql)
+```bash
+# From host
+psql postgresql://postgres:postgres@localhost:5432/selfcare
+
+# From container
+make shell-db
+```
+
+### pgAdmin Web Interface
+- URL: `http://localhost:5050`
+- Email: `admin@admin.com`
+- Password: `admin`
+
+### Python Connection
+```python
+from src.db import get_db_cursor
+
+with get_db_cursor() as cur:
+    cur.execute("SELECT * FROM users LIMIT 5")
+    results = cur.fetchall()
+```
+
+## Schema Migration Notes
+
+### Adding New Columns
+
+1. Update `scripts/db_create_tables.py` with new column definition
+2. Run `make create-tables` (uses `CREATE TABLE IF NOT EXISTS`, so existing tables won't be modified)
+3. For existing databases, create migration script or manually add column:
+   ```sql
+   ALTER TABLE interactions ADD COLUMN IF NOT EXISTS tools JSONB;
+   ```
+
+### Future Schema Changes
+
+When adding the `tools` JSONB column:
+1. Add to `CREATE TABLE` statement in `db_create_tables.py`
+2. Create migration script for existing databases
+3. Update `save_interaction()` to populate the column
+4. Update `extract_tool_info_from_messages()` to capture full tool details
+
+## Best Practices
+
+### Query Performance
+- Use indexes on frequently queried columns (`user_id`, `created_at`)
+- Use JSONB operators for efficient JSON queries (`@>`, `->`, `->>`)
+- Consider materialized views for complex analytics queries
+
+### Data Integrity
+- Always use parameterized queries (via `get_db_cursor()`)
+- Foreign key constraints ensure referential integrity
+- Soft deletes (`is_deleted`) preserve data for audit trail
+
+### Security
+- Never expose database credentials in code
+- Use environment variables for connection strings
+- Tools automatically use current user context (no cross-user data access)
