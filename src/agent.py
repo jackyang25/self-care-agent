@@ -88,9 +88,18 @@ def create_agent(llm_model: str, temperature: float):
         response = llm_with_tools.invoke(messages)
         return {"messages": [response]}
 
+    def call_tools(state: AgentState):
+        """call tools with user context set."""
+        # ensure user_id is set in context before tools execute
+        user_id = state.get("user_id")
+        if user_id:
+            current_user_id.set(user_id)
+        # call the standard tool node
+        return tool_node.invoke(state)
+
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", call_model)
-    workflow.add_node("tools", tool_node)
+    workflow.add_node("tools", call_tools)
     workflow.set_entry_point("agent")
     workflow.add_conditional_edges(
         "agent",

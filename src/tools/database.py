@@ -11,16 +11,16 @@ class DatabaseQueryInput(BaseModel):
     """input schema for database queries."""
 
     query_type: str = Field(
-        description="type of query: 'get_user_by_id', 'get_user_by_email', 'get_user_by_phone', 'get_user_history', 'get_user_interactions'"
+        description="type of query: 'get_user_by_id', 'get_user_history', 'get_user_interactions'"
     )
     user_id: Optional[str] = Field(
-        None, description="user id (uuid) - use for 'get_user_by_id' or 'get_user_history'"
+        None, description="user id (uuid) - optional, will use current logged-in user if not provided"
     )
     email: Optional[str] = Field(
-        None, description="user email - use for 'get_user_by_email'"
+        None, description="deprecated - not used, tool automatically uses current user"
     )
     phone: Optional[str] = Field(
-        None, description="user phone number (e164 format) - use for 'get_user_by_phone'"
+        None, description="deprecated - not used, tool automatically uses current user"
     )
     limit: Optional[int] = Field(
         10, description="maximum number of results to return (default: 10)"
@@ -37,13 +37,13 @@ def database_query(
     """retrieve user data from the database.
     
     use this tool to:
-    - find user by email, phone, or user_id
-    - get user profile information
-    - get user's interaction history
-    - get complete user history (profile + interactions + consents)
+    - get current user's profile information
+    - get current user's interaction history
+    - get current user's complete history (profile + interactions + consents)
     
-    note: if user_id is not provided and query requires it, the tool will automatically
-    use the current user's id from session context.
+    note: this tool can only access data for the currently logged-in user. if no user is
+    logged in, the tool will return an error. the tool automatically uses the current
+    user's id from session context.
     """
     # automatically use current user_id from context if not provided
     if not user_id:
@@ -54,8 +54,10 @@ def database_query(
 
     try:
         with get_db_cursor() as cur:
-            # find user by email
+            # email/phone lookup only allowed during login (no user context)
             if query_type == "get_user_by_email":
+                if user_id:
+                    return "error: unable to retrieve data - user lookup by email is only available during login. use get_user_by_id to access current user's profile."
                 if not email:
                     return "error: email is required for get_user_by_email"
                 cur.execute(
@@ -74,8 +76,9 @@ def database_query(
                 else:
                     return f"user not found for email: {email}"
 
-            # find user by phone
             elif query_type == "get_user_by_phone":
+                if user_id:
+                    return "error: unable to retrieve data - user lookup by phone is only available during login. use get_user_by_id to access current user's profile."
                 if not phone:
                     return "error: phone is required for get_user_by_phone"
                 cur.execute(
@@ -94,10 +97,12 @@ def database_query(
                 else:
                     return f"user not found for phone: {phone}"
 
-            # get user by user_id
-            elif query_type == "get_user_by_id":
-                if not user_id:
-                    return "error: user_id is required for get_user_by_id"
+            # all other queries require user context (security: only access current user's data)
+            if not user_id:
+                return "error: unable to retrieve data - no user identified in current session. please ensure you are logged in."
+            
+            # get current user's profile (user_id already set from context)
+            if query_type == "get_user_by_id":
                 cur.execute(
                     """
                     SELECT user_id, fhir_patient_id, primary_channel, phone_e164, 
@@ -203,26 +208,27 @@ def database_query(
 database_tool = StructuredTool.from_function(
     func=database_query,
     name="database_query",
-    description="""retrieve user data from the database.
+    description="""retrieve the current logged-in user's data from the database.
 
 use this tool when:
-- user provides their email, phone number, or user_id and you need to look up their information
-- you need to access a user's profile, interaction history, or complete medical history
-- you need to check past interactions, triage results, or consent records for a user
+- you need to access the current user's profile information
+- you need to check the current user's past interactions, triage results, or consent records
+- you need to get the current user's complete medical history
+
+important: this tool can only access data for the currently logged-in user. you do not need
+to provide user_id, email, or phone - the tool automatically uses the current session's user.
 
 query types:
-- 'get_user_by_email': find user by email address
-- 'get_user_by_phone': find user by phone number (e164 format like +1234567890)
-- 'get_user_by_id': retrieve user profile by user_id (uuid)
-- 'get_user_interactions': get interaction history for a user (ordered by most recent)
-- 'get_user_history': get complete user history including profile, interactions, and consents
+- 'get_user_by_id': retrieve current user's profile information
+- 'get_user_interactions': get current user's interaction history (ordered by most recent)
+- 'get_user_history': get current user's complete history including profile, interactions, and consents
 
 examples:
-- user says "my email is user@example.com" → use get_user_by_email
-- user says "my phone is +1234567890" → use get_user_by_phone
-- you have a user_id and need full history → use get_user_history
+- user asks "what's my phone number?" → use get_user_by_id to get their profile
+- user asks "what are my past interactions?" → use get_user_interactions
+- user asks "show me my complete history" → use get_user_history
 
-do not use for: creating new records, updating data, or deleting records.""",
+do not use for: creating new records, updating data, deleting records, or accessing other users' data.""",
     args_schema=DatabaseQueryInput,
 )
 

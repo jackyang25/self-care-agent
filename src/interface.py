@@ -122,7 +122,7 @@ class LLMInterface:
                 with col_btn2:
                     if st.button("Demo Mode", use_container_width=True, key="test_user_btn"):
                         with st.spinner("Signing in..."):
-                            success, message = self._identify_user("user1@example.com")
+                            success, message = self._identify_user("jack.yang@gatesfoundation.org")
                             if success:
                                 st.success(message)
                                 st.rerun()
