@@ -3,6 +3,9 @@
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+from src.utils.logger import get_logger
+
+logger = get_logger("commodity")
 
 
 class CommodityInput(BaseModel):
@@ -21,9 +24,9 @@ def commodity_orders_and_fulfillment(
     priority: Optional[str] = None,
 ) -> str:
     """process commodity orders and fulfillment. use this for ordering medical supplies, equipment, or other commodities."""
-    print(f"[TOOL CALLED] commodity_orders_and_fulfillment")
-    print(
-        f"[ARGUMENTS] items={items}, quantity={quantity}, patient_id={patient_id}, priority={priority}"
+    logger.info("commodity_orders_and_fulfillment called")
+    logger.debug(
+        f"arguments: items={items}, quantity={quantity}, patient_id={patient_id}, priority={priority}"
     )
 
     order_id = "ORD-12345"

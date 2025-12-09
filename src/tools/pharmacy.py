@@ -3,6 +3,9 @@
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+from src.utils.logger import get_logger
+
+logger = get_logger("pharmacy")
 
 
 class PharmacyInput(BaseModel):
@@ -23,9 +26,9 @@ def pharmacy_orders_and_fulfillment(
     pharmacy: Optional[str] = None,
 ) -> str:
     """process pharmacy orders and prescription fulfillment. use this for ordering medications, prescriptions, or pharmacy services."""
-    print(f"[TOOL CALLED] pharmacy_orders_and_fulfillment")
-    print(
-        f"[ARGUMENTS] medication={medication}, dosage={dosage}, patient_id={patient_id}, pharmacy={pharmacy}"
+    logger.info("pharmacy_orders_and_fulfillment called")
+    logger.debug(
+        f"arguments: medication={medication}, dosage={dosage}, patient_id={patient_id}, pharmacy={pharmacy}"
     )
 
     prescription_id = "RX-67890"

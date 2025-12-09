@@ -5,6 +5,9 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
+from src.utils.logger import get_logger
+
+logger = get_logger("database")
 
 
 class DatabaseQueryInput(BaseModel):
@@ -49,8 +52,8 @@ def database_query(
     if not user_id:
         user_id = current_user_id.get()
     
-    print(f"[TOOL CALLED] database_query")
-    print(f"[ARGUMENTS] query_type={query_type}, user_id={user_id}, email={email}, phone={phone}, limit={limit}")
+    logger.info(f"database_query called: query_type={query_type}")
+    logger.debug(f"arguments: user_id={user_id}, email={email}, phone={phone}, limit={limit}")
 
     try:
         with get_db_cursor() as cur:

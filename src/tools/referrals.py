@@ -3,6 +3,9 @@
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+from src.utils.logger import get_logger
+
+logger = get_logger("referrals")
 
 
 class ReferralInput(BaseModel):
@@ -33,9 +36,9 @@ def referrals_and_scheduling(
     reason: Optional[str] = None,
 ) -> str:
     """process referrals and schedule appointments. use this for creating referrals to specialists, scheduling appointments, or managing patient appointments."""
-    print(f"[TOOL CALLED] referrals_and_scheduling")
-    print(
-        f"[ARGUMENTS] specialty={specialty}, provider={provider}, patient_id={patient_id}, preferred_date={preferred_date}, preferred_time={preferred_time}, reason={reason}"
+    logger.info("referrals_and_scheduling called")
+    logger.debug(
+        f"arguments: specialty={specialty}, provider={provider}, patient_id={patient_id}, preferred_date={preferred_date}, preferred_time={preferred_time}, reason={reason}"
     )
 
     appointment_id = "APT-11111"

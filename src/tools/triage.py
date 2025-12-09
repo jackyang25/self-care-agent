@@ -4,6 +4,9 @@ import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+from src.utils.logger import get_logger
+
+logger = get_logger("triage")
 
 
 class TriageInput(BaseModel):
@@ -24,9 +27,9 @@ def triage_and_risk_flagging(
     notes: Optional[str] = None,
 ) -> str:
     """assess patient triage and risk level. use this for evaluating patient symptoms, determining urgency, and flagging high-risk cases."""
-    print("[TOOL CALLED] triage_and_risk_flagging")
-    print(
-        f"[ARGUMENTS] symptoms={symptoms}, urgency={urgency}, patient_id={patient_id}, notes={notes}"
+    logger.info("triage_and_risk_flagging called")
+    logger.debug(
+        f"arguments: symptoms={symptoms}, urgency={urgency}, patient_id={patient_id}, notes={notes}"
     )
 
     risk_level = urgency.lower() if urgency else "low"
