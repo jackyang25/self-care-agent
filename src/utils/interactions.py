@@ -124,25 +124,41 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
         
         # check for tool results (ToolMessage)
         if isinstance(msg, ToolMessage) and hasattr(msg, "content"):
-            content = msg.content.lower()
+            content = msg.content
             
-            # extract triage results from tool response
-            if "triage assessment completed" in content:
-                # extract risk level
-                if "risk level:" in content:
-                    parts = content.split("risk level:")
-                    if len(parts) > 1:
-                        risk_part = parts[1].split(".")[0].strip()
-                        if risk_part in ["low", "medium", "high", "critical"]:
-                            risk_level = risk_part
-                
-                # extract recommendation
-                if "recommendation:" in content:
-                    parts = content.split("recommendation:")
-                    if len(parts) > 1:
-                        rec = parts[1].split(".")[0].strip()
-                        if rec:
-                            recommendations.append(rec)
+            # try to parse as json (structured response)
+            try:
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    # extract triage results from structured json
+                    if data.get("risk_level"):
+                        risk_level = data["risk_level"].lower()
+                    if data.get("recommendation"):
+                        recommendations.append(data["recommendation"])
+                    if data.get("symptoms") or data.get("urgency"):
+                        triage_result = {
+                            "symptoms": data.get("symptoms"),
+                            "urgency": data.get("urgency"),
+                        }
+            except (json.JSONDecodeError, AttributeError):
+                # fallback to string parsing for backward compatibility
+                content_lower = content.lower()
+                if "triage assessment completed" in content_lower:
+                    # extract risk level
+                    if "risk level:" in content_lower:
+                        parts = content_lower.split("risk level:")
+                        if len(parts) > 1:
+                            risk_part = parts[1].split(".")[0].strip()
+                            if risk_part in ["low", "medium", "high", "critical"]:
+                                risk_level = risk_part
+                    
+                    # extract recommendation
+                    if "recommendation:" in content_lower:
+                        parts = content_lower.split("recommendation:")
+                        if len(parts) > 1:
+                            rec = parts[1].split(".")[0].strip()
+                            if rec:
+                                recommendations.append(rec)
     
     return {
         "protocol_invoked": protocol_invoked,

@@ -1,5 +1,6 @@
 """triage and risk flagging tool."""
 
+import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -23,7 +24,7 @@ def triage_and_risk_flagging(
     notes: Optional[str] = None,
 ) -> str:
     """assess patient triage and risk level. use this for evaluating patient symptoms, determining urgency, and flagging high-risk cases."""
-    print(f"[TOOL CALLED] triage_and_risk_flagging")
+    print("[TOOL CALLED] triage_and_risk_flagging")
     print(
         f"[ARGUMENTS] symptoms={symptoms}, urgency={urgency}, patient_id={patient_id}, notes={notes}"
     )
@@ -38,7 +39,19 @@ def triage_and_risk_flagging(
     else:
         recommendation = "continue monitoring, self-care may be appropriate"
 
-    return f"triage assessment completed. risk level: {risk_level}. recommendation: {recommendation}. status: success"
+    # return structured json response
+    result = {
+        "status": "success",
+        "risk_level": risk_level,
+        "recommendation": recommendation,
+        "symptoms": symptoms,
+        "urgency": urgency,
+        "patient_id": patient_id,
+        "notes": notes,
+    }
+    
+    # return json string for tool message, but also include human-readable summary
+    return json.dumps(result, indent=2)
 
 
 triage_tool = StructuredTool.from_function(
