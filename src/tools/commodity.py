@@ -1,12 +1,11 @@
 """commodity orders and fulfillment tool."""
 
-import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.logger import get_logger
+from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
 
-logger = get_logger("commodity")
+logger = get_tool_logger("commodity")
 
 
 class CommodityInput(BaseModel):
@@ -25,26 +24,23 @@ def commodity_orders_and_fulfillment(
     priority: Optional[str] = None,
 ) -> str:
     """process commodity orders and fulfillment. use this for ordering medical supplies, equipment, or other commodities."""
-    logger.info("commodity_orders_and_fulfillment called")
-    logger.debug(
-        f"arguments: items={items}, quantity={quantity}, patient_id={patient_id}, priority={priority}"
+    log_tool_call(
+        logger, "commodity_orders_and_fulfillment",
+        items=items, quantity=quantity, patient_id=patient_id, priority=priority
     )
 
     order_id = "ORD-12345"
     estimated_delivery = "2025-12-10"
 
     # return structured json response
-    result = {
-        "status": "success",
-        "order_id": order_id,
-        "estimated_delivery": estimated_delivery,
-        "items": items,
-        "quantity": quantity,
-        "patient_id": patient_id,
-        "priority": priority or "normal",
-    }
-    
-    return json.dumps(result, indent=2)
+    return format_tool_response(
+        order_id=order_id,
+        estimated_delivery=estimated_delivery,
+        items=items,
+        quantity=quantity,
+        patient_id=patient_id,
+        priority=priority or "normal",
+    )
 
 
 commodity_tool = StructuredTool.from_function(

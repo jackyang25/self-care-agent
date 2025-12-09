@@ -1,12 +1,11 @@
 """pharmacy orders and fulfillment tool."""
 
-import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.logger import get_logger
+from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
 
-logger = get_logger("pharmacy")
+logger = get_tool_logger("pharmacy")
 
 
 class PharmacyInput(BaseModel):
@@ -27,9 +26,9 @@ def pharmacy_orders_and_fulfillment(
     pharmacy: Optional[str] = None,
 ) -> str:
     """process pharmacy orders and prescription fulfillment. use this for ordering medications, prescriptions, or pharmacy services."""
-    logger.info("pharmacy_orders_and_fulfillment called")
-    logger.debug(
-        f"arguments: medication={medication}, dosage={dosage}, patient_id={patient_id}, pharmacy={pharmacy}"
+    log_tool_call(
+        logger, "pharmacy_orders_and_fulfillment",
+        medication=medication, dosage=dosage, patient_id=patient_id, pharmacy=pharmacy
     )
 
     prescription_id = "RX-67890"
@@ -37,17 +36,14 @@ def pharmacy_orders_and_fulfillment(
     ready_date = "2025-12-05"
 
     # return structured json response
-    result = {
-        "status": "success",
-        "prescription_id": prescription_id,
-        "pharmacy": pharmacy_name,
-        "ready_date": ready_date,
-        "medication": medication,
-        "dosage": dosage,
-        "patient_id": patient_id,
-    }
-    
-    return json.dumps(result, indent=2)
+    return format_tool_response(
+        prescription_id=prescription_id,
+        pharmacy=pharmacy_name,
+        ready_date=ready_date,
+        medication=medication,
+        dosage=dosage,
+        patient_id=patient_id,
+    )
 
 
 pharmacy_tool = StructuredTool.from_function(

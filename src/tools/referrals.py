@@ -1,12 +1,11 @@
 """referrals and scheduling tool."""
 
-import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.logger import get_logger
+from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
 
-logger = get_logger("referrals")
+logger = get_tool_logger("referrals")
 
 
 class ReferralInput(BaseModel):
@@ -37,9 +36,10 @@ def referrals_and_scheduling(
     reason: Optional[str] = None,
 ) -> str:
     """process referrals and schedule appointments. use this for creating referrals to specialists, scheduling appointments, or managing patient appointments."""
-    logger.info("referrals_and_scheduling called")
-    logger.debug(
-        f"arguments: specialty={specialty}, provider={provider}, patient_id={patient_id}, preferred_date={preferred_date}, preferred_time={preferred_time}, reason={reason}"
+    log_tool_call(
+        logger, "referrals_and_scheduling",
+        specialty=specialty, provider=provider, patient_id=patient_id,
+        preferred_date=preferred_date, preferred_time=preferred_time, reason=reason
     )
 
     appointment_id = "APT-11111"
@@ -48,18 +48,15 @@ def referrals_and_scheduling(
     time = preferred_time or "10:00 AM"
 
     # return structured json response
-    result = {
-        "status": "success",
-        "appointment_id": appointment_id,
-        "provider": provider_name,
-        "date": date,
-        "time": time,
-        "specialty": specialty,
-        "patient_id": patient_id,
-        "reason": reason,
-    }
-    
-    return json.dumps(result, indent=2)
+    return format_tool_response(
+        appointment_id=appointment_id,
+        provider=provider_name,
+        date=date,
+        time=time,
+        specialty=specialty,
+        patient_id=patient_id,
+        reason=reason,
+    )
 
 
 referral_tool = StructuredTool.from_function(

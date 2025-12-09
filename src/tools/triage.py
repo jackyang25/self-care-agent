@@ -1,12 +1,11 @@
 """triage and risk flagging tool."""
 
-import json
 from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.logger import get_logger
+from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
 
-logger = get_logger("triage")
+logger = get_tool_logger("triage")
 
 
 class TriageInput(BaseModel):
@@ -27,9 +26,9 @@ def triage_and_risk_flagging(
     notes: Optional[str] = None,
 ) -> str:
     """assess patient triage and risk level. use this for evaluating patient symptoms, determining urgency, and flagging high-risk cases."""
-    logger.info("triage_and_risk_flagging called")
-    logger.debug(
-        f"arguments: symptoms={symptoms}, urgency={urgency}, patient_id={patient_id}, notes={notes}"
+    log_tool_call(
+        logger, "triage_and_risk_flagging",
+        symptoms=symptoms, urgency=urgency, patient_id=patient_id, notes=notes
     )
 
     risk_level = urgency.lower() if urgency else "low"
@@ -43,18 +42,14 @@ def triage_and_risk_flagging(
         recommendation = "continue monitoring, self-care may be appropriate"
 
     # return structured json response
-    result = {
-        "status": "success",
-        "risk_level": risk_level,
-        "recommendation": recommendation,
-        "symptoms": symptoms,
-        "urgency": urgency,
-        "patient_id": patient_id,
-        "notes": notes,
-    }
-    
-    # return json string for tool message, but also include human-readable summary
-    return json.dumps(result, indent=2)
+    return format_tool_response(
+        risk_level=risk_level,
+        recommendation=recommendation,
+        symptoms=symptoms,
+        urgency=urgency,
+        patient_id=patient_id,
+        notes=notes,
+    )
 
 
 triage_tool = StructuredTool.from_function(
