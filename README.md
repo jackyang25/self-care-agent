@@ -29,14 +29,15 @@ Then edit `.env` and set `OPENAI_API_KEY=your_key_here`
 
 ```
 source venv/bin/activate
-python main.py
+python streamlit_server.py
 ```
 
 Then wait for interface to launch...
 
 ## Structure
 
-- `main.py` - Entry point
+- `streamlit_server.py` - Streamlit UI server entry point
+- `webhook_server.py` - FastAPI webhook server entry point
 - `src/orchestrator.py` - Intent classification and routing
 - `src/tools.py` - tool implementations
 - `src/agent.py` - LangGraph agent

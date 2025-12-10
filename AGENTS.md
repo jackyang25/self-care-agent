@@ -63,7 +63,7 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 4. **Run application:**
    ```bash
-   python main.py
+   python streamlit_server.py
    ```
 
 ## Code Style
@@ -114,7 +114,8 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ```
 .
-├── main.py                 # Entry point (Streamlit app)
+├── streamlit_server.py     # Streamlit UI server entry point
+├── webhook_server.py       # FastAPI webhook server entry point
 ├── src/
 │   ├── agent.py           # LangGraph agent with tool calling
 │   ├── interface.py       # Streamlit interface wrapper
