@@ -4,8 +4,8 @@ import streamlit as st
 from pathlib import Path
 from PIL import Image
 from src.agent import create_agent, process_message
-from src.tools.database import database_query
 from src.utils.logger import get_logger
+from src.utils.user_lookup import get_user_by_email, get_user_by_phone
 
 logger = get_logger("interface")
 
@@ -44,34 +44,26 @@ class LLMInterface:
         """identify user by phone or email. returns (success, message)."""
         # try phone first (e164 format)
         if identifier.startswith("+") or identifier.replace("-", "").replace(" ", "").isdigit():
-            result = database_query("get_user_by_phone", phone=identifier)
+            user = get_user_by_phone(identifier)
         else:
             # assume email
-            result = database_query("get_user_by_email", email=identifier)
+            user = get_user_by_email(identifier)
         
-        if "user found:" in result.lower():
-            # extract user_id from result using regex (uuid format)
-            try:
-                import re
-                # uuid format: 8-4-4-4-12 hex digits
-                uuid_pattern = r"'user_id':\s*'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'"
-                user_id_match = re.search(uuid_pattern, result, re.IGNORECASE)
-                if user_id_match:
-                    user_id = user_id_match.group(1)
-                    st.session_state.user_id = user_id
-                    st.session_state.user_identified = True
-                    # extract email or phone for friendly display
-                    email_match = re.search(r"'email':\s*'([^']+)'", result)
-                    phone_match = re.search(r"'phone_e164':\s*'([^']+)'", result)
-                    display_name = (email_match.group(1) if email_match else 
-                                  phone_match.group(1) if phone_match else 
-                                  f"user {user_id[:8]}")
-                    st.session_state.user_display = display_name
-                    return True, f"welcome, {display_name}!"
-                else:
-                    logger.warning(f"user found in database but uuid pattern did not match. result: {result[:200]}")
-            except Exception as e:
-                logger.error(f"failed to parse user identification result: {e}. result: {result[:200]}")
+        if user:
+            # extract user data from structured dict
+            user_id = str(user.get("user_id"))
+            email = user.get("email")
+            phone = user.get("phone_e164")
+            
+            # set session state
+            st.session_state.user_id = user_id
+            st.session_state.user_identified = True
+            
+            # determine display name (prefer email, fallback to phone, then user id)
+            display_name = email or phone or f"user {user_id[:8]}"
+            st.session_state.user_display = display_name
+            
+            return True, f"welcome, {display_name}!"
         
         return False, "user not found. please check your phone number or email."
 
