@@ -98,6 +98,14 @@ def create_agent(llm_model: str, temperature: float) -> Any:
             *state["messages"],
         ]
         response = llm_with_tools.invoke(messages)
+        
+        # log when agent decides to call tools
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            for tool_call in response.tool_calls:
+                tool_name = tool_call.get("name", "unknown")
+                tool_args = tool_call.get("args", {})
+                logger.info(f"calling tool: {tool_name} with args: {tool_args}")
+        
         return {"messages": [response]}
 
     def call_tools(state: AgentState) -> Dict[str, List[ToolMessage]]:
@@ -106,8 +114,17 @@ def create_agent(llm_model: str, temperature: float) -> Any:
         user_id = state.get("user_id")
         if user_id:
             current_user_id.set(user_id)
+        
         # call the standard tool node
-        return tool_node.invoke(state)
+        result = tool_node.invoke(state)
+        
+        # log tool results after execution
+        if isinstance(result, dict) and "messages" in result:
+            for msg in result["messages"]:
+                if isinstance(msg, ToolMessage):
+                    logger.info(f"tool result: {msg.content[:200]}")
+        
+        return result
 
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", call_model)
@@ -161,19 +178,16 @@ def process_message(
     messages = result["messages"]
     last_message = messages[-1]
 
-    # find tool execution info in message chain
+    # find tool execution info in message chain (for response formatting only)
     tool_info = []
     for i, msg in enumerate(messages):
         if isinstance(msg, ToolMessage):
-            logger.info(f"tool result: {msg.content[:200]}")
             tool_info.append("tool executed")
         elif (
             isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls
         ):
             for tool_call in msg.tool_calls:
                 tool_name = tool_call.get("name", "unknown")
-                tool_args = tool_call.get("args", {})
-                logger.info(f"calling tool: {tool_name} with args: {tool_args}")
                 tool_info.append(f"tool: {tool_name}")
 
     # extract tool information for interaction storage

@@ -26,11 +26,12 @@ def log_tool_call(logger: logging.Logger, tool_name: str, **kwargs: Any) -> None
         tool_name: name of the tool being called
         **kwargs: tool arguments to log
     """
-    logger.info(f"{tool_name} called")
     if kwargs:
         # format arguments for logging
-        args_str = ", ".join(f"{k}={v}" for k, v in kwargs.items())
-        logger.debug(f"arguments: {args_str}")
+        args_dict = {k: v for k, v in kwargs.items() if v is not None}
+        logger.info(f"calling tool: {tool_name} with args: {args_dict}")
+    else:
+        logger.info(f"{tool_name} called")
 
 
 def format_tool_response(
