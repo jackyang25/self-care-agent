@@ -19,7 +19,7 @@ class LLMInterface:
             st.session_state.agent = create_agent(llm_model=llm_model, temperature=temperature)
         self.agent = st.session_state.agent
 
-    def respond(self, message):
+    def respond(self, message: str) -> str:
         """process user message and return response."""
         # build conversation history from streamlit session state
         conversation_history = []
@@ -67,7 +67,7 @@ class LLMInterface:
         
         return False, "user not found. please check your phone number or email."
 
-    def launch(self):
+    def launch(self) -> None:
         """launch the streamlit interface."""
         # load gates foundation logo
         logo_path = Path("assets/gates_logo.png")

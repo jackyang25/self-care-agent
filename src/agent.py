@@ -1,6 +1,6 @@
 """langgraph agent with native tool calling."""
 
-from typing import TypedDict, Annotated, Optional
+from typing import TypedDict, Annotated, Optional, List, Dict, Any, Literal
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
@@ -67,14 +67,14 @@ use tool results to determine next steps:
 - verify you have fulfilled every part of the user's original request before ending"""
 
 
-def create_agent(llm_model: str, temperature: float):
+def create_agent(llm_model: str, temperature: float) -> Any:
     """create a langgraph agent with native tool calling."""
     llm = ChatOpenAI(model=llm_model, temperature=temperature)
     llm_with_tools = llm.bind_tools(TOOLS)
 
     tool_node = ToolNode(TOOLS)
 
-    def should_continue(state: AgentState):
+    def should_continue(state: AgentState) -> Literal["tools", "end"]:
         """determine if we should continue or end."""
         messages = state["messages"]
         last_message = messages[-1]
@@ -84,7 +84,7 @@ def create_agent(llm_model: str, temperature: float):
             return "tools"
         return "end"
 
-    def call_model(state: AgentState):
+    def call_model(state: AgentState) -> Dict[str, List[AIMessage]]:
         """call the llm with tools."""
         # set user_id in context for tools to access
         user_id = state.get("user_id")
@@ -100,7 +100,7 @@ def create_agent(llm_model: str, temperature: float):
         response = llm_with_tools.invoke(messages)
         return {"messages": [response]}
 
-    def call_tools(state: AgentState):
+    def call_tools(state: AgentState) -> Dict[str, List[ToolMessage]]:
         """call tools with user context set."""
         # ensure user_id is set in context before tools execute
         user_id = state.get("user_id")
@@ -133,7 +133,12 @@ def create_agent(llm_model: str, temperature: float):
     return workflow.compile()
 
 
-def process_message(agent, user_input: str, conversation_history=None, user_id=None):
+def process_message(
+    agent: Any,
+    user_input: str,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+    user_id: Optional[str] = None,
+) -> str:
     """process a user message through the agent."""
     # build message history
     messages = []

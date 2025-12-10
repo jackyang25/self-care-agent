@@ -1,11 +1,12 @@
 """common utilities for tool implementations."""
 
 import json
-from typing import Any, Dict, Optional
+import logging
+from typing import Any, Dict
 from src.utils.logger import get_logger
 
 
-def get_tool_logger(tool_name: str):
+def get_tool_logger(tool_name: str) -> logging.Logger:
     """get logger instance for a tool.
     
     args:
@@ -17,7 +18,7 @@ def get_tool_logger(tool_name: str):
     return get_logger(tool_name)
 
 
-def log_tool_call(logger, tool_name: str, **kwargs):
+def log_tool_call(logger: logging.Logger, tool_name: str, **kwargs: Any) -> None:
     """log tool call with arguments.
     
     args:

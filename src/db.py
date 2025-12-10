@@ -3,14 +3,16 @@
 import os
 import time
 from contextlib import contextmanager
+from typing import Dict, Any, Iterator
 from psycopg2 import pool, OperationalError
 from psycopg2.extras import RealDictCursor
+from psycopg2.extensions import connection, cursor
 
 # connection pool (created on first use)
 _connection_pool = None
 
 
-def _get_connection_pool():
+def _get_connection_pool() -> pool.SimpleConnectionPool:
     """get or create connection pool with retry logic."""
     global _connection_pool
     if _connection_pool is None:
@@ -44,7 +46,7 @@ def _get_connection_pool():
 
 
 @contextmanager
-def get_db():
+def get_db() -> Iterator[connection]:
     """get database connection (lazy - connects on first use)."""
     pool = _get_connection_pool()
     conn = pool.getconn()
@@ -62,14 +64,14 @@ def get_db():
 
 
 @contextmanager
-def get_db_cursor():
+def get_db_cursor() -> Iterator[cursor]:
     """get database cursor with dict-like rows."""
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             yield cur
 
 
-def test_connection() -> dict:
+def test_connection() -> Dict[str, Any]:
     """test database connection and return status info."""
     try:
         with get_db_cursor() as cur:
