@@ -4,6 +4,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from src.interface import LLMInterface
+from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 
 load_dotenv()
 
@@ -15,8 +16,8 @@ def main():
         st.info("please set it in a .env file or export it")
         return
 
-    llm_model = os.getenv("LLM_MODEL", "gpt-4o")
-    temperature = float(os.getenv("TEMPERATURE", "0.3"))
+    llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
+    temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
 
     interface = LLMInterface(llm_model=llm_model, temperature=temperature)
     interface.launch()
