@@ -191,7 +191,17 @@ async def handle_webhook(
 
             # process message through handler
             handler = _get_handler()
-            response, _ = handler.respond(text_body, user_id=user_id)
+            response, sources = handler.respond(text_body, user_id=user_id)
+
+            # format sources as plain text for whatsapp (no markdown support)
+            if sources:
+                sources_text = "\n\nSources:\n"
+                for i, source in enumerate(sources, 1):
+                    similarity_pct = int(source.get("similarity", 0) * 100)
+                    content_type = source.get("content_type", "")
+                    content_type_label = f" ({content_type})" if content_type else ""
+                    sources_text += f"{i}. {source.get('title', 'Unknown')}{content_type_label} - {similarity_pct}% match\n"
+                response = response + sources_text
 
             logger.info(f"sending response to {from_number}: {response[:100]}")
 
