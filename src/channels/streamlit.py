@@ -3,25 +3,36 @@
 import streamlit as st
 from pathlib import Path
 from PIL import Image
-from src.agent import create_agent, process_message
+from typing import Optional, List, Dict
+from src.agent import create_agent
+from src.channels.base import BaseChannelHandler
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
 
 logger = get_logger("interface")
 
 
-class LLMInterface:
+class LLMInterface(BaseChannelHandler):
     """streamlit interface wrapper."""
 
     def __init__(self, llm_model: str, temperature: float):
         """initialize the interface with agent."""
+        super().__init__(llm_model, temperature)
+        # streamlit uses session state for agent (shared across reruns)
         if "agent" not in st.session_state:
-            st.session_state.agent = create_agent(llm_model=llm_model, temperature=temperature)
-        self.agent = st.session_state.agent
+            st.session_state.agent = self.agent
 
-    def respond(self, message: str) -> str:
-        """process user message and return response."""
-        # build conversation history from streamlit session state
+    @property
+    def agent(self):
+        """get agent from session state or create new one."""
+        if "agent" not in st.session_state:
+            st.session_state.agent = create_agent(
+                llm_model=self.llm_model, temperature=self.temperature
+            )
+        return st.session_state.agent
+
+    def get_conversation_history(self, user_id: Optional[str] = None) -> List[Dict[str, str]]:
+        """get conversation history from streamlit session state."""
         conversation_history = []
         if "messages" in st.session_state:
             for msg in st.session_state.messages:
@@ -31,14 +42,11 @@ class LLMInterface:
                     # remove tool execution info from assistant message for history
                     clean_msg = msg["content"].split("\n\n[tool execution:")[0].strip()
                     conversation_history.append({"role": "assistant", "content": clean_msg})
+        return conversation_history
 
-        # get current user_id from session state
-        user_id = st.session_state.get("user_id")
-
-        response = process_message(
-            self.agent, message, conversation_history=conversation_history, user_id=user_id
-        )
-        return response
+    def get_user_id(self) -> Optional[str]:
+        """get current user id from streamlit session state."""
+        return st.session_state.get("user_id")
 
     def _identify_user(self, identifier: str) -> tuple[bool, str]:
         """identify user by phone or email. returns (success, message)."""
