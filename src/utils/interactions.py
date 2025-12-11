@@ -23,7 +23,7 @@ def save_interaction(
     user_id: Optional[str] = None,
 ) -> Optional[str]:
     """save user interaction to database.
-    
+
     args:
         user_input: the user's message/input
         channel: communication channel (default: "streamlit")
@@ -34,31 +34,32 @@ def save_interaction(
         recommendations: list of recommendations
         tools_called: list of tool names that were called
         user_id: user id (if not provided, uses context variable)
-    
+
     returns:
         interaction_id if successful, None if failed or no user_id
     """
     # get user_id from context if not provided
     if not user_id:
         user_id = current_user_id.get()
-    
+
     # don't save if no user_id (user not logged in)
     if not user_id:
         return None
-    
+
     try:
         interaction_id = str(uuid.uuid4())
-        
+
         # prepare input as jsonb
         input_data = {"text": user_input}
         if tools_called:
             input_data["tools_called"] = tools_called
-        
+
         # prepare recommendations as jsonb
         recommendations_data = recommendations if recommendations else []
-        
+
         with get_db_cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO interactions (
                     interaction_id, user_id, channel, input,
                     protocol_invoked, protocol_version,
@@ -67,20 +68,22 @@ def save_interaction(
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
                 )
-            """, (
-                interaction_id,
-                user_id,
-                channel,
-                json.dumps(input_data),
-                protocol_invoked,
-                protocol_version,
-                json.dumps(triage_result) if triage_result else None,
-                risk_level,
-                json.dumps(recommendations_data),
-            ))
-        
+            """,
+                (
+                    interaction_id,
+                    user_id,
+                    channel,
+                    json.dumps(input_data),
+                    protocol_invoked,
+                    protocol_version,
+                    json.dumps(triage_result) if triage_result else None,
+                    risk_level,
+                    json.dumps(recommendations_data),
+                ),
+            )
+
         return interaction_id
-    
+
     except Exception as e:
         # log error but don't fail the request
         logger.error(f"failed to save interaction: {e}", exc_info=True)
@@ -89,10 +92,10 @@ def save_interaction(
 
 def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
     """extract tool call information from agent messages.
-    
+
     args:
         messages: list of messages from agent execution
-    
+
     returns:
         dict with protocol_invoked, tools_called, triage_result, risk_level, recommendations
     """
@@ -102,7 +105,7 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
     triage_result = None
     risk_level = None
     recommendations = []
-    
+
     # map tool names to protocol names
     tool_to_protocol = {
         "triage_and_risk_flagging": "triage",
@@ -111,19 +114,19 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
         "referrals_and_scheduling": "referrals",
         "database_query": "database",
     }
-    
+
     for msg in messages:
         # check for tool calls (AIMessage with tool_calls)
         if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
             for tool_call in msg.tool_calls:
                 tool_name = tool_call.get("name", "unknown")
                 tools_called.append(tool_name)
-                
+
                 # set protocol_invoked based on tool name
                 if tool_name in tool_to_protocol:
                     protocol_invoked = tool_to_protocol[tool_name]
                     protocol_version = "1.0"
-                
+
                 # extract triage-specific args
                 if tool_name == "triage_and_risk_flagging":
                     args = tool_call.get("args", {})
@@ -134,11 +137,11 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             "symptoms": args["symptoms"],
                             "urgency": args.get("urgency"),
                         }
-        
+
         # check for tool results (ToolMessage)
         if isinstance(msg, ToolMessage) and hasattr(msg, "content"):
             content = msg.content
-            
+
             # try to parse as json (structured response)
             try:
                 data = json.loads(content)
@@ -162,9 +165,9 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                         parts = content_lower.split("risk level:")
                         if len(parts) > 1:
                             risk_part = parts[1].split(".")[0].strip()
-                            if risk_part in ["low", "medium", "high", "critical"]:
+                            if risk_part in ["red", "yellow", "green"]:
                                 risk_level = risk_part
-                    
+
                     # extract recommendation
                     if "recommendation:" in content_lower:
                         parts = content_lower.split("recommendation:")
@@ -172,7 +175,7 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             rec = parts[1].split(".")[0].strip()
                             if rec:
                                 recommendations.append(rec)
-    
+
     return {
         "protocol_invoked": protocol_invoked,
         "protocol_version": protocol_version,
@@ -181,4 +184,3 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
         "risk_level": risk_level,
         "recommendations": recommendations if recommendations else None,
     }
-
