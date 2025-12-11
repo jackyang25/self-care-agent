@@ -49,15 +49,15 @@ class BaseChannelHandler(ABC):
         """
         pass
 
-    def respond(self, message: str, user_id: Optional[str] = None) -> str:
-        """process user message and return response.
+    def respond(self, message: str, user_id: Optional[str] = None) -> tuple[str, list[dict[str, str]]]:
+        """process user message and return response with sources.
         
         args:
             message: user message text
             user_id: optional user identifier (if not provided, uses get_user_id())
         
         returns:
-            agent response text
+            tuple of (agent response text, list of source dicts with title/content_type/similarity)
         """
         # use provided user_id or get from channel-specific method
         if user_id is None:
@@ -67,11 +67,11 @@ class BaseChannelHandler(ABC):
         conversation_history = self.get_conversation_history(user_id=user_id)
         
         # process message through agent
-        response = process_message(
+        response, sources = process_message(
             agent=self.agent,
             user_input=message,
             conversation_history=conversation_history,
             user_id=user_id,
         )
-        return response
+        return response, sources
 

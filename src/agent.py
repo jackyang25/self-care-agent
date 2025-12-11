@@ -1,5 +1,6 @@
 """langgraph agent with native tool calling."""
 
+import json
 from typing import TypedDict, Annotated, Optional, List, Dict, Any, Literal
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -155,7 +156,7 @@ def process_message(
     user_input: str,
     conversation_history: Optional[List[Dict[str, str]]] = None,
     user_id: Optional[str] = None,
-) -> str:
+) -> tuple[str, list[dict[str, str]]]:
     """process a user message through the agent."""
     # build message history
     messages = []
@@ -177,6 +178,36 @@ def process_message(
 
     messages = result["messages"]
     last_message = messages[-1]
+
+    # extract RAG sources from tool messages
+    # track which tool calls were RAG to match with results
+    rag_tool_call_ids = []
+    for msg in messages:
+        if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
+            for tool_call in msg.tool_calls:
+                if tool_call.get("name") == "rag_retrieval":
+                    tool_call_id = tool_call.get("id")
+                    if tool_call_id:
+                        rag_tool_call_ids.append(tool_call_id)
+    
+    rag_sources = []
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            # check if this tool message corresponds to a RAG tool call
+            tool_call_id = getattr(msg, "tool_call_id", None)
+            if tool_call_id in rag_tool_call_ids:
+                try:
+                    # parse RAG tool response
+                    data = json.loads(msg.content)
+                    if isinstance(data, dict) and "documents" in data:
+                        for doc in data["documents"]:
+                            rag_sources.append({
+                                "title": doc.get("title", "Unknown"),
+                                "content_type": doc.get("content_type"),
+                                "similarity": doc.get("similarity", 0),
+                            })
+                except (json.JSONDecodeError, KeyError, AttributeError):
+                    pass
 
     # find tool execution info in message chain (for response formatting only)
     tool_info = []
@@ -214,9 +245,9 @@ def process_message(
             response = last_message.content
             if tool_info:
                 response = f"{response}\n\n[tool execution: {', '.join(tool_info)}]"
-            return response
+            return response, rag_sources
         elif hasattr(last_message, "tool_calls") and last_message.tool_calls:
             tool_name = last_message.tool_calls[0].get("name", "unknown")
-            return f"tool '{tool_name}' executed successfully"
+            return f"tool '{tool_name}' executed successfully", []
 
-    return "processed"
+    return "processed", []

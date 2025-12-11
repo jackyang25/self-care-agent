@@ -85,6 +85,84 @@ I'm feeling dizzy and nauseous, should I get medication or see a doctor?
 
 ---
 
+### Test Case 6: Basic RAG Retrieval
+
+**Query:**
+```
+What should I know about managing diabetes?
+```
+
+**Expected Behavior:**
+- Agent calls `rag_retrieval` with query about diabetes
+- Retrieves "Diabetes Self-Care Basics" document
+- Agent responds with information from retrieved document
+
+**Tests:**
+- RAG tool is called (check logs or tool execution)
+- Relevant document is retrieved (similarity > 0.7)
+- Agent incorporates retrieved information in response
+
+---
+
+### Test Case 7: Symptom-Specific Knowledge
+
+**Query:**
+```
+I have a fever. What should I do?
+```
+
+**Expected Behavior:**
+- Agent may call `rag_retrieval` for fever management guidelines
+- Retrieves "Fever Management Guidelines" document
+- Agent provides evidence-based fever management advice
+
+**Tests:**
+- RAG retrieves fever-related content
+- Agent combines RAG knowledge with triage assessment
+- Response includes actionable guidance from knowledge base
+
+---
+
+### Test Case 8: Emergency Red Flags with RAG
+
+**Query:**
+```
+I'm having chest pain. Should I be worried?
+```
+
+**Expected Behavior:**
+- Agent calls triage first (mandatory for symptoms)
+- Agent may call `rag_retrieval` for chest pain red flags
+- Retrieves "Chest Pain Red Flags" document
+- Agent provides appropriate emergency guidance
+
+**Tests:**
+- RAG supplements triage with protocol knowledge
+- Emergency information is clearly communicated
+- Tool chaining: triage → RAG → response
+
+---
+
+### Test Case 9: No Relevant Documents
+
+**Query:**
+```
+Tell me about a rare condition that's not in the knowledge base
+```
+
+**Expected Behavior:**
+- Agent calls `rag_retrieval`
+- No documents meet similarity threshold
+- Agent handles gracefully (doesn't crash)
+- Agent responds appropriately without retrieved context
+
+**Tests:**
+- System handles empty results gracefully
+- Agent doesn't fabricate information
+- Error handling works correctly
+
+---
+
 ## Demo Credentials
 
 ### Agent Login Page

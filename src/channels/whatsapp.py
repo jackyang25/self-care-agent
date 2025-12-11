@@ -191,7 +191,7 @@ async def handle_webhook(
 
             # process message through handler
             handler = _get_handler()
-            response = handler.respond(text_body, user_id=user_id)
+            response, _ = handler.respond(text_body, user_id=user_id)
 
             logger.info(f"sending response to {from_number}: {response[:100]}")
 

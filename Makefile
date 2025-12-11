@@ -70,8 +70,14 @@ test-db-local: ## test database connection from local machine
 create-tables: ## create database tables
 	docker-compose exec streamlit python scripts/db_create_tables.py
 
+create-rag-tables: ## create RAG tables and enable pgvector extension
+	docker-compose exec streamlit python scripts/db_create_rag_tables.py
+
 seed-db: ## seed database with fixture data (idempotent)
 	docker-compose exec streamlit python scripts/db_seed.py
+
+seed-rag: ## seed sample healthcare documents for RAG
+	docker-compose exec streamlit python scripts/db_seed_rag_sample.py
 
 seed-db-auto: ## check if database is empty and seed automatically
 	docker-compose exec streamlit python scripts/db_check_and_seed.py

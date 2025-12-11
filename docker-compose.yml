@@ -46,7 +46,7 @@ services:
     command: ["python", "webhook_server.py"]
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: gh-ai-self-care-db
     environment:
       - POSTGRES_USER=postgres

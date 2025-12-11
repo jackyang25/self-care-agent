@@ -183,7 +183,22 @@ class LLMInterface(BaseChannelHandler):
             # get assistant response
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    response = self.respond(prompt)
+                    response, sources = self.respond(prompt)
                     st.markdown(response)
-                    # add assistant response to chat history
+                    
+                    # display sources if available
+                    if sources:
+                        with st.expander("Sources", expanded=False):
+                            for i, source in enumerate(sources, 1):
+                                similarity_pct = int(source.get("similarity", 0) * 100)
+                                content_type = source.get("content_type", "")
+                                content_type_badge = f"`{content_type}`" if content_type else ""
+                                
+                                st.markdown(
+                                    f"**{i}. {source.get('title', 'Unknown')}**  "
+                                    f"{content_type_badge}  "
+                                    f"*({similarity_pct}% match)*"
+                                )
+                    
+                    # add assistant response to chat history (without sources for cleaner history)
                     st.session_state.messages.append({"role": "assistant", "content": response})
