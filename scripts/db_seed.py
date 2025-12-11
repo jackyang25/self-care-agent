@@ -2,7 +2,6 @@
 
 import json
 import sys
-import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -34,14 +33,6 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                 cur.execute("TRUNCATE TABLE users CASCADE")
             
             for user in data["users"]:
-                # convert country_context_id string to uuid if needed
-                country_id = user.get("country_context_id")
-                if country_id and not isinstance(country_id, uuid.UUID):
-                    try:
-                        country_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, country_id))
-                    except:
-                        country_id = str(uuid.uuid4())
-                
                 cur.execute("""
                     INSERT INTO users (
                         user_id, fhir_patient_id, primary_channel, phone_e164,
@@ -59,7 +50,7 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                     user.get("email"),
                     user.get("preferred_language"),
                     user.get("literacy_mode"),
-                    country_id,
+                    user.get("country_context_id"),
                     json.dumps(user.get("demographics", {})),
                     json.dumps(user.get("accessibility", {})),
                 ))

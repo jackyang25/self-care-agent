@@ -86,7 +86,7 @@ Stores user profile information.
 | `email` | TEXT | Email address |
 | `preferred_language` | TEXT | User's preferred language |
 | `literacy_mode` | TEXT | Literacy mode preference |
-| `country_context_id` | UUID | Country context identifier (required) |
+| `country_context_id` | TEXT | Country context identifier (ISO 3166-1 alpha-2 code, e.g., "us", "mx", "ke") (required) |
 | `demographics` | JSONB | Demographic data (flexible structure) |
 | `accessibility` | JSONB | Accessibility preferences |
 | `is_deleted` | BOOLEAN | Soft delete flag (default: false) |

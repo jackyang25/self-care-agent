@@ -66,7 +66,7 @@ Use these templates as a reference when creating new fixture files. The template
   "email": "user@example.com",
   "preferred_language": "en|es|fr|...",
   "literacy_mode": "standard|simplified",
-  "country_context_id": "us|mx|...",
+  "country_context_id": "us|mx|ke|... (ISO 3166-1 alpha-2 country code)",
   "demographics": {
     "age": 35,
     "gender": "male|female|other"

@@ -24,7 +24,7 @@ def create_tables():
                 email TEXT,
                 preferred_language TEXT,
                 literacy_mode TEXT,
-                country_context_id UUID NOT NULL,
+                country_context_id TEXT NOT NULL,
                 demographics JSONB,
                 accessibility JSONB,
                 is_deleted BOOLEAN DEFAULT false,

@@ -8,7 +8,7 @@
       "email": "jack.yang@gatesfoundation.org",
       "preferred_language": "en",
       "literacy_mode": "standard",
-      "country_context_id": "262d1f8b-727c-5fd2-8e1b-867581bbaa2c",
+      "country_context_id": "us",
       "demographics": {
         "age": 23,
         "gender": "male"
@@ -20,18 +20,39 @@
     },
     {
       "user_id": "550e8400-e29b-41d4-a716-446655440001",
-      "fhir_patient_id": "patient-002",
-      "primary_channel": "sms",
-      "phone_e164": "+1234567891",
-      "email": "user2@example.com",
-      "preferred_language": "es",
-      "literacy_mode": "simplified",
-      "country_context_id": "mx",
+      "fhir_patient_id": "patient-kristen-lam",
+      "primary_channel": "whatsapp",
+      "phone_e164": "+14155552345",
+      "email": "kristen.lam@gatesfoundation.org",
+      "preferred_language": "en",
+      "literacy_mode": "standard",
+      "country_context_id": "us",
       "demographics": {
-        "age": 28,
-        "gender": "male"
+        "age": 31,
+        "gender": "female"
       },
-      "accessibility": {}
+      "accessibility": {
+        "hearing_aid": false,
+        "visual_aid": false
+      }
+    },
+    {
+      "user_id": "550e8400-e29b-41d4-a716-446655440002",
+      "fhir_patient_id": "patient-sasha-rieders",
+      "primary_channel": "streamlit",
+      "phone_e164": "+14155553456",
+      "email": "sasha.rieders@gatesfoundation.org",
+      "preferred_language": "en",
+      "literacy_mode": "standard",
+      "country_context_id": "us",
+      "demographics": {
+        "age": 29,
+        "gender": "female"
+      },
+      "accessibility": {
+        "hearing_aid": false,
+        "visual_aid": false
+      }
     }
   ],
   "interactions": [
@@ -39,18 +60,45 @@
       "interaction_id": "660e8400-e29b-41d4-a716-446655440000",
       "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "channel": "whatsapp",
-      "input": "i have a headache and feel nauseous",
-      "protocol_invoked": "triage",
-      "protocol_version": "1.0",
-      "triage_result": {
-        "risk_level": "medium",
-        "symptoms": ["headache", "nausea"]
+      "input": {
+        "text": "Hi, I just created my account",
+        "tools_called": []
       },
-      "risk_level": "medium",
-      "recommendations": [
-        "rest and hydration",
-        "monitor symptoms"
-      ],
+      "protocol_invoked": null,
+      "protocol_version": null,
+      "triage_result": null,
+      "risk_level": null,
+      "recommendations": [],
+      "follow_up_at": null
+    },
+    {
+      "interaction_id": "660e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440001",
+      "channel": "whatsapp",
+      "input": {
+        "text": "Hi, I just created my account",
+        "tools_called": []
+      },
+      "protocol_invoked": null,
+      "protocol_version": null,
+      "triage_result": null,
+      "risk_level": null,
+      "recommendations": [],
+      "follow_up_at": null
+    },
+    {
+      "interaction_id": "660e8400-e29b-41d4-a716-446655440002",
+      "user_id": "550e8400-e29b-41d4-a716-446655440002",
+      "channel": "streamlit",
+      "input": {
+        "text": "Hi, I just created my account",
+        "tools_called": []
+      },
+      "protocol_invoked": null,
+      "protocol_version": null,
+      "triage_result": null,
+      "risk_level": null,
+      "recommendations": [],
       "follow_up_at": null
     }
   ],
@@ -64,10 +112,48 @@
       "jurisdiction": "us",
       "evidence": {
         "method": "explicit",
-        "timestamp": "2024-01-01T00:00:00Z"
+        "timestamp": "2024-01-15T10:30:00Z"
       },
-      "recorded_at": "2024-01-01T00:00:00Z"
+      "recorded_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "consent_id": "770e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "scope": "commodity",
+      "status": "granted",
+      "version": "1.0",
+      "jurisdiction": "us",
+      "evidence": {
+        "method": "explicit",
+        "timestamp": "2024-01-15T11:00:00Z"
+      },
+      "recorded_at": "2024-01-15T11:00:00Z"
+    },
+    {
+      "consent_id": "770e8400-e29b-41d4-a716-446655440002",
+      "user_id": "550e8400-e29b-41d4-a716-446655440001",
+      "scope": "triage",
+      "status": "granted",
+      "version": "1.0",
+      "jurisdiction": "us",
+      "evidence": {
+        "method": "explicit",
+        "timestamp": "2024-01-20T14:15:00Z"
+      },
+      "recorded_at": "2024-01-20T14:15:00Z"
+    },
+    {
+      "consent_id": "770e8400-e29b-41d4-a716-446655440003",
+      "user_id": "550e8400-e29b-41d4-a716-446655440002",
+      "scope": "referrals",
+      "status": "granted",
+      "version": "1.0",
+      "jurisdiction": "us",
+      "evidence": {
+        "method": "explicit",
+        "timestamp": "2024-01-25T09:45:00Z"
+      },
+      "recorded_at": "2024-01-25T09:45:00Z"
     }
   ]
 }
-
