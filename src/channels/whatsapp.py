@@ -7,6 +7,7 @@ import requests
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, Request, Response, Header, HTTPException
 from fastapi.responses import JSONResponse
+from src.agent import create_agent
 from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
@@ -16,13 +17,44 @@ logger = get_logger("whatsapp")
 
 app = FastAPI(title="WhatsApp Webhook")
 
+# module-level agent singleton (shared across all requests)
+_agent_instance = None
+
+
+def _get_agent():
+    """get or create agent instance (singleton).
+
+    returns:
+        compiled agent workflow instance
+    """
+    global _agent_instance
+    if _agent_instance is None:
+        llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
+        temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
+        _agent_instance = create_agent(llm_model=llm_model, temperature=temperature)
+        logger.info(
+            f"created agent singleton: model={llm_model}, temperature={temperature}"
+        )
+    return _agent_instance
+
 
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp message handler."""
 
-    def get_conversation_history(self, user_id: Optional[str] = None) -> List[Dict[str, str]]:
+    def __init__(self, llm_model: str, temperature: float):
+        """initialize handler with agent configuration."""
+        super().__init__(llm_model, temperature)
+
+    @property
+    def agent(self):
+        """get agent from module-level singleton."""
+        return _get_agent()
+
+    def get_conversation_history(
+        self, user_id: Optional[str] = None
+    ) -> List[Dict[str, str]]:
         """get conversation history for user.
-        
+
         note: would need to implement storage/retrieval from database
         """
         # todo: implement conversation history storage/retrieval
@@ -30,24 +62,31 @@ class WhatsAppHandler(BaseChannelHandler):
 
     def get_user_id(self) -> Optional[str]:
         """get current user id.
-        
+
         note: whatsapp handler receives user_id as parameter, not from state
         """
         # whatsapp handler gets user_id from webhook payload, not from state
         return None
 
 
-# global handler instance (initialized on first use)
+# module-level handler singleton (initialized on first use)
 _handler = None
 
 
 def _get_handler() -> WhatsAppHandler:
-    """get or create whatsapp handler instance."""
+    """get or create whatsapp handler instance (singleton).
+
+    returns:
+        whatsapp handler instance
+    """
     global _handler
     if _handler is None:
         llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
         temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
         _handler = WhatsAppHandler(llm_model=llm_model, temperature=temperature)
+        logger.info(
+            f"created whatsapp handler singleton: model={llm_model}, temperature={temperature}"
+        )
     return _handler
 
 

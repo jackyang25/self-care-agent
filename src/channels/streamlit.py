@@ -1,47 +1,68 @@
 """streamlit channel handler."""
 
+import os
 import streamlit as st
 from pathlib import Path
 from PIL import Image
 from typing import Optional, List, Dict
 from src.agent import create_agent
 from src.channels.base import BaseChannelHandler
+from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
 
 logger = get_logger("interface")
 
+# module-level agent singleton (shared across all sessions)
+_agent_instance = None
 
-class LLMInterface(BaseChannelHandler):
-    """streamlit interface wrapper."""
+
+def _get_agent():
+    """get or create agent instance (singleton).
+
+    returns:
+        compiled agent workflow instance
+    """
+    global _agent_instance
+    if _agent_instance is None:
+        llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
+        temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
+        _agent_instance = create_agent(llm_model=llm_model, temperature=temperature)
+        logger.info(
+            f"created agent singleton: model={llm_model}, temperature={temperature}"
+        )
+    return _agent_instance
+
+
+class StreamlitHandler(BaseChannelHandler):
+    """streamlit channel handler."""
 
     def __init__(self, llm_model: str, temperature: float):
         """initialize the interface with agent."""
         super().__init__(llm_model, temperature)
-        # streamlit uses session state for agent (shared across reruns)
-        if "agent" not in st.session_state:
-            st.session_state.agent = self.agent
 
     @property
     def agent(self):
-        """get agent from session state or create new one."""
-        if "agent" not in st.session_state:
-            st.session_state.agent = create_agent(
-                llm_model=self.llm_model, temperature=self.temperature
-            )
-        return st.session_state.agent
+        """get agent from module-level singleton."""
+        return _get_agent()
 
-    def get_conversation_history(self, user_id: Optional[str] = None) -> List[Dict[str, str]]:
+    def get_conversation_history(
+        self, user_id: Optional[str] = None
+    ) -> List[Dict[str, str]]:
         """get conversation history from streamlit session state."""
         conversation_history = []
         if "messages" in st.session_state:
             for msg in st.session_state.messages:
                 if msg["role"] == "user":
-                    conversation_history.append({"role": "user", "content": msg["content"]})
+                    conversation_history.append(
+                        {"role": "user", "content": msg["content"]}
+                    )
                 elif msg["role"] == "assistant":
                     # remove tool execution info from assistant message for history
                     clean_msg = msg["content"].split("\n\n[tool execution:")[0].strip()
-                    conversation_history.append({"role": "assistant", "content": clean_msg})
+                    conversation_history.append(
+                        {"role": "assistant", "content": clean_msg}
+                    )
         return conversation_history
 
     def get_user_id(self) -> Optional[str]:
@@ -51,28 +72,31 @@ class LLMInterface(BaseChannelHandler):
     def _identify_user(self, identifier: str) -> tuple[bool, str]:
         """identify user by phone or email. returns (success, message)."""
         # try phone first (e164 format)
-        if identifier.startswith("+") or identifier.replace("-", "").replace(" ", "").isdigit():
+        if (
+            identifier.startswith("+")
+            or identifier.replace("-", "").replace(" ", "").isdigit()
+        ):
             user = get_user_by_phone(identifier)
         else:
             # assume email
             user = get_user_by_email(identifier)
-        
+
         if user:
             # extract user data from structured dict
             user_id = str(user.get("user_id"))
             email = user.get("email")
             phone = user.get("phone_e164")
-            
+
             # set session state
             st.session_state.user_id = user_id
             st.session_state.user_identified = True
-            
+
             # determine display name (prefer email, fallback to phone, then user id)
             display_name = email or phone or f"user {user_id[:8]}"
             st.session_state.user_display = display_name
-            
+
             return True, f"welcome, {display_name}!"
-        
+
         return False, "user not found. please check your phone number or email."
 
     def launch(self) -> None:
@@ -85,7 +109,7 @@ class LLMInterface(BaseChannelHandler):
                 page_icon = Image.open(str(logo_path))
             except Exception:
                 pass
-        
+
         st.set_page_config(
             page_title="Self-Care Agent",
             page_icon=page_icon,
@@ -93,26 +117,34 @@ class LLMInterface(BaseChannelHandler):
         )
 
         # user identification (mock authentication)
-        if "user_identified" not in st.session_state or not st.session_state.user_identified:
+        if (
+            "user_identified" not in st.session_state
+            or not st.session_state.user_identified
+        ):
             # centered login form
             col1, col2, col3 = st.columns([1, 2, 1])
-            
+
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.title("Welcome")
                 st.markdown("Please sign in to continue")
                 st.markdown("<br>", unsafe_allow_html=True)
-                
+
                 identifier = st.text_input(
                     "Email or Phone Number",
                     placeholder="user@example.com or +1234567890",
                     key="user_identifier_input",
-                    label_visibility="visible"
+                    label_visibility="visible",
                 )
-                
+
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
-                    if st.button("Sign In", type="primary", use_container_width=True, key="identify_user_btn"):
+                    if st.button(
+                        "Sign In",
+                        type="primary",
+                        use_container_width=True,
+                        key="identify_user_btn",
+                    ):
                         if identifier:
                             with st.spinner("Signing in..."):
                                 success, message = self._identify_user(identifier)
@@ -123,25 +155,29 @@ class LLMInterface(BaseChannelHandler):
                                     st.error(message)
                         else:
                             st.warning("Please enter your email or phone number")
-                
+
                 with col_btn2:
-                    if st.button("Demo Mode", use_container_width=True, key="test_user_btn"):
+                    if st.button(
+                        "Demo Mode", use_container_width=True, key="test_user_btn"
+                    ):
                         with st.spinner("Signing in..."):
-                            success, message = self._identify_user("jack.yang@gatesfoundation.org")
+                            success, message = self._identify_user(
+                                "jack.yang@gatesfoundation.org"
+                            )
                             if success:
                                 st.success(message)
                                 st.rerun()
                             else:
                                 st.error(message)
-                
+
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.caption("Prototype v0")
-            
+
             return  # don't show chat until user is identified
-        
+
         # main interface (after login)
         st.title("Self-Care Agent")
-        
+
         # sidebar user info and actions
         with st.sidebar:
             st.markdown("### Account")
@@ -150,16 +186,16 @@ class LLMInterface(BaseChannelHandler):
                 user_display = st.session_state.get("user_display", "User")
                 st.markdown(f"**{user_display}**")
                 st.caption(f"ID: {st.session_state.user_id[:8]}...")
-            
+
             st.markdown("<br>", unsafe_allow_html=True)
-            
+
             if st.button("Switch User", use_container_width=True):
                 st.session_state.user_identified = False
                 st.session_state.user_id = None
                 st.session_state.user_display = None
                 st.session_state.messages = []
                 st.rerun()
-            
+
             if st.button("Clear Chat", use_container_width=True):
                 st.session_state.messages = []
                 st.rerun()
@@ -185,20 +221,24 @@ class LLMInterface(BaseChannelHandler):
                 with st.spinner("Thinking..."):
                     response, sources = self.respond(prompt)
                     st.markdown(response)
-                    
+
                     # display sources if available
                     if sources:
                         with st.expander("Sources", expanded=False):
                             for i, source in enumerate(sources, 1):
                                 similarity_pct = int(source.get("similarity", 0) * 100)
                                 content_type = source.get("content_type", "")
-                                content_type_badge = f"`{content_type}`" if content_type else ""
-                                
+                                content_type_badge = (
+                                    f"`{content_type}`" if content_type else ""
+                                )
+
                                 st.markdown(
                                     f"**{i}. {source.get('title', 'Unknown')}**  "
                                     f"{content_type_badge}  "
                                     f"*({similarity_pct}% match)*"
                                 )
-                    
+
                     # add assistant response to chat history (without sources for cleaner history)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": response}
+                    )
