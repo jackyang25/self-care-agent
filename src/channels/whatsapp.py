@@ -16,9 +16,6 @@ logger = get_logger("whatsapp")
 
 app = FastAPI(title="WhatsApp Webhook")
 
-# shared agent instance (initialized on first use)
-_agent = None
-
 
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp message handler."""
