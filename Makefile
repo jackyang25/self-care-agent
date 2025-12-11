@@ -70,31 +70,28 @@ test-db: ## test database connection
 test-db-local: ## test database connection from local machine
 	python scripts/db_test_connection.py
 
-create-tables: ## create database tables
-	docker-compose exec streamlit python scripts/db_create_tables.py
+# use streamlit container for db scripts (has python + codebase mounted)
+APP_CONTAINER = streamlit
 
-create-rag-tables: ## create RAG tables and enable pgvector extension
-	docker-compose exec streamlit python scripts/db_create_rag_tables.py
+create-tables: ## create all database tables (main + RAG)
+	docker-compose exec $(APP_CONTAINER) python scripts/db_create_tables.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db_create_rag_tables.py
 
-seed-db: ## seed database with fixture data (idempotent)
-	docker-compose exec streamlit python scripts/db_seed.py
+seed-db: ## seed all database data (main + RAG, idempotent)
+	docker-compose exec $(APP_CONTAINER) python scripts/db_seed.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db_seed_rag_sample.py
 
-seed-rag: ## seed sample healthcare documents for RAG
-	docker-compose exec streamlit python scripts/db_seed_rag_sample.py
+clear-db: ## clear all database data but keep tables (destructive)
+	docker-compose exec $(APP_CONTAINER) python scripts/db_seed.py --clear
+	@echo "note: RAG documents are not cleared by this command"
 
-seed-db-auto: ## check if database is empty and seed automatically
-	docker-compose exec streamlit python scripts/db_check_and_seed.py
-
-seed-db-clear: ## clear all data and reseed (destructive)
-	docker-compose exec streamlit python scripts/db_seed.py --clear
-
-reset-db: ## completely reset database (deletes all data)
+reset-db: ## completely reset database (delete volumes, recreate tables, seed data)
 	docker-compose down -v
 	docker-compose up -d
 	@echo "waiting for database to be ready..."
 	@sleep 5
-	docker-compose exec streamlit python scripts/db_create_tables.py
-	docker-compose exec streamlit python scripts/db_seed.py
+	$(MAKE) create-tables
+	$(MAKE) seed-db
 
 watch: ## start with file watching (requires watchfiles or similar)
 	docker-compose up --watch
