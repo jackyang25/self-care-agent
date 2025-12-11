@@ -19,14 +19,20 @@ down-volumes: ## stop containers and remove volumes (deletes database data)
 restart: ## restart all containers
 	docker-compose restart
 
-change: ## restart app container only (for code changes)
-	docker-compose restart app
+change: ## restart streamlit container only (for code changes)
+	docker-compose restart streamlit
+
+change-webhook: ## restart webhook container only (for code changes)
+	docker-compose restart webhook
 
 logs: ## show logs from all containers
 	docker-compose logs -f
 
-logs-app: ## show logs from app container only
-	docker-compose logs -f app
+logs-streamlit: ## show logs from streamlit container only
+	docker-compose logs -f streamlit
+
+logs-webhook: ## show logs from webhook container only
+	docker-compose logs -f webhook
 
 logs-db: ## show logs from database container only
 	docker-compose logs -f db
@@ -46,14 +52,17 @@ ps: ## show running containers
 
 status: ps ## alias for ps
 
-shell: ## open shell in app container
-	docker-compose exec app /bin/bash
+shell: ## open shell in streamlit container
+	docker-compose exec streamlit /bin/bash
+
+shell-webhook: ## open shell in webhook container
+	docker-compose exec webhook /bin/bash
 
 shell-db: ## open psql shell in database container
 	docker-compose exec db psql -U postgres -d selfcare
 
 test-db: ## test database connection
-	docker-compose exec app python scripts/db_test_connection.py
+	docker-compose exec streamlit python scripts/db_test_connection.py
 
 test-db-local: ## test database connection from local machine
 	python scripts/db_test_connection.py

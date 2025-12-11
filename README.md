@@ -41,4 +41,5 @@ Then wait for interface to launch...
 - `src/orchestrator.py` - Intent classification and routing
 - `src/tools.py` - tool implementations
 - `src/agent.py` - LangGraph agent
-- `src/interface.py` - Gradio UI
+- `src/channels/streamlit.py` - Streamlit UI channel
+- `src/channels/whatsapp.py` - WhatsApp webhook channel

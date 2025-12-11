@@ -118,7 +118,9 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 ├── webhook_server.py       # FastAPI webhook server entry point
 ├── src/
 │   ├── agent.py           # LangGraph agent with tool calling
-│   ├── interface.py       # Streamlit interface wrapper
+│   ├── channels/
+│   │   ├── streamlit.py   # Streamlit channel handler
+│   │   └── whatsapp.py    # WhatsApp channel handler
 │   ├── db.py              # Database connection utilities
 │   ├── tools/             # Tool implementations
 │   │   ├── triage.py      # Triage and risk flagging

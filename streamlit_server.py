@@ -3,7 +3,7 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from src.interface import LLMInterface
+from src.channels.streamlit import LLMInterface
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 
 load_dotenv()

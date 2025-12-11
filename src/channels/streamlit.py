@@ -1,4 +1,4 @@
-"""streamlit interface for llm responses."""
+"""streamlit channel handler."""
 
 import streamlit as st
 from pathlib import Path

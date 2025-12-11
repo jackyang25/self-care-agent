@@ -1,7 +1,7 @@
 services:
-  app:
+  streamlit:
     build: .
-    container_name: gh-ai-self-care-app
+    container_name: gh-ai-self-care-streamlit
     ports:
       - "8501:8501"
     environment:
@@ -17,6 +17,33 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    command: ["streamlit", "run", "streamlit_server.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+  webhook:
+    build: .
+    container_name: gh-ai-self-care-webhook
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=selfcare
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
+      - WEBHOOK_PORT=8000
+      - WEBHOOK_HOST=0.0.0.0
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["python", "webhook_server.py"]
 
   db:
     image: postgres:15-alpine
