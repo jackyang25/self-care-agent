@@ -19,7 +19,10 @@ down-volumes: ## stop containers and remove volumes (deletes database data)
 restart: ## restart all containers
 	docker-compose restart
 
-change: ## restart streamlit container only (for code changes)
+change: ## restart streamlit and webhook containers (for code changes)
+	docker-compose restart streamlit webhook
+
+change-streamlit: ## restart streamlit container only (for code changes)
 	docker-compose restart streamlit
 
 change-webhook: ## restart webhook container only (for code changes)
