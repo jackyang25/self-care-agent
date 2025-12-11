@@ -103,6 +103,15 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
     risk_level = None
     recommendations = []
     
+    # map tool names to protocol names
+    tool_to_protocol = {
+        "triage_and_risk_flagging": "triage",
+        "commodity_orders_and_fulfillment": "commodity",
+        "pharmacy_orders_and_fulfillment": "pharmacy",
+        "referrals_and_scheduling": "referrals",
+        "database_query": "database",
+    }
+    
     for msg in messages:
         # check for tool calls (AIMessage with tool_calls)
         if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -110,11 +119,13 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                 tool_name = tool_call.get("name", "unknown")
                 tools_called.append(tool_name)
                 
-                # check if triage was called
-                if tool_name == "triage_and_risk_flagging":
-                    protocol_invoked = "triage"
+                # set protocol_invoked based on tool name
+                if tool_name in tool_to_protocol:
+                    protocol_invoked = tool_to_protocol[tool_name]
                     protocol_version = "1.0"
-                    # extract triage args
+                
+                # extract triage-specific args
+                if tool_name == "triage_and_risk_flagging":
                     args = tool_call.get("args", {})
                     if args.get("urgency"):
                         risk_level = args["urgency"].lower()
