@@ -82,6 +82,37 @@ Building on the core framework, the next phase will add HIV-specific modules wit
 
 ## Setup
 
+### Option 1: Docker (Recommended)
+
+1. **Install Docker and Docker Compose**:
+   - Download from [docker.com](https://www.docker.com/products/docker-desktop)
+   - Ensure Docker Desktop is running
+
+2. **Create `.env` file**:
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env` and set `OPENAI_API_KEY=your_key_here`
+
+3. **Start services**:
+   ```bash
+   make up
+   ```
+
+4. **Create database tables**:
+   ```bash
+   make create-tables
+   ```
+
+5. **Seed database (optional)**:
+   ```bash
+   make seed-db
+   ```
+
+The Streamlit UI will be available at `http://localhost:8501`
+
+### Option 2: Local Development
+
 1. Create and activate virtual environment:
 
 ```
@@ -103,14 +134,38 @@ cp .env.example .env
 
 Then edit `.env` and set `OPENAI_API_KEY=your_key_here`
 
+4. **Set up PostgreSQL** (if not using Docker):
+   - Install PostgreSQL locally
+   - Update `.env` with your database credentials
+
 ## Usage
+
+### Docker
+
+```bash
+# Start all services
+make up
+
+# View logs
+make logs
+
+# Stop services
+make down
+
+# See all available commands
+make help
+```
+
+The Streamlit UI will be available at `http://localhost:8501`
+
+### Local Development
 
 ```
 source venv/bin/activate
 python streamlit_server.py
 ```
 
-Then wait for interface to launch...
+Then wait for interface to launch at `http://localhost:8501`
 
 ## Structure
 
