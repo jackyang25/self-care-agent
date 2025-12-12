@@ -222,14 +222,33 @@ async def handle_webhook(
             logger.info(f"received message from {from_number}: {text_body[:100]}")
 
             # lookup user by phone number
-            user = get_user_by_phone(from_number)
+            # whatsapp sends phone numbers in E.164 format (e.g., "1234567890" or "+1234567890")
+            # normalize: ensure it starts with + if it doesn't
+            normalized_phone = from_number
+            if not normalized_phone.startswith("+"):
+                # if it's just digits, assume it needs country code
+                # for now, try as-is first, then with +
+                normalized_phone = f"+{normalized_phone}"
+            
+            user = get_user_by_phone(normalized_phone)
+            # if not found with +, try without +
+            if not user and normalized_phone.startswith("+"):
+                user = get_user_by_phone(from_number)
+            
             user_id = str(user.get("user_id")) if user else None
 
             if not user_id:
-                logger.warning(f"user not found for phone: {from_number}")
-            else:
-                # set user_id in context variable for thread-safe access
-                current_user_id.set(user_id)
+                logger.warning(f"user not found for phone: {from_number} (tried: {normalized_phone})")
+                # send error message to user
+                error_response = "sorry, your phone number is not registered. please contact support to register your account."
+                try:
+                    send_whatsapp_message(from_number, error_response)
+                except Exception as e:
+                    logger.error(f"failed to send error message: {e}")
+                continue  # skip processing this message
+
+            # set user_id in context variable for thread-safe access
+            current_user_id.set(user_id)
 
             # process message through handler
             handler = _get_handler()
