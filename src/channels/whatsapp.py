@@ -12,6 +12,7 @@ from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_phone
+from src.utils.context import current_user_id
 
 logger = get_logger("whatsapp")
 
@@ -61,12 +62,11 @@ class WhatsAppHandler(BaseChannelHandler):
         return []
 
     def get_user_id(self) -> Optional[str]:
-        """get current user id.
-
-        note: whatsapp handler receives user_id as parameter, not from state
+        """get current user id from context variable.
+        
+        note: user_id is set in webhook handler via context variable for thread-safe access
         """
-        # whatsapp handler gets user_id from webhook payload, not from state
-        return None
+        return current_user_id.get()
 
 
 # module-level handler singleton (initialized on first use)
@@ -223,13 +223,17 @@ async def handle_webhook(
 
             # lookup user by phone number
             user = get_user_by_phone(from_number)
-            user_id = user.get("user_id") if user else None
+            user_id = str(user.get("user_id")) if user else None
 
             if not user_id:
                 logger.warning(f"user not found for phone: {from_number}")
+            else:
+                # set user_id in context variable for thread-safe access
+                current_user_id.set(user_id)
 
             # process message through handler
             handler = _get_handler()
+            # user_id is now available via get_user_id() or can be passed explicitly
             response, sources = handler.respond(text_body, user_id=user_id)
 
             # format sources as plain text for whatsapp (no markdown support)
