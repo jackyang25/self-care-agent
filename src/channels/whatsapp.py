@@ -1,6 +1,7 @@
 """whatsapp webhook integration."""
 
 import os
+import re
 import hmac
 import hashlib
 import requests
@@ -63,7 +64,7 @@ class WhatsAppHandler(BaseChannelHandler):
 
     def get_user_id(self) -> Optional[str]:
         """get current user id from context variable.
-        
+
         note: user_id is set in webhook handler via context variable for thread-safe access
         """
         return current_user_id.get()
@@ -229,16 +230,18 @@ async def handle_webhook(
                 # if it's just digits, assume it needs country code
                 # for now, try as-is first, then with +
                 normalized_phone = f"+{normalized_phone}"
-            
+
             user = get_user_by_phone(normalized_phone)
             # if not found with +, try without +
             if not user and normalized_phone.startswith("+"):
                 user = get_user_by_phone(from_number)
-            
+
             user_id = str(user.get("user_id")) if user else None
 
             if not user_id:
-                logger.warning(f"user not found for phone: {from_number} (tried: {normalized_phone})")
+                logger.warning(
+                    f"user not found for phone: {from_number} (tried: {normalized_phone})"
+                )
                 # send error message to user
                 error_response = "sorry, your phone number is not registered. please contact support to register your account."
                 try:
@@ -280,6 +283,29 @@ async def handle_webhook(
     return JSONResponse(content={"status": "ok"})
 
 
+def format_whatsapp_text(message: str) -> str:
+    """convert markdown-ish output to whatsapp-friendly text."""
+    if not message:
+        return ""
+
+    text = message
+    text = re.sub(
+        r"```[\w-]*\n(.*?)\n```", r"```\1```", text, flags=re.DOTALL
+    )  # code fences
+    text = re.sub(r"`([^`]+)`", r"`\1`", text)  # inline code to monospace
+    text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)  # bold
+    text = re.sub(r"__(.+?)__", r"_\1_", text)  # italics
+    text = re.sub(r"\[(.+?)\]\((https?[^)]+)\)", r"\1 - \2", text)  # links
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)  # headings to plain
+    text = re.sub(r"^\s*>\s?", "", text, flags=re.MULTILINE)  # strip blockquotes
+    text = re.sub(r"^\s*[\*\-]\s+", "- ", text, flags=re.MULTILINE)  # bullets
+    text = re.sub(
+        r"^\s*\d+\.\s+", lambda m: m.group(0).strip(), text, flags=re.MULTILINE
+    )  # ordered lists
+    text = re.sub(r"\n{3,}", "\n\n", text)  # collapse blank lines
+    return text.strip()
+
+
 def send_whatsapp_message(phone_number: str, message: str) -> Dict[str, Any]:
     """send message via whatsapp api.
 
@@ -310,7 +336,7 @@ def send_whatsapp_message(phone_number: str, message: str) -> Dict[str, Any]:
         "messaging_product": "whatsapp",
         "to": phone_number,
         "type": "text",
-        "text": {"body": message},
+        "text": {"body": format_whatsapp_text(message)},
     }
 
     try:
