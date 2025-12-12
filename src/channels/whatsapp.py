@@ -299,9 +299,7 @@ def format_whatsapp_text(message: str) -> str:
     text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)  # headings to plain
     text = re.sub(r"^\s*>\s?", "", text, flags=re.MULTILINE)  # strip blockquotes
     text = re.sub(r"^\s*[\*\-]\s+", "- ", text, flags=re.MULTILINE)  # bullets
-    text = re.sub(
-        r"^\s*\d+\.\s+", lambda m: m.group(0).strip(), text, flags=re.MULTILINE
-    )  # ordered lists
+    text = re.sub(r"^\s*(\d+)\.\s+", r"\1. ", text, flags=re.MULTILINE)  # ordered lists
     text = re.sub(r"\n{3,}", "\n\n", text)  # collapse blank lines
     return text.strip()
 
