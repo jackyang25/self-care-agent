@@ -10,6 +10,7 @@ from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
+from src.utils.context import current_user_id
 
 logger = get_logger("interface")
 
@@ -90,6 +91,9 @@ class StreamlitHandler(BaseChannelHandler):
             # set session state
             st.session_state.user_id = user_id
             st.session_state.user_identified = True
+
+            # set context variable for tools to access (thread-safe)
+            current_user_id.set(user_id)
 
             # determine display name (prefer email, fallback to phone, then user id)
             display_name = email or phone or f"user {user_id[:8]}"
@@ -219,6 +223,10 @@ class StreamlitHandler(BaseChannelHandler):
             # get assistant response
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
+                    # ensure context variable is set before processing
+                    user_id = self.get_user_id()
+                    if user_id:
+                        current_user_id.set(user_id)
                     response, sources = self.respond(prompt)
                     st.markdown(response)
 

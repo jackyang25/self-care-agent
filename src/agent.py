@@ -88,11 +88,7 @@ def create_agent(llm_model: str, temperature: float) -> Any:
 
     def call_model(state: AgentState) -> Dict[str, List[AIMessage]]:
         """call the llm with tools."""
-        # set user_id in context for tools to access
-        user_id = state.get("user_id")
-        if user_id:
-            current_user_id.set(user_id)
-        
+        # note: user_id context is set in process_message() before agent.invoke()
         # use system prompt from state if available, otherwise use default
         system_prompt = state.get("system_prompt", SYSTEM_PROMPT)
         messages = [
@@ -112,11 +108,7 @@ def create_agent(llm_model: str, temperature: float) -> Any:
 
     def call_tools(state: AgentState) -> Dict[str, List[ToolMessage]]:
         """call tools with user context set."""
-        # ensure user_id is set in context before tools execute
-        user_id = state.get("user_id")
-        if user_id:
-            current_user_id.set(user_id)
-        
+        # note: user_id context is set in process_message() before agent.invoke()
         # call the standard tool node
         result = tool_node.invoke(state)
         
@@ -159,6 +151,10 @@ def process_message(
     user_id: Optional[str] = None,
 ) -> tuple[str, list[dict[str, str]]]:
     """process a user message through the agent."""
+    # set context variable once at the start for tools to access
+    if user_id:
+        current_user_id.set(user_id)
+    
     # build message history
     messages = []
 
