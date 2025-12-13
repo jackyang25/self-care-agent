@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from src.tools import TOOLS
 from src.utils.logger import get_logger
-from src.utils.context import current_user_id
+from src.utils.context import current_user_id, current_user_age, current_user_gender
 from src.utils.interactions import save_interaction, extract_tool_info_from_messages
 
 logger = get_logger("agent")
@@ -155,6 +155,22 @@ def process_message(
     if user_id:
         current_user_id.set(user_id)
     
+    # build dynamic system prompt with user context
+    system_prompt = SYSTEM_PROMPT
+    age = current_user_age.get()
+    gender = current_user_gender.get()
+    
+    if age is not None or gender is not None:
+        context_parts = []
+        if age is not None:
+            context_parts.append(f"Age: {age}")
+        if gender is not None:
+            context_parts.append(f"Gender: {gender}")
+        
+        user_context = "\n\n## current patient context\n\n" + "\n".join(f"- {part}" for part in context_parts)
+        user_context += "\n\nuse this information to provide appropriate, personalized care. skip irrelevant questions (e.g., pregnancy for male patients)."
+        system_prompt = SYSTEM_PROMPT + user_context
+    
     # build message history
     messages = []
 
@@ -169,8 +185,8 @@ def process_message(
     # add current user message
     messages.append(HumanMessage(content=user_input))
 
-    # pass user_id in state (tools can access via context var)
-    state = {"messages": messages, "user_id": user_id}
+    # pass user_id and custom system prompt in state
+    state = {"messages": messages, "user_id": user_id, "system_prompt": system_prompt}
     result = agent.invoke(state)
 
     messages = result["messages"]

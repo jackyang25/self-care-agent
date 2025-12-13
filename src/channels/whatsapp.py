@@ -13,7 +13,7 @@ from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_phone
-from src.utils.context import current_user_id
+from src.utils.context import current_user_id, current_user_age, current_user_gender
 
 logger = get_logger("whatsapp")
 
@@ -250,8 +250,17 @@ async def handle_webhook(
                     logger.error(f"failed to send error message: {e}")
                 continue  # skip processing this message
 
-            # set user_id in context variable for thread-safe access
+            # set user context variables for thread-safe access
             current_user_id.set(user_id)
+            
+            # set demographics if available
+            demographics = user.get("demographics", {}) if user else {}
+            age = demographics.get("age")
+            gender = demographics.get("gender")
+            if age is not None:
+                current_user_age.set(age)
+            if gender is not None:
+                current_user_gender.set(gender)
 
             # process message through handler
             handler = _get_handler()

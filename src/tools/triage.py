@@ -6,19 +6,28 @@ from typing import Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
-from src.utils.context import current_user_id
+from src.utils.context import current_user_id, current_user_age, current_user_gender
 from src.db import get_db_cursor
 
 logger = get_tool_logger("triage")
 
 
 def get_user_demographics():
-    """fetch age and gender from current user's database record."""
+    """get age and gender from current user's context (set at login)."""
+    age = current_user_age.get()
+    gender = current_user_gender.get()
+    
+    if age is not None and gender is not None:
+        logger.debug(f"using cached user demographics: age={age}, gender={gender}")
+        return age, gender
+    
+    # fallback: fetch from database if not in context (shouldn't happen normally)
     user_id = current_user_id.get()
     if not user_id:
         logger.warning("no user_id in context, cannot fetch demographics")
         return None, None
 
+    logger.info("demographics not in context, fetching from database")
     try:
         with get_db_cursor() as cur:
             cur.execute("SELECT demographics FROM users WHERE user_id = %s", (user_id,))
@@ -27,7 +36,7 @@ def get_user_demographics():
                 demographics = result["demographics"]
                 age = demographics.get("age")
                 gender = demographics.get("gender")
-                logger.info(f"fetched user demographics: age={age}, gender={gender}")
+                logger.info(f"fetched user demographics from database: age={age}, gender={gender}")
                 return age, gender
     except Exception as e:
         logger.error(f"error fetching user demographics: {e}")
