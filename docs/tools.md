@@ -175,25 +175,35 @@ appointment scheduled successfully. appointment_id: APT-11111, provider: dr. smi
 **Use this tool when:**
 - Agent needs to access current user's profile information
 - Agent needs to check user's past interactions, triage results, or consent records
+- Agent needs to view user's scheduled appointments
+- Agent needs to check available healthcare providers or specialties
 - Agent needs to get user's complete medical history
 
 **Do not use this tool for:**
 - Creating, updating, or deleting records (not implemented)
-- Accessing other users' data (only current user accessible)
+- Accessing other users' data (only current user accessible for user-specific queries)
 
 **Input Parameters:**
 - `query_type` (string, required): Type of query. Accepted values:
   - `"get_user_by_id"`: Retrieve current user's profile information
   - `"get_user_interactions"`: Get current user's interaction history (ordered by most recent)
+  - `"get_user_appointments"`: Get current user's scheduled appointments with provider details
+  - `"get_providers"`: Get available healthcare providers (optionally filter by specialty)
   - `"get_user_history"`: Get current user's complete history including profile, interactions, and consents
 - `user_id` (string, optional): Deprecated - tool automatically uses current logged-in user from session context
 - `email` (string, optional): Deprecated - not used
 - `phone` (string, optional): Deprecated - not used
+- `specialty` (string, optional): Filter providers by specialty (e.g., `"cardiology"`, `"pediatrics"`) - only used with `get_providers`
 - `limit` (integer, optional): Maximum number of results to return (default: 10)
 
 **Response Format (String):**
-- Returns formatted string with query results (user data, interactions, or complete history)
-- Format: `"user found: {...}"` or `"found N interaction(s): [...]"`
+- Returns formatted string with query results (user data, interactions, appointments, providers, or complete history)
+- Format examples:
+  - `"user found: {...}"` - for get_user_by_id
+  - `"found N interaction(s): [...]"` - for get_user_interactions
+  - `"found N appointment(s): [...]"` - for get_user_appointments
+  - `"found N provider(s): [...]"` - for get_providers
+  - `"user history: {...}"` - for get_user_history
 
 **Architectural Notes:**
 - Tool automatically uses current user from session context (via `current_user_id` context variable)

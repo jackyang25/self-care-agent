@@ -14,7 +14,7 @@ class DatabaseQueryInput(BaseModel):
     """input schema for database queries."""
 
     query_type: str = Field(
-        description="type of query: 'get_user_by_id', 'get_user_history', 'get_user_interactions'"
+        description="type of query: 'get_user_by_id', 'get_user_history', 'get_user_interactions', 'get_user_appointments', 'get_providers'"
     )
     user_id: Optional[str] = Field(
         None, description="user id (uuid) - optional, will use current logged-in user if not provided"
@@ -28,6 +28,9 @@ class DatabaseQueryInput(BaseModel):
     limit: Optional[int] = Field(
         10, description="maximum number of results to return (default: 10)"
     )
+    specialty: Optional[str] = Field(
+        None, description="filter providers by specialty (e.g., 'cardiology', 'pediatrics')"
+    )
 
 
 def database_query(
@@ -36,12 +39,15 @@ def database_query(
     email: Optional[str] = None,
     phone: Optional[str] = None,
     limit: Optional[int] = 10,
+    specialty: Optional[str] = None,
 ) -> str:
     """retrieve user data from the database.
     
     use this tool to:
     - get current user's profile information
     - get current user's interaction history
+    - get current user's appointments
+    - get available healthcare providers
     - get current user's complete history (profile + interactions + consents)
     
     note: this tool can only access data for the currently logged-in user. if no user is
@@ -53,7 +59,7 @@ def database_query(
         user_id = current_user_id.get()
     
     logger.info(f"database_query called: query_type={query_type}")
-    logger.debug(f"arguments: user_id={user_id}, email={email}, phone={phone}, limit={limit}")
+    logger.debug(f"arguments: user_id={user_id}, email={email}, phone={phone}, limit={limit}, specialty={specialty}")
 
     try:
         with get_db_cursor() as cur:
@@ -201,8 +207,95 @@ def database_query(
                 }
                 return f"user history: {result}"
 
+            # get user appointments
+            elif query_type == "get_user_appointments":
+                if not user_id:
+                    return "error: user_id is required for get_user_appointments"
+                cur.execute(
+                    """
+                    SELECT 
+                        a.appointment_id, 
+                        a.appointment_date, 
+                        a.appointment_time,
+                        a.status,
+                        a.reason,
+                        a.specialty,
+                        p.name as provider_name,
+                        p.facility,
+                        p.contact_info,
+                        a.external_appointment_id,
+                        a.sync_status,
+                        a.created_at
+                    FROM appointments a
+                    LEFT JOIN providers p ON a.provider_id = p.provider_id
+                    WHERE a.user_id = %s
+                    ORDER BY a.appointment_date DESC, a.appointment_time DESC
+                    LIMIT %s
+                    """,
+                    (user_id, limit),
+                )
+                appointments = cur.fetchall()
+                if appointments:
+                    return f"found {len(appointments)} appointment(s): {[dict(appt) for appt in appointments]}"
+                else:
+                    return f"no appointments found for user_id: {user_id}"
+
+            # get available providers (no user context required)
+            elif query_type == "get_providers":
+                # get current user's country context if available
+                country_context = None
+                if user_id:
+                    try:
+                        cur.execute(
+                            "SELECT country_context_id FROM users WHERE user_id = %s",
+                            (user_id,)
+                        )
+                        user_row = cur.fetchone()
+                        if user_row:
+                            country_context = user_row['country_context_id']
+                    except Exception as e:
+                        logger.warning(f"could not get user country context: {e}")
+                        # continue without country filter
+                
+                # build query with optional filters
+                query = """
+                    SELECT 
+                        provider_id,
+                        name,
+                        specialty,
+                        facility,
+                        available_days,
+                        country_context_id,
+                        contact_info
+                    FROM providers
+                    WHERE is_active = true
+                """
+                params = []
+                
+                # filter by specialty if provided
+                if specialty:
+                    query += " AND specialty = %s"
+                    params.append(specialty)
+                
+                # filter by user's country if available
+                if country_context:
+                    query += " AND country_context_id = %s"
+                    params.append(country_context)
+                
+                query += " ORDER BY specialty, name LIMIT %s"
+                params.append(limit)
+                
+                cur.execute(query, tuple(params))
+                providers = cur.fetchall()
+                
+                if providers:
+                    return f"found {len(providers)} provider(s): {[dict(p) for p in providers]}"
+                else:
+                    specialty_msg = f" with specialty '{specialty}'" if specialty else ""
+                    return f"no providers found{specialty_msg}"
+
             else:
-                return f"error: unknown query_type '{query_type}'. valid types: get_user_by_id, get_user_by_email, get_user_by_phone, get_user_interactions, get_user_history"
+                return f"error: unknown query_type '{query_type}'. valid types: get_user_by_id, get_user_by_email, get_user_by_phone, get_user_interactions, get_user_history, get_user_appointments, get_providers"
 
     except Exception as e:
         logger.error(f"database query error: {e}", exc_info=True)
@@ -217,6 +310,8 @@ database_tool = StructuredTool.from_function(
 use this tool when:
 - you need to access the current user's profile information
 - you need to check the current user's past interactions, triage results, or consent records
+- you need to view the current user's scheduled appointments
+- you need to check available healthcare providers and specialties
 - you need to get the current user's complete medical history
 
 important: this tool can only access data for the currently logged-in user. you do not need
@@ -225,11 +320,15 @@ to provide user_id, email, or phone - the tool automatically uses the current se
 query types:
 - 'get_user_by_id': retrieve current user's profile information
 - 'get_user_interactions': get current user's interaction history (ordered by most recent)
+- 'get_user_appointments': get current user's scheduled appointments with provider details
+- 'get_providers': get available healthcare providers (optionally filter by specialty)
 - 'get_user_history': get current user's complete history including profile, interactions, and consents
 
 examples:
 - user asks "what's my phone number?" → use get_user_by_id to get their profile
 - user asks "what are my past interactions?" → use get_user_interactions
+- user asks "do i have any appointments?" or "show me my appointments" → use get_user_appointments
+- user asks "can i see a cardiologist?" or "what specialists are available?" → use get_providers with specialty filter
 - user asks "show me my complete history" → use get_user_history
 
 do not use for: creating new records, updating data, deleting records, or accessing other users' data.""",

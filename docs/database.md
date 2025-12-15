@@ -177,6 +177,57 @@ Stores user consent records for various scopes.
 - Primary key on `consent_id`
 - Foreign key to `users.user_id`
 
+#### 4. `providers`
+
+Stores healthcare provider information for appointment scheduling.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `provider_id` | UUID | Primary key |
+| `external_provider_id` | TEXT | Provider ID in external system (architectural slot) |
+| `external_system` | TEXT | External system name (e.g., `"epic"`, `"openmrs"`) |
+| `name` | TEXT | Provider name |
+| `specialty` | TEXT | Medical specialty (e.g., `"cardiology"`, `"general_practice"`) |
+| `facility` | TEXT | Facility or clinic name |
+| `available_days` | TEXT[] | Array of available days (e.g., `["monday", "friday"]`) |
+| `country_context_id` | TEXT | Country context identifier (ISO 3166-1 alpha-2 code) |
+| `contact_info` | JSONB | Contact information (phone, email, etc.) |
+| `is_active` | BOOLEAN | Whether provider is currently active (default: true) |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+
+**Indexes:**
+- Primary key on `provider_id`
+- Foreign key references: `appointments.provider_id`
+
+#### 5. `appointments`
+
+Stores appointment records created by the referrals tool.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `appointment_id` | UUID | Primary key |
+| `external_appointment_id` | TEXT | Appointment ID in external system (architectural slot) |
+| `external_system` | TEXT | External system name (e.g., `"epic"`, `"openmrs"`) |
+| `user_id` | UUID | Foreign key to `users.user_id` |
+| `provider_id` | UUID | Foreign key to `providers.provider_id` |
+| `specialty` | TEXT | Medical specialty for appointment |
+| `appointment_date` | DATE | Scheduled appointment date |
+| `appointment_time` | TIME | Scheduled appointment time |
+| `status` | TEXT | Appointment status (e.g., `"scheduled"`, `"confirmed"`, `"cancelled"`) |
+| `reason` | TEXT | Reason for appointment/referral |
+| `triage_interaction_id` | UUID | Foreign key to `interactions.interaction_id` (links to originating triage) |
+| `consent_id` | UUID | Foreign key to `consents.consent_id` (links to consent record) |
+| `sync_status` | TEXT | Sync status with external system (e.g., `"pending"`, `"synced"`, `"failed"`) |
+| `last_synced_at` | TIMESTAMP WITH TIME ZONE | Last sync timestamp with external system |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+
+**Indexes:**
+- Primary key on `appointment_id`
+- Foreign key to `users.user_id`
+- Foreign key to `providers.provider_id`
+- Foreign key to `interactions.interaction_id`
+- Foreign key to `consents.consent_id`
+
 ## Interaction Storage Architecture
 
 ### Automatic Storage
@@ -263,6 +314,51 @@ FROM users u
 LEFT JOIN interactions i ON u.user_id = i.user_id
 WHERE u.user_id = 'user-uuid-here'
 GROUP BY u.user_id, u.email, u.phone_e164;
+```
+
+### Get User Appointments
+```sql
+SELECT 
+    a.appointment_id,
+    p.name as provider_name,
+    p.specialty,
+    p.facility,
+    a.appointment_date,
+    a.appointment_time,
+    a.status,
+    a.reason
+FROM appointments a
+LEFT JOIN providers p ON a.provider_id = p.provider_id
+WHERE a.user_id = 'user-uuid-here'
+ORDER BY a.appointment_date DESC, a.appointment_time DESC;
+```
+
+### Find Providers by Specialty
+```sql
+SELECT provider_id, name, specialty, facility, available_days
+FROM providers
+WHERE specialty = 'cardiology' 
+AND is_active = true
+AND country_context_id = 'us';
+```
+
+### Link Triage to Appointment
+```sql
+SELECT 
+    i.interaction_id,
+    i.risk_level,
+    i.triage_result->>'symptoms' as symptoms,
+    a.appointment_id,
+    p.name as provider_name,
+    a.appointment_date,
+    c.status as consent_status
+FROM interactions i
+LEFT JOIN appointments a ON a.triage_interaction_id = i.interaction_id
+LEFT JOIN providers p ON a.provider_id = p.provider_id
+LEFT JOIN consents c ON a.consent_id = c.consent_id
+WHERE i.user_id = 'user-uuid-here'
+AND i.protocol_invoked = 'triage'
+ORDER BY i.created_at DESC;
 ```
 
 ## Fixture Files

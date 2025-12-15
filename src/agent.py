@@ -1,14 +1,16 @@
 """langgraph agent with native tool calling."""
 
 import json
+from datetime import datetime
 from typing import TypedDict, Annotated, Optional, List, Dict, Any, Literal
+import pytz
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from src.tools import TOOLS
 from src.utils.logger import get_logger
-from src.utils.context import current_user_id, current_user_age, current_user_gender
+from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
 from src.utils.interactions import save_interaction, extract_tool_info_from_messages
 
 logger = get_logger("agent")
@@ -44,12 +46,19 @@ use tool results to determine next steps:
 1. provide emergency safety instructions immediately (e.g., "if symptoms worsen, go to emergency immediately")
 2. strongly recommend clinical evaluation
 3. ask: "would you like me to schedule an appointment for you?"
-4. only call referrals tool after explicit user consent
-5. never suggest "continue monitoring" for emergency symptoms (chest pain, severe breathing difficulty, etc.)
+4. if user agrees, ask: "do you have a preferred date and time, or would you like the earliest available?"
+5. when calling referrals tool, choose appropriate specialty based on symptoms:
+   - cardiac/heart/chest pain → cardiology
+   - pregnancy/prenatal → obstetrics
+   - children (age < 12) → pediatrics
+   - otherwise → general_practice
+6. only call referrals tool after explicit user consent
+7. never suggest "continue monitoring" for emergency symptoms (chest pain, severe breathing difficulty, etc.)
 
 **yellow (moderate acuity):**
 1. recommend clinical evaluation soon
 2. ask if user wants to schedule before calling referrals tool
+3. if user agrees, ask about date/time preferences (or use earliest available if not specified)
 
 **green (low acuity):**
 1. suggest self-care or pharmacy support as appropriate
@@ -59,13 +68,15 @@ use tool results to determine next steps:
 
 - prioritize user safety: emergency instructions come before scheduling
 - always ask for consent before scheduling appointments
-- if consent or information is needed, respond with a question instead of calling tools
+- after consent, ask for scheduling preferences (date, time) before calling referrals tool
+- if user doesn't specify preferences, you may use reasonable defaults
 - wait for user response before proceeding with consent-required tool calls
 
 ## communication
 
 - be clear and empathetic
 - provide clear summaries when tool results indicate completion
+- when confirming appointments, always include: provider name, facility, date, time, and reason
 - verify you have fulfilled every part of the user's original request before ending"""
 
 
@@ -149,26 +160,48 @@ def process_message(
     user_input: str,
     conversation_history: Optional[List[Dict[str, str]]] = None,
     user_id: Optional[str] = None,
+    user_age: Optional[int] = None,
+    user_gender: Optional[str] = None,
+    user_timezone: Optional[str] = None,
 ) -> tuple[str, list[dict[str, str]]]:
     """process a user message through the agent."""
-    # set context variable once at the start for tools to access
+    # set context variables once at the start for tools to access
     if user_id:
         current_user_id.set(user_id)
+    if user_age is not None:
+        current_user_age.set(user_age)
+    if user_gender is not None:
+        current_user_gender.set(user_gender)
+    if user_timezone is not None:
+        current_user_timezone.set(user_timezone)
     
     # build dynamic system prompt with user context
     system_prompt = SYSTEM_PROMPT
     age = current_user_age.get()
     gender = current_user_gender.get()
+    timezone = current_user_timezone.get()
     
-    if age is not None or gender is not None:
-        context_parts = []
-        if age is not None:
-            context_parts.append(f"Age: {age}")
-        if gender is not None:
-            context_parts.append(f"Gender: {gender}")
-        
+    # add patient context and current time
+    context_parts = []
+    
+    # add current time in user's timezone
+    try:
+        tz = pytz.timezone(timezone) if timezone else pytz.UTC
+        current_time = datetime.now(tz)
+        context_parts.append(f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p %Z')}")
+    except Exception:
+        # fallback to UTC if timezone invalid
+        current_time = datetime.now(pytz.UTC)
+        context_parts.append(f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p UTC')}")
+    
+    if age is not None:
+        context_parts.append(f"Age: {age}")
+    if gender is not None:
+        context_parts.append(f"Gender: {gender}")
+    
+    if context_parts:
         user_context = "\n\n## current patient context\n\n" + "\n".join(f"- {part}" for part in context_parts)
-        user_context += "\n\nuse this information to provide appropriate, personalized care. skip irrelevant questions (e.g., pregnancy for male patients)."
+        user_context += "\n\nuse this information to provide appropriate, personalized care. use the current time to schedule appointments appropriately (e.g., 'tomorrow' means the next day from current time)."
         system_prompt = SYSTEM_PROMPT + user_context
     
     # build message history

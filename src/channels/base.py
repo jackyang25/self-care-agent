@@ -49,12 +49,22 @@ class BaseChannelHandler(ABC):
         """
         pass
 
-    def respond(self, message: str, user_id: Optional[str] = None) -> tuple[str, list[dict[str, str]]]:
+    def respond(
+        self, 
+        message: str, 
+        user_id: Optional[str] = None,
+        user_age: Optional[int] = None,
+        user_gender: Optional[str] = None,
+        user_timezone: Optional[str] = None
+    ) -> tuple[str, list[dict[str, str]]]:
         """process user message and return response with sources.
         
         args:
             message: user message text
             user_id: optional user identifier (if not provided, uses get_user_id())
+            user_age: optional user age for context
+            user_gender: optional user gender for context
+            user_timezone: optional user timezone for context
         
         returns:
             tuple of (agent response text, list of source dicts with title/content_type/similarity)
@@ -72,6 +82,9 @@ class BaseChannelHandler(ABC):
             user_input=message,
             conversation_history=conversation_history,
             user_id=user_id,
+            user_age=user_age,
+            user_gender=user_gender,
+            user_timezone=user_timezone,
         )
         return response, sources
 

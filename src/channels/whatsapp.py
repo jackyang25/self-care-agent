@@ -13,7 +13,7 @@ from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_phone
-from src.utils.context import current_user_id, current_user_age, current_user_gender
+from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
 
 logger = get_logger("whatsapp")
 
@@ -257,15 +257,23 @@ async def handle_webhook(
             demographics = user.get("demographics", {}) if user else {}
             age = demographics.get("age")
             gender = demographics.get("gender")
+            timezone = user.get("timezone", "UTC") if user else "UTC"
             if age is not None:
                 current_user_age.set(age)
             if gender is not None:
                 current_user_gender.set(gender)
+            if timezone is not None:
+                current_user_timezone.set(timezone)
 
             # process message through handler
             handler = _get_handler()
-            # user_id is now available via get_user_id() or can be passed explicitly
-            response, sources = handler.respond(text_body, user_id=user_id)
+            response, sources = handler.respond(
+                text_body, 
+                user_id=user_id,
+                user_age=age,
+                user_gender=gender,
+                user_timezone=timezone
+            )
 
             # format sources as plain text for whatsapp (no markdown support)
             if sources:

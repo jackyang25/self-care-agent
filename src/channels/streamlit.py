@@ -10,7 +10,7 @@ from src.channels.base import BaseChannelHandler
 from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
-from src.utils.context import current_user_id, current_user_age, current_user_gender
+from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
 
 logger = get_logger("interface")
 
@@ -87,12 +87,16 @@ class StreamlitHandler(BaseChannelHandler):
             user_id = str(user.get("user_id"))
             email = user.get("email")
             phone = user.get("phone_e164")
+            timezone = user.get("timezone", "UTC")
             demographics = user.get("demographics", {})
             age = demographics.get("age")
             gender = demographics.get("gender")
 
             # set session state
             st.session_state.user_id = user_id
+            st.session_state.user_age = age
+            st.session_state.user_gender = gender
+            st.session_state.user_timezone = timezone
             st.session_state.user_identified = True
 
             # set context variables for tools to access (thread-safe)
@@ -101,6 +105,8 @@ class StreamlitHandler(BaseChannelHandler):
                 current_user_age.set(age)
             if gender is not None:
                 current_user_gender.set(gender)
+            if timezone is not None:
+                current_user_timezone.set(timezone)
 
             # determine display name (prefer email, fallback to phone, then user id)
             display_name = email or phone or f"user {user_id[:8]}"
@@ -232,11 +238,17 @@ class StreamlitHandler(BaseChannelHandler):
                 with st.spinner("Thinking..."):
                     # ensure context variables are set before processing
                     user_id = self.get_user_id()
-                    if user_id:
-                        current_user_id.set(user_id)
-                        # also restore demographics from session if available
-                        # (shouldn't be needed if set at login, but ensures consistency)
-                    response, sources = self.respond(prompt)
+                    user_age = st.session_state.get("user_age")
+                    user_gender = st.session_state.get("user_gender")
+                    user_timezone = st.session_state.get("user_timezone", "UTC")
+                    
+                    response, sources = self.respond(
+                        prompt,
+                        user_id=user_id,
+                        user_age=user_age,
+                        user_gender=user_gender,
+                        user_timezone=user_timezone
+                    )
                     st.markdown(response)
 
                     # display sources if available

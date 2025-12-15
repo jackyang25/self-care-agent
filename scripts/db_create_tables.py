@@ -25,6 +25,7 @@ def create_tables():
                 preferred_language TEXT,
                 literacy_mode TEXT,
                 country_context_id TEXT NOT NULL,
+                timezone TEXT DEFAULT 'UTC',
                 demographics JSONB,
                 accessibility JSONB,
                 is_deleted BOOLEAN DEFAULT false,
@@ -66,6 +67,46 @@ def create_tables():
             )
         """)
         print("  ✓ created consents table")
+        
+        # create providers table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS providers (
+                provider_id UUID PRIMARY KEY,
+                external_provider_id TEXT,
+                external_system TEXT,
+                name TEXT NOT NULL,
+                specialty TEXT NOT NULL,
+                facility TEXT,
+                available_days TEXT[],
+                country_context_id TEXT NOT NULL,
+                contact_info JSONB,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+            )
+        """)
+        print("  ✓ created providers table")
+        
+        # create appointments table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS appointments (
+                appointment_id UUID PRIMARY KEY,
+                external_appointment_id TEXT,
+                external_system TEXT,
+                user_id UUID NOT NULL REFERENCES users(user_id),
+                provider_id UUID REFERENCES providers(provider_id),
+                specialty TEXT,
+                appointment_date DATE,
+                appointment_time TIME,
+                status TEXT DEFAULT 'scheduled',
+                reason TEXT,
+                triage_interaction_id UUID REFERENCES interactions(interaction_id),
+                consent_id UUID REFERENCES consents(consent_id),
+                sync_status TEXT DEFAULT 'pending',
+                last_synced_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+            )
+        """)
+        print("  ✓ created appointments table")
     
     print("✓ all tables created successfully")
 

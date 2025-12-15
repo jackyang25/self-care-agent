@@ -37,9 +37,9 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                     INSERT INTO users (
                         user_id, fhir_patient_id, primary_channel, phone_e164,
                         email, preferred_language, literacy_mode, country_context_id,
-                        demographics, accessibility, is_deleted, created_at, updated_at
+                        timezone, demographics, accessibility, is_deleted, created_at, updated_at
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, false, now(), now()
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, false, now(), now()
                     )
                     ON CONFLICT (user_id) DO NOTHING
                 """, (
@@ -51,6 +51,7 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                     user.get("preferred_language"),
                     user.get("literacy_mode"),
                     user.get("country_context_id"),
+                    user.get("timezone", "UTC"),
                     json.dumps(user.get("demographics", {})),
                     json.dumps(user.get("accessibility", {})),
                 ))
@@ -133,6 +134,83 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                     recorded_at,
                 ))
             print(f"  seeded {len(data['consents'])} consent(s)")
+        
+        # seed providers
+        if (table is None or table == "providers") and data.get("providers"):
+            if clear_existing:
+                cur.execute("TRUNCATE TABLE providers CASCADE")
+            
+            for provider in data["providers"]:
+                cur.execute("""
+                    INSERT INTO providers (
+                        provider_id, external_provider_id, external_system, name,
+                        specialty, facility, available_days, country_context_id,
+                        contact_info, is_active, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
+                    )
+                    ON CONFLICT (provider_id) DO NOTHING
+                """, (
+                    provider.get("provider_id"),
+                    provider.get("external_provider_id"),
+                    provider.get("external_system"),
+                    provider.get("name"),
+                    provider.get("specialty"),
+                    provider.get("facility"),
+                    provider.get("available_days", []),
+                    provider.get("country_context_id"),
+                    json.dumps(provider.get("contact_info", {})),
+                    provider.get("is_active", True),
+                ))
+            print(f"  seeded {len(data['providers'])} provider(s)")
+        
+        # seed appointments
+        if (table is None or table == "appointments") and data.get("appointments"):
+            if clear_existing:
+                cur.execute("TRUNCATE TABLE appointments CASCADE")
+            
+            for appointment in data["appointments"]:
+                # handle appointment_date
+                appointment_date = appointment.get("appointment_date")
+                
+                # handle appointment_time
+                appointment_time = appointment.get("appointment_time")
+                
+                # handle last_synced_at
+                last_synced_at = appointment.get("last_synced_at")
+                if last_synced_at:
+                    try:
+                        last_synced_at = datetime.fromisoformat(str(last_synced_at).replace("Z", "+00:00"))
+                    except:
+                        last_synced_at = None
+                
+                cur.execute("""
+                    INSERT INTO appointments (
+                        appointment_id, external_appointment_id, external_system,
+                        user_id, provider_id, specialty, appointment_date,
+                        appointment_time, status, reason, triage_interaction_id,
+                        consent_id, sync_status, last_synced_at, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
+                    )
+                    ON CONFLICT (appointment_id) DO NOTHING
+                """, (
+                    appointment.get("appointment_id"),
+                    appointment.get("external_appointment_id"),
+                    appointment.get("external_system"),
+                    appointment.get("user_id"),
+                    appointment.get("provider_id"),
+                    appointment.get("specialty"),
+                    appointment_date,
+                    appointment_time,
+                    appointment.get("status", "scheduled"),
+                    appointment.get("reason"),
+                    appointment.get("triage_interaction_id"),
+                    appointment.get("consent_id"),
+                    appointment.get("sync_status", "pending"),
+                    last_synced_at,
+                ))
+            print(f"  seeded {len(data['appointments'])} appointment(s)")
     
     print("✓ seeding completed")
 
@@ -143,7 +221,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="seed database with fixture data")
     parser.add_argument("--file", default="seed_data.json", help="fixture file name")
     parser.add_argument("--clear", action="store_true", help="clear existing data before seeding")
-    parser.add_argument("--table", choices=["users", "interactions", "consents"], help="seed only a specific table")
+    parser.add_argument("--table", choices=["users", "interactions", "consents", "providers", "appointments"], help="seed only a specific table")
     
     args = parser.parse_args()
     seed_all(args.file, args.clear, args.table)

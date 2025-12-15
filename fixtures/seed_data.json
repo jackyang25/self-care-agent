@@ -9,6 +9,7 @@
       "preferred_language": "en",
       "literacy_mode": "standard",
       "country_context_id": "us",
+      "timezone": "America/New_York",
       "demographics": {
         "age": 23,
         "gender": "male"
@@ -27,6 +28,7 @@
       "preferred_language": "en",
       "literacy_mode": "standard",
       "country_context_id": "us",
+      "timezone": "America/New_York",
       "demographics": {
         "age": 31,
         "gender": "female"
@@ -45,6 +47,7 @@
       "preferred_language": "en",
       "literacy_mode": "standard",
       "country_context_id": "us",
+      "timezone": "America/New_York",
       "demographics": {
         "age": 29,
         "gender": "female"
@@ -154,6 +157,83 @@
         "timestamp": "2024-01-25T09:45:00Z"
       },
       "recorded_at": "2024-01-25T09:45:00Z"
+    }
+  ],
+  "providers": [
+    {
+      "provider_id": "880e8400-e29b-41d4-a716-446655440000",
+      "external_provider_id": null,
+      "external_system": null,
+      "name": "Dr. Sarah Smith",
+      "specialty": "cardiology",
+      "facility": "Central Health Clinic",
+      "available_days": ["monday", "wednesday", "friday"],
+      "country_context_id": "us",
+      "contact_info": {
+        "phone": "+12065551234",
+        "email": "s.smith@centralhealthclinic.org"
+      },
+      "is_active": true
+    },
+    {
+      "provider_id": "880e8400-e29b-41d4-a716-446655440001",
+      "external_provider_id": null,
+      "external_system": null,
+      "name": "Dr. James Chen",
+      "specialty": "pediatrics",
+      "facility": "Children's Health Center",
+      "available_days": ["tuesday", "thursday", "friday"],
+      "country_context_id": "us",
+      "contact_info": {
+        "phone": "+12065552345",
+        "email": "j.chen@childrenshealthcenter.org"
+      },
+      "is_active": true
+    },
+    {
+      "provider_id": "880e8400-e29b-41d4-a716-446655440002",
+      "external_provider_id": null,
+      "external_system": null,
+      "name": "Dr. Maria Rodriguez",
+      "specialty": "general_practice",
+      "facility": "Community Clinic",
+      "available_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "country_context_id": "us",
+      "contact_info": {
+        "phone": "+12065553456",
+        "email": "m.rodriguez@communityclinic.org"
+      },
+      "is_active": true
+    },
+    {
+      "provider_id": "880e8400-e29b-41d4-a716-446655440003",
+      "external_provider_id": null,
+      "external_system": null,
+      "name": "Dr. Aisha Ochieng",
+      "specialty": "obstetrics",
+      "facility": "Maternal Health Center",
+      "available_days": ["monday", "wednesday", "thursday"],
+      "country_context_id": "ke",
+      "contact_info": {
+        "phone": "+254701234567",
+        "email": "a.ochieng@maternalhealthke.org"
+      },
+      "is_active": true
+    },
+    {
+      "provider_id": "880e8400-e29b-41d4-a716-446655440004",
+      "external_provider_id": null,
+      "external_system": null,
+      "name": "Dr. Luis Hernandez",
+      "specialty": "general_practice",
+      "facility": "Clinica Popular",
+      "available_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "country_context_id": "mx",
+      "contact_info": {
+        "phone": "+525512345678",
+        "email": "l.hernandez@clinicapopular.mx"
+      },
+      "is_active": true
     }
   ]
 }
