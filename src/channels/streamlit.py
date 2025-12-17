@@ -1,51 +1,20 @@
 """streamlit channel handler."""
 
-import os
-import streamlit as st
 from pathlib import Path
+from typing import Dict, List, Optional
+
+import streamlit as st
 from PIL import Image
-from typing import Optional, List, Dict
-from src.agent import create_agent
+
 from src.channels.base import BaseChannelHandler
-from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
-from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
 
 logger = get_logger("interface")
-
-# module-level agent singleton (shared across all sessions)
-_agent_instance = None
-
-
-def _get_agent():
-    """get or create agent instance (singleton).
-
-    returns:
-        compiled agent workflow instance
-    """
-    global _agent_instance
-    if _agent_instance is None:
-        llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
-        temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
-        _agent_instance = create_agent(llm_model=llm_model, temperature=temperature)
-        logger.info(
-            f"created agent singleton: model={llm_model}, temperature={temperature}"
-        )
-    return _agent_instance
 
 
 class StreamlitHandler(BaseChannelHandler):
     """streamlit channel handler."""
-
-    def __init__(self, llm_model: str, temperature: float):
-        """initialize the interface with agent."""
-        super().__init__(llm_model, temperature)
-
-    @property
-    def agent(self):
-        """get agent from module-level singleton."""
-        return _get_agent()
 
     def get_conversation_history(
         self, user_id: Optional[str] = None
@@ -98,15 +67,6 @@ class StreamlitHandler(BaseChannelHandler):
             st.session_state.user_gender = gender
             st.session_state.user_timezone = timezone
             st.session_state.user_identified = True
-
-            # set context variables for tools to access (thread-safe)
-            current_user_id.set(user_id)
-            if age is not None:
-                current_user_age.set(age)
-            if gender is not None:
-                current_user_gender.set(gender)
-            if timezone is not None:
-                current_user_timezone.set(timezone)
 
             # determine display name (prefer email, fallback to phone, then user id)
             display_name = email or phone or f"user {user_id[:8]}"
@@ -241,13 +201,13 @@ class StreamlitHandler(BaseChannelHandler):
                     user_age = st.session_state.get("user_age")
                     user_gender = st.session_state.get("user_gender")
                     user_timezone = st.session_state.get("user_timezone", "UTC")
-                    
+
                     response, sources = self.respond(
                         prompt,
                         user_id=user_id,
                         user_age=user_age,
                         user_gender=user_gender,
-                        user_timezone=user_timezone
+                        user_timezone=user_timezone,
                     )
                     st.markdown(response)
 

@@ -1,56 +1,32 @@
 """whatsapp webhook integration."""
 
+import hashlib
+import hmac
 import os
 import re
-import hmac
-import hashlib
+from typing import Any, Dict, List, Optional
+
 import requests
-from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, Request, Response, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from src.agent import create_agent
+
 from src.channels.base import BaseChannelHandler
-from src.config import DEFAULT_LLM_MODEL, DEFAULT_TEMPERATURE
+from src.utils.context import (
+    current_user_age,
+    current_user_gender,
+    current_user_id,
+    current_user_timezone,
+)
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_phone
-from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
 
 logger = get_logger("whatsapp")
 
 app = FastAPI(title="WhatsApp Webhook")
 
-# module-level agent singleton (shared across all requests)
-_agent_instance = None
-
-
-def _get_agent():
-    """get or create agent instance (singleton).
-
-    returns:
-        compiled agent workflow instance
-    """
-    global _agent_instance
-    if _agent_instance is None:
-        llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
-        temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
-        _agent_instance = create_agent(llm_model=llm_model, temperature=temperature)
-        logger.info(
-            f"created agent singleton: model={llm_model}, temperature={temperature}"
-        )
-    return _agent_instance
-
 
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp message handler."""
-
-    def __init__(self, llm_model: str, temperature: float):
-        """initialize handler with agent configuration."""
-        super().__init__(llm_model, temperature)
-
-    @property
-    def agent(self):
-        """get agent from module-level singleton."""
-        return _get_agent()
 
     def get_conversation_history(
         self, user_id: Optional[str] = None
@@ -82,12 +58,8 @@ def _get_handler() -> WhatsAppHandler:
     """
     global _handler
     if _handler is None:
-        llm_model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
-        temperature = float(os.getenv("TEMPERATURE", str(DEFAULT_TEMPERATURE)))
-        _handler = WhatsAppHandler(llm_model=llm_model, temperature=temperature)
-        logger.info(
-            f"created whatsapp handler singleton: model={llm_model}, temperature={temperature}"
-        )
+        _handler = WhatsAppHandler()
+        logger.info("created whatsapp handler singleton")
     return _handler
 
 
@@ -252,7 +224,7 @@ async def handle_webhook(
 
             # set user context variables for thread-safe access
             current_user_id.set(user_id)
-            
+
             # set demographics if available
             demographics = user.get("demographics", {}) if user else {}
             age = demographics.get("age")
@@ -268,11 +240,11 @@ async def handle_webhook(
             # process message through handler
             handler = _get_handler()
             response, sources = handler.respond(
-                text_body, 
+                text_body,
                 user_id=user_id,
                 user_age=age,
                 user_gender=gender,
-                user_timezone=timezone
+                user_timezone=timezone,
             )
 
             # format sources as plain text for whatsapp (no markdown support)

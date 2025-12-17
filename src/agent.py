@@ -2,14 +2,12 @@
 
 import json
 import os
-
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 import pytz
 import yaml
-
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
@@ -36,13 +34,56 @@ class AgentState(TypedDict, total=False):
     user_id: Optional[str]
 
 
-# system prompt configuration
+# configuration paths and defaults
+_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 DEFAULT_PROMPT_VERSION = "v1"
 
 
-def _get_default_prompt_path() -> Path:
-    """get default path to system prompt yaml file."""
-    return Path(__file__).resolve().parent.parent / "config" / "system_prompt.yaml"
+def _get_system_prompt_path() -> Path:
+    """get path to system prompt yaml file."""
+    return _CONFIG_DIR / "system_prompt.yaml"
+
+
+def _get_agent_config_path() -> Path:
+    """get path to agent config yaml file."""
+    return _CONFIG_DIR / "agent_config.yaml"
+
+
+def _load_agent_config() -> Dict[str, Any]:
+    """load agent configuration from yaml file.
+
+    returns:
+        dict with 'llm_model' and 'temperature' keys
+
+    raises:
+        FileNotFoundError: if config file not found
+        ValueError: if config file missing required fields
+    """
+    config_path = _get_agent_config_path()
+
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"agent config file not found at {config_path}. "
+            f"ensure config/agent_config.yaml exists."
+        )
+
+    try:
+        data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        raise ValueError(f"failed to parse yaml from {config_path}: {exc}") from exc
+
+    llm_model = data.get("llm_model")
+    temperature = data.get("temperature")
+
+    if not llm_model:
+        raise ValueError(f"missing 'llm_model' field in {config_path}")
+    if temperature is None:
+        raise ValueError(f"missing 'temperature' field in {config_path}")
+
+    return {
+        "llm_model": llm_model,
+        "temperature": float(temperature),
+    }
 
 
 def _load_system_prompt() -> Dict[str, str]:
@@ -63,7 +104,7 @@ def _load_system_prompt() -> Dict[str, str]:
     prompt_path = (
         Path(prompt_path_env).expanduser()
         if prompt_path_env
-        else _get_default_prompt_path()
+        else _get_system_prompt_path()
     )
 
     if not prompt_path.exists():
@@ -95,11 +136,39 @@ def _load_system_prompt() -> Dict[str, str]:
     }
 
 
-# load prompt at module initialization
+# load configurations at module initialization
 SYSTEM_PROMPT_DATA = _load_system_prompt()
+AGENT_CONFIG = _load_agent_config()
+
 logger.info(
     f"loaded system prompt version={SYSTEM_PROMPT_DATA['version']} from {SYSTEM_PROMPT_DATA['path']}"
 )
+logger.info(
+    f"loaded agent config: model={AGENT_CONFIG['llm_model']}, temperature={AGENT_CONFIG['temperature']}"
+)
+
+
+# agent singleton
+_agent_instance = None
+
+
+def get_agent() -> Any:
+    """get or create agent singleton.
+
+    creates agent with configuration from config/agent_config.yaml.
+
+    returns:
+        compiled langgraph agent instance
+    """
+    global _agent_instance
+    if _agent_instance is None:
+        llm_model = AGENT_CONFIG["llm_model"]
+        temperature = AGENT_CONFIG["temperature"]
+        _agent_instance = create_agent(llm_model=llm_model, temperature=temperature)
+        logger.info(
+            f"created agent singleton: model={llm_model}, temperature={temperature}"
+        )
+    return _agent_instance
 
 
 def create_agent(llm_model: str, temperature: float) -> Any:
