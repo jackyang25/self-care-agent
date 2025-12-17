@@ -109,7 +109,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 
 **Key Insight:** The tool interfaces, database schemas, and data flows are **production-ready**. Integration simply swaps mock data sources for real APIs.
 
-## Why This Is Better Than Generic ChatGPT
+## What Are the Advantages Over ChatGPT?
 
 **SCAF goes beyond generic LLMs:**
 
