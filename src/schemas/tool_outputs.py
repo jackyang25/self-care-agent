@@ -1,6 +1,6 @@
 """pydantic output models for tool responses."""
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from pydantic import BaseModel, Field
 
 
@@ -71,4 +71,6 @@ class DatabaseOutput(ToolResponse):
     """output model for database query tool."""
 
     message: str = Field(..., description="query result message")
-    data: Optional[Dict[str, Any]] = Field(None, description="retrieved data")
+    data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = Field(
+        None, description="retrieved data (dict for single results, list for multiple results)"
+    )
