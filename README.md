@@ -60,7 +60,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 #### 4. RAG with Clinical Grounding
 - **Semantic search** over clinical guidelines using pgvector
 - **Source attribution**: Every RAG response includes document citations
-- **Mock guideline grounding**: Demonstrates integration pattern for real WHO/national guidelines
+- **Mock guideline grounding**: Demonstrates integration pattern for real WHO/national guidelines 
 
 *Details: [docs/rag.md](docs/rag.md)*
 
@@ -99,6 +99,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 **Clinical guidelines**
 - Current: Sample RAG documents
 - Production: Load validated WHO/national self-care protocols
+- Example Reference: [South Africa APC 2023 Clinical Tool](https://knowledgehub.health.gov.za/system/files/elibdownloads/2023-10/APC_2023_Clinical_tool-EBOOK.pdf) for real-world clinical schemas
 
 **External scheduling**
 - Current: Database-only
@@ -268,7 +269,7 @@ User Input (Streamlit/WhatsApp)
 - [ ] Safety monitoring dashboard for red-flag interactions
 
 ### Medium-Term (Scale & Governance)
-- [ ] National guideline adapters for South Africa, Kenya, Nigeria
+- [ ] National guideline adapters for South Africa ([APC Clinical Tool](https://knowledgehub.health.gov.za/system/files/elibdownloads/2023-10/APC_2023_Clinical_tool-EBOOK.pdf)), Kenya, Nigeria
 - [ ] Continuous safety monitoring and audit reporting
 - [ ] Integration with national health information systems
 - [ ] Community health worker interface for assisted interactions
@@ -333,6 +334,4 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Contact
 
-Jack Yang  
-AI Fellow, Gates Foundation Global Health  
 jack.yang@gatesfoundation.org
