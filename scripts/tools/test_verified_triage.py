@@ -2,16 +2,16 @@
 
 import subprocess
 import os
+from pathlib import Path
 
 print("=" * 60)
 print("testing triage-verifier executable")
 print("=" * 60)
 
 # get path to executable (scripts/tools/ -> scripts/ -> root/)
-script_dir = os.path.dirname(os.path.abspath(__file__))
-scripts_dir = os.path.dirname(script_dir)
-project_root = os.path.dirname(scripts_dir)
-executable = os.path.join(project_root, "bin", "triage-verifier")
+project_root = Path(__file__).resolve().parents[2]
+executable = project_root / "bin" / "triage-verifier"
+
 
 if not os.path.exists(executable):
     print(f"✗ executable not found at: {executable}")
@@ -19,31 +19,55 @@ if not os.path.exists(executable):
 
 print(f"✓ found executable at: {executable}\n")
 
-def test_triage(name, age, gender, pregnant, breathing, conscious, walking, severe, moderate, expected_code):
+
+def test_triage(
+    name,
+    age,
+    gender,
+    pregnant,
+    breathing,
+    conscious,
+    walking,
+    severe,
+    moderate,
+    expected_code,
+):
     """run a single test case."""
     print(f"test: {name}")
-    print(f"  input: age={age}, gender={gender}, pregnant={pregnant}, breathing={breathing}, conscious={conscious}, walking={walking}, severe={severe}, moderate={moderate}")
-    
-    result = subprocess.run(
-        [executable, str(age), gender, str(pregnant), str(breathing),
-         str(conscious), str(walking), str(severe), str(moderate)],
-        capture_output=True,
-        text=True
+    print(
+        f"  input: age={age}, gender={gender}, pregnant={pregnant}, breathing={breathing}, conscious={conscious}, walking={walking}, severe={severe}, moderate={moderate}"
     )
-    
+
+    result = subprocess.run(
+        [
+            executable,
+            str(age),
+            gender,
+            str(pregnant),
+            str(breathing),
+            str(conscious),
+            str(walking),
+            str(severe),
+            str(moderate),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
     categories = {0: "RED", 1: "YELLOW", 2: "GREEN"}
     category = categories.get(result.returncode, "UNKNOWN")
-    
+
     print(f"  output: {result.stdout.strip()}")
     print(f"  result: {category} (exit code: {result.returncode})")
     print(f"  expected: exit code {expected_code}")
-    
+
     if result.returncode == expected_code:
         print(f"  ✓ passed\n")
         return True
     else:
         print(f"  ✗ failed\n")
         return False
+
 
 # run tests
 tests_passed = 0
@@ -101,4 +125,3 @@ if tests_passed == tests_total:
 else:
     print(f"✗ {tests_total - tests_passed} test(s) failed")
 print("=" * 60)
-
