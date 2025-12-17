@@ -197,7 +197,7 @@ WHATSAPP_PHONE_NUMBER_ID=your_phone_id
 make change-webhook
 ```
 
-See [docs/whatsapp.md](docs/whatsapp.md) for detailed WhatsApp setup instructions.
+See [docs/guides/whatsapp.md](docs/guides/whatsapp.md) for detailed WhatsApp setup instructions.
 
 ## Database Management
 
@@ -429,11 +429,11 @@ For setup issues:
 
 After setup is complete:
 - **[README.md](README.md)** - Project overview and POC achievements
-- **[docs/agent.md](docs/agent.md)** - LangGraph architecture and tool calling
-- **[docs/tools.md](docs/tools.md)** - Tool specifications and usage
-- **[docs/database.md](docs/database.md)** - Database schema and queries
-- **[docs/triage-verification.md](docs/triage-verification.md)** - Verified triage with Lean
-- **[docs/rag.md](docs/rag.md)** - RAG architecture and clinical grounding
-- **[docs/whatsapp.md](docs/whatsapp.md)** - WhatsApp integration guide
+- **[docs/architecture/agent.md](docs/architecture/agent.md)** - LangGraph architecture and tool calling
+- **[docs/reference/tools.md](docs/reference/tools.md)** - Tool specifications and usage
+- **[docs/reference/database.md](docs/reference/database.md)** - Database schema and queries
+- **[docs/architecture/triage-verification.md](docs/architecture/triage-verification.md)** - Verified triage with Lean
+- **[docs/architecture/rag.md](docs/architecture/rag.md)** - RAG architecture and clinical grounding
+- **[docs/guides/whatsapp.md](docs/guides/whatsapp.md)** - WhatsApp integration guide
 - **[AGENTS.md](AGENTS.md)** - Developer guidelines for AI agents
 

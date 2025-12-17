@@ -367,7 +367,7 @@ Seed data is in `seeds/`:
 - `demo.json` - all demo data (users, providers, appointments, consents, RAG documents)
 - Add more seed files as needed (e.g., `production.json`, `test.json`)
 
-See `docs/seeds.md` for seed templates and structure.
+See `docs/reference/seeds.md` for seed templates and structure.
 
 ## Database Access
 

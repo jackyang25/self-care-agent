@@ -82,7 +82,7 @@ Or run steps individually:
   - `current_user_age`: User age for triage
   - `current_user_gender`: User gender for triage
   - `current_user_timezone`: User timezone for time-aware prompts
-- **Tool Responses:** Triage tool returns structured JSON; other tools return strings (see `docs/tools.md`)
+- **Tool Responses:** Triage tool returns structured JSON; other tools return strings (see `docs/reference/tools.md`)
 - **Error Handling:** Tools should handle missing/invalid inputs gracefully
 - **Logging:** Use `src/utils/logger.py` for consistent logging
 - **Database Tables:** 
@@ -104,7 +104,7 @@ Or run steps individually:
 1. Start services: `make up`
 2. Access Streamlit UI at `http://localhost:8501`
 3. Test user login (demo: `jack.yang@gatesfoundation.org`)
-4. Test tool chaining patterns (see `docs/testing.md` for examples)
+4. Test tool chaining patterns (see `docs/guides/testing.md` for examples)
 
 ### Before Committing
 
@@ -121,7 +121,7 @@ Or run steps individually:
 ├── src/
 │   ├── agent.py           # LangGraph agent with tool calling
 │   ├── config.py          # Application configuration
-│   ├── db.py              # Database connection utilities
+│   ├── database.py        # Database connection utilities
 │   ├── channels/
 │   │   ├── base.py        # Channel abstraction base class
 │   │   ├── streamlit.py   # Streamlit channel handler
@@ -148,12 +148,17 @@ Or run steps individually:
 │   └── tools/
 │       └── test_verified_triage.py
 ├── docs/                  # Human-facing documentation
-│   ├── agent.md           # Agent architecture
-│   ├── tools.md           # Tool documentation
-│   ├── database.md        # Database schema
-│   ├── triage-verification.md # Verified triage approach
-│   ├── rag.md             # RAG architecture
-│   └── whatsapp.md        # WhatsApp integration
+│   ├── architecture/      # System design & concepts
+│   │   ├── agent.md       # LangGraph agent architecture
+│   │   ├── rag.md         # RAG with pgvector
+│   │   └── triage-verification.md # Verified triage with Lean
+│   ├── reference/         # Technical specifications
+│   │   ├── database.md    # Database schema
+│   │   ├── seeds.md       # Seed data structure
+│   │   └── tools.md       # Tool documentation
+│   └── guides/            # How-to & integration
+│       ├── testing.md     # Testing guide
+│       └── whatsapp.md    # WhatsApp integration
 ├── seeds/                 # Seed data
 │   └── demo.json          # All demo data (users, providers, appointments, RAG documents)
 ├── docker-compose.yml     # Docker services
@@ -193,7 +198,7 @@ Or run steps individually:
 
 - **System Prompt:** Located in `src/agent.py` as `SYSTEM_PROMPT` constant
 - **State Management:** Agent state uses `TypedDict` with `Annotated` for message accumulation
-- **Tool Chaining:** Agent automatically chains tools based on results (see `docs/agent.md`)
+- **Tool Chaining:** Agent automatically chains tools based on results (see `docs/architecture/agent.md`)
 - **Interaction Storage:** All interactions automatically saved via `save_interaction()` in `src/utils/interactions.py`
 
 ### Documentation
@@ -218,21 +223,21 @@ Or run steps individually:
 3. Implement tool function
 4. Create `StructuredTool` instance
 5. Add to `TOOLS` list in `src/tools/__init__.py`
-6. Document in `docs/tools.md`
+6. Document in `docs/reference/tools.md`
 
 ### Modifying System Prompt
 
 1. Edit `SYSTEM_PROMPT` in `src/agent.py`
 2. Follow context engineering best practices (hierarchical structure, reduce redundancy)
 3. Test tool calling behavior after changes
-4. Update `docs/agent.md` if architecture changes
+4. Update `docs/architecture/agent.md` if architecture changes
 
 ### Database Schema Changes
 
 1. Update `scripts/db/create_tables.py`
 2. Run `make create-tables` to apply changes
 3. Update seed data in `seeds/demo.json` if needed
-4. Document changes in `docs/database.md`
+4. Document changes in `docs/reference/database.md`
 
 ## Troubleshooting
 
@@ -253,17 +258,17 @@ Or run steps individually:
 - Check system prompt emphasizes tool usage
 - Verify tool is in `TOOLS` list
 - Check logs for tool call attempts: `make logs-app`
-- Review `docs/agent.md` for tool chaining patterns
+- Review `docs/architecture/agent.md` for tool chaining patterns
 
 ## References
 
 - **Project Overview:** `README.md`
 - **Setup Guide:** `SETUP.md`
-- **Agent Architecture:** `docs/agent.md`
-- **Tool Documentation:** `docs/tools.md`
-- **Database Schema:** `docs/database.md`
-- **Verified Triage:** `docs/triage-verification.md`
-- **RAG Architecture:** `docs/rag.md`
-- **WhatsApp Integration:** `docs/whatsapp.md`
-- **Testing Guide:** `docs/testing.md`
+- **Agent Architecture:** `docs/architecture/agent.md`
+- **Tool Documentation:** `docs/reference/tools.md`
+- **Database Schema:** `docs/reference/database.md`
+- **Verified Triage:** `docs/architecture/triage-verification.md`
+- **RAG Architecture:** `docs/architecture/rag.md`
+- **WhatsApp Integration:** `docs/guides/whatsapp.md`
+- **Testing Guide:** `docs/guides/testing.md`
 

@@ -37,7 +37,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 - **Stateful conversations**: Maintains context across multi-turn interactions
 - **Prompting strategies**: Context-aware system prompts with patient demographics, timezone, and current time
 
-*Details: [docs/agent.md](docs/agent.md)*
+*Details: [docs/architecture/agent.md](docs/architecture/agent.md)*
 
 #### 2. Dynamic Tool Calling
 - **StructuredTool definitions** with Pydantic input schemas for type-safe tool invocation
@@ -45,7 +45,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 - **Tool chaining patterns**: Triage → Referral → Database queries automatically orchestrated
 - **Intelligent routing**: Heart symptoms → cardiologist, pregnancy → obstetrics (prompt-based, not hardcoded rules)
 
-*Details: [docs/tools.md](docs/tools.md)*
+*Details: [docs/reference/tools.md](docs/reference/tools.md)*
 
 #### 3. Verified Triage via Formal Logic (Primitive POC)
 - **Simplified WHO iITT protocol** implementation using compiled Lean formal logic (basic ruleset, not comprehensive)
@@ -55,14 +55,14 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 
 > **Note:** Early-stage POC with limited protocol coverage. Production requires comprehensive clinical logic.
 
-*Details: [docs/triage-verification.md](docs/triage-verification.md)*
+*Details: [docs/architecture/triage-verification.md](docs/architecture/triage-verification.md)*
 
 #### 4. RAG with Clinical Grounding
 - **Semantic search** over clinical guidelines using pgvector
 - **Source attribution**: Every RAG response includes document citations
 - **Mock guideline grounding**: Demonstrates integration pattern for real WHO/national guidelines 
 
-*Details: [docs/rag.md](docs/rag.md)*
+*Details: [docs/architecture/rag.md](docs/architecture/rag.md)*
 
 #### 5. Multi-Channel Support
 - **Streamlit UI**: Web-based chat interface with visual source display
@@ -70,7 +70,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 - **Mock phone login**: E.164 phone number-based user identification
 - **Channel abstraction**: Unified agent accessible via any channel with consistent behavior
 
-*Details: [docs/whatsapp.md](docs/whatsapp.md)*
+*Details: [docs/guides/whatsapp.md](docs/guides/whatsapp.md)*
 
 #### 6. Database & Memory Layer
 - **PostgreSQL** with user profiles, interaction history, consents, providers, and appointments
@@ -78,7 +78,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 - **Audit trail**: Full interaction logging with tool calls, triage results, and risk levels
 - **Provider matching**: Database-backed provider routing by specialty and location
 
-*Details: [docs/database.md](docs/database.md)*
+*Details: [docs/reference/database.md](docs/reference/database.md)*
 
 ### Mocked (Architectural Slots for Production)
 
@@ -212,7 +212,7 @@ User Input (Streamlit/WhatsApp)
 ├── src/
 │   ├── agent.py                    # LangGraph agent with tool calling
 │   ├── config.py                   # Application configuration
-│   ├── db.py                       # Database connection utilities
+│   ├── database.py                 # Database connection utilities
 │   ├── channels/                   # Multi-channel support
 │   │   ├── base.py                # Channel abstraction
 │   │   ├── streamlit.py           # Web UI handler
@@ -230,12 +230,17 @@ User Input (Streamlit/WhatsApp)
 │       ├── logger.py              # Logging configuration
 │       └── user_lookup.py         # User identification
 ├── docs/                           # Technical documentation
-│   ├── agent.md                   # Agent architecture
-│   ├── tools.md                   # Tool specifications
-│   ├── database.md                # Database schema & queries
-│   ├── triage-verification.md     # Verified triage approach
-│   ├── rag.md                     # RAG architecture
-│   └── whatsapp.md                # WhatsApp integration
+│   ├── architecture/              # System design & concepts
+│   │   ├── agent.md               # LangGraph agent architecture
+│   │   ├── rag.md                 # RAG with pgvector
+│   │   └── triage-verification.md # Verified triage with Lean
+│   ├── reference/                 # Technical specifications
+│   │   ├── database.md            # Database schema
+│   │   ├── seeds.md               # Seed data structure
+│   │   └── tools.md               # Tool documentation
+│   └── guides/                    # How-to & integration
+│       ├── testing.md             # Testing guide
+│       └── whatsapp.md            # WhatsApp integration
 ├── bin/
 │   └── triage-verifier            # Lean-compiled triage binary
 ├── seeds/
