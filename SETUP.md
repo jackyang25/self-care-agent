@@ -28,6 +28,12 @@ cp .env.example .env
 
 ### 2. Start Services
 
+**Quick setup (recommended):**
+```bash
+make setup  # Starts containers, creates tables, seeds data
+```
+
+Or run individually:
 ```bash
 make up              # Start Docker containers
 make create-tables   # Create database schema
@@ -82,19 +88,21 @@ make down            # Stop all containers
 make restart         # Restart all containers
 
 # Logs
-make logs            # View all logs
-make logs-streamlit  # View Streamlit logs only
-make logs-webhook    # View webhook logs only
+make logs            # Follow all logs
+make logs-app        # Follow app logs only
 
 # Database
 make create-tables   # Create database schema
 make seed-db         # Seed database (idempotent)
 make reset-db        # Reset database (destructive - deletes all data)
+make test-db         # Test database connection
+make shell-db        # Open postgres shell
 
 # Development
-make change          # Restart app containers (after code changes)
+make dev             # Start in development mode (build + logs)
+make restart         # Restart containers
 make ps              # Show running containers
-make shell           # Open shell in Streamlit container
+make shell           # Open shell in app container
 make shell-db        # Open PostgreSQL shell
 
 # Testing
@@ -251,9 +259,8 @@ docker-compose exec streamlit python scripts/db/test.py
 
 **Containers won't start:**
 ```bash
-docker-compose down -v  # Remove volumes
-docker system prune -f  # Clean up Docker
-make up-build          # Rebuild and start
+make clean   # Stop containers, remove volumes, clean Docker
+make rebuild # Rebuild and restart containers
 ```
 
 **Port conflicts (8501, 5432, 5050):**
@@ -305,13 +312,13 @@ make reset-db
 **Streamlit won't load:**
 ```bash
 # Check logs
-make logs-streamlit
+make logs-app
 
 # Restart containers
-make change-streamlit
+make restart
 
 # If code changed, rebuild
-make up-build
+make dev
 ```
 
 **User not found:**

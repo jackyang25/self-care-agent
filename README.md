@@ -134,7 +134,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 ### Installation
 
    ```bash
-make up && make create-tables && make seed-db
+make setup  # First-time setup (starts containers, creates tables, seeds data)
 # Open http://localhost:8501
 # Login with: jack.yang@gatesfoundation.org
 ```

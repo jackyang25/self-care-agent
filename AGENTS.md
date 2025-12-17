@@ -20,6 +20,13 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ### Initial Setup
 
+**Quick setup (recommended):**
+```bash
+make setup
+```
+
+Or run steps individually:
+
 1. **Start Docker containers:**
    ```bash
    make up
@@ -30,7 +37,7 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
    make create-tables
    ```
 
-3. **Seed database (optional):**
+3. **Seed database:**
    ```bash
    make seed-db
    ```
@@ -42,9 +49,10 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ### Development Workflow
 
-- **Start services:** `make up` or `make dev` (build + logs)
+- **Start services:** `make up`
+- **Development mode:** `make dev` (build + follow logs)
 - **View logs:** `make logs` or `make logs-app`
-- **Restart app:** `make change` (for code changes)
+- **Restart containers:** `make restart`
 - **Stop services:** `make down`
 - **Reset database:** `make reset-db` (destructive)
 
