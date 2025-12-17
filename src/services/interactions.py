@@ -144,21 +144,13 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
         if isinstance(msg, ToolMessage) and hasattr(msg, "content"):
             content = msg.content
 
-            # all tools now return pydantic models serialized as json
-            # if parsing fails, it indicates a bug in tool implementation
-            if not isinstance(content, str):
-                logger.warning(f"tool message content is not a string: {type(content)}")
-                continue
-
-            if not content.strip().startswith("{"):
-                # empty or non-json content - could be valid for some edge cases
-                logger.debug(f"tool message is not json format: {content[:50]}")
-                continue
-
+            # all tools return pydantic models serialized as json
             try:
                 data = json.loads(content)
+                
+                # extract structured data from tool response
                 if isinstance(data, dict):
-                    # extract triage results from structured json
+                    # extract triage results
                     if data.get("risk_level"):
                         risk_level = data["risk_level"].lower()
                     if data.get("recommendation"):
@@ -168,12 +160,12 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             "symptoms": data.get("symptoms"),
                             "urgency": data.get("urgency"),
                         }
-            except json.JSONDecodeError as e:
-                # all tools should return valid json now - this is a bug!
+            except (json.JSONDecodeError, TypeError) as e:
                 logger.error(
-                    f"failed to parse tool json - this indicates a bug! "
-                    f"error: {e} | content: {content[:200]}"
+                    f"tool returned invalid json (indicates bug in tool implementation): "
+                    f"error={e} | content={content[:200] if isinstance(content, str) else type(content)}"
                 )
+                continue
 
     return {
         "protocol_invoked": protocol_invoked,
