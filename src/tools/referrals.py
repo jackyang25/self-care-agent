@@ -2,12 +2,15 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
+
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
-from src.utils.context import current_user_id
+
 from src.db import get_db_cursor
+from src.utils.context import current_user_id
+from src.utils.tool_helpers import get_tool_logger, log_tool_call
+from src.utils.tool_outputs import ReferralOutput
 
 logger = get_tool_logger("referrals")
 
@@ -38,55 +41,69 @@ def referrals_and_scheduling(
     preferred_date: Optional[str] = None,
     preferred_time: Optional[str] = None,
     reason: Optional[str] = None,
-) -> str:
+) -> Dict[str, Any]:
     """process referrals and schedule appointments. use this for creating referrals to specialists, scheduling appointments, or managing patient appointments."""
     log_tool_call(
-        logger, "referrals_and_scheduling",
-        specialty=specialty, provider=provider, patient_id=patient_id,
-        preferred_date=preferred_date, preferred_time=preferred_time, reason=reason
+        logger,
+        "referrals_and_scheduling",
+        specialty=specialty,
+        provider=provider,
+        patient_id=patient_id,
+        preferred_date=preferred_date,
+        preferred_time=preferred_time,
+        reason=reason,
     )
 
     user_id = current_user_id.get()
     if not user_id:
         logger.error("no user_id in context - appointment cannot be saved")
-        return "error: no user logged in. please log in to schedule appointments."
-    
+        return {
+            "status": "error",
+            "message": "no user logged in. please log in to schedule appointments.",
+        }
+
     # query database for provider matching
     with get_db_cursor() as cur:
         provider_id = None
         provider_name = None
         provider_specialty = specialty
         facility = None
-        
+
         if specialty:
             # match by specialty
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT provider_id, name, specialty, facility
                 FROM providers
                 WHERE specialty = %s AND is_active = true
                 LIMIT 1
-            """, (specialty,))
+            """,
+                (specialty,),
+            )
             provider_row = cur.fetchone()
             if provider_row:
-                provider_id = provider_row['provider_id']
-                provider_name = provider_row['name']
-                provider_specialty = provider_row['specialty']
-                facility = provider_row['facility']
+                provider_id = provider_row["provider_id"]
+                provider_name = provider_row["name"]
+                provider_specialty = provider_row["specialty"]
+                facility = provider_row["facility"]
         elif provider:
             # match by name
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT provider_id, name, specialty, facility
                 FROM providers
                 WHERE name ILIKE %s AND is_active = true
                 LIMIT 1
-            """, (f"%{provider}%",))
+            """,
+                (f"%{provider}%",),
+            )
             provider_row = cur.fetchone()
             if provider_row:
-                provider_id = provider_row['provider_id']
-                provider_name = provider_row['name']
-                provider_specialty = provider_row['specialty']
-                facility = provider_row['facility']
-        
+                provider_id = provider_row["provider_id"]
+                provider_name = provider_row["name"]
+                provider_specialty = provider_row["specialty"]
+                facility = provider_row["facility"]
+
         # fallback to general practice if no match
         if not provider_name:
             cur.execute("""
@@ -97,23 +114,23 @@ def referrals_and_scheduling(
             """)
             provider_row = cur.fetchone()
             if provider_row:
-                provider_id = provider_row['provider_id']
-                provider_name = provider_row['name']
-                provider_specialty = provider_row['specialty']
-                facility = provider_row['facility']
+                provider_id = provider_row["provider_id"]
+                provider_name = provider_row["name"]
+                provider_specialty = provider_row["specialty"]
+                facility = provider_row["facility"]
             else:
                 # ultimate fallback if no providers in database
                 provider_name = provider or "dr. smith"
                 facility = "default clinic"
-        
+
         # generate appointment id
         appointment_uuid = uuid.uuid4()
         appointment_id = f"APT-{appointment_uuid.hex[:8].upper()}"
-        
+
         # handle date/time formats
         date = preferred_date or "2025-12-20"
         time_raw = preferred_time or "10:00 AM"
-        
+
         # convert time to database format (HH:MM:SS)
         # handle various formats: "10:00 AM", "14:00", "2pm", etc.
         time_db = time_raw
@@ -127,14 +144,15 @@ def referrals_and_scheduling(
                 time_db = "10:00:00"
         elif ":" not in time_raw:
             # just hour like "14" or "2pm"
-            time_db = f"{time_raw.strip().replace('pm','').replace('am','')}:00:00"
+            time_db = f"{time_raw.strip().replace('pm', '').replace('am', '')}:00:00"
         elif time_raw.count(":") == 1:
             # format like "14:30" - add seconds
             time_db = f"{time_raw}:00"
-        
+
         # store appointment in database
         try:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO appointments (
                     appointment_id, user_id, provider_id, specialty,
                     appointment_date, appointment_time, status, reason,
@@ -142,24 +160,28 @@ def referrals_and_scheduling(
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
                 )
-            """, (
-                str(appointment_uuid),  # convert UUID to string
-                str(user_id),           # convert UUID to string
-                str(provider_id) if provider_id else None,
-                provider_specialty,
-                date,
-                time_db,
-                'scheduled',
-                reason,
-                'pending'
-            ))
-            logger.info(f"successfully stored appointment {appointment_id} for user {user_id}")
+            """,
+                (
+                    str(appointment_uuid),  # convert UUID to string
+                    str(user_id),  # convert UUID to string
+                    str(provider_id) if provider_id else None,
+                    provider_specialty,
+                    date,
+                    time_db,
+                    "scheduled",
+                    reason,
+                    "pending",
+                ),
+            )
+            logger.info(
+                f"successfully stored appointment {appointment_id} for user {user_id}"
+            )
         except Exception as e:
             logger.error(f"failed to store appointment in database: {e}", exc_info=True)
             # continue anyway to return appointment info to user
 
-    # return structured json response (use original user-friendly time format)
-    return format_tool_response(
+    # return pydantic model instance (use original user-friendly time format)
+    return ReferralOutput(
         appointment_id=appointment_id,
         provider=provider_name,
         specialty=provider_specialty,
@@ -167,7 +189,7 @@ def referrals_and_scheduling(
         date=date,
         time=time_raw,  # use original format for display
         reason=reason,
-    )
+    ).model_dump()
 
 
 referral_tool = StructuredTool.from_function(

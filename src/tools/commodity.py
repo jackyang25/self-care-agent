@@ -1,9 +1,12 @@
 """commodity orders and fulfillment tool."""
 
-from typing import Optional
+from typing import Optional, Dict, Any
+
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
+
+from src.utils.tool_helpers import get_tool_logger, log_tool_call
+from src.utils.tool_outputs import CommodityOutput
 
 logger = get_tool_logger("commodity")
 
@@ -22,25 +25,29 @@ def commodity_orders_and_fulfillment(
     quantity: Optional[str] = None,
     patient_id: Optional[str] = None,
     priority: Optional[str] = None,
-) -> str:
+) -> Dict[str, Any]:
     """process commodity orders and fulfillment. use this for ordering medical supplies, equipment, or other commodities."""
     log_tool_call(
-        logger, "commodity_orders_and_fulfillment",
-        items=items, quantity=quantity, patient_id=patient_id, priority=priority
+        logger,
+        "commodity_orders_and_fulfillment",
+        items=items,
+        quantity=quantity,
+        patient_id=patient_id,
+        priority=priority,
     )
 
     order_id = "ORD-12345"
     estimated_delivery = "2025-12-10"
 
-    # return structured json response
-    return format_tool_response(
+    # return pydantic model instance
+    return CommodityOutput(
         order_id=order_id,
         estimated_delivery=estimated_delivery,
         items=items,
         quantity=quantity,
         patient_id=patient_id,
         priority=priority or "normal",
-    )
+    ).model_dump()
 
 
 commodity_tool = StructuredTool.from_function(

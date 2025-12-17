@@ -1,13 +1,35 @@
 """database query tool for agent."""
 
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Dict, Any
+
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
 from src.utils.logger import get_logger
+from src.utils.tool_outputs import DatabaseOutput
 
 logger = get_logger("database")
+
+
+def serialize_db_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """convert database row to json-serializable dict.
+    
+    converts datetime objects to iso format strings so the dict
+    can be properly serialized to json by langchain.
+    """
+    result = {}
+    for key, value in row.items():
+        if isinstance(value, datetime):
+            result[key] = value.isoformat()
+        elif isinstance(value, dict):
+            # recursively serialize nested dicts
+            result[key] = serialize_db_row(value)
+        else:
+            result[key] = value
+    return result
 
 
 class DatabaseQueryInput(BaseModel):
@@ -17,7 +39,8 @@ class DatabaseQueryInput(BaseModel):
         description="type of query: 'get_user_by_id', 'get_user_history', 'get_user_interactions', 'get_user_appointments', 'get_providers'"
     )
     user_id: Optional[str] = Field(
-        None, description="user id (uuid) - optional, will use current logged-in user if not provided"
+        None,
+        description="user id (uuid) - optional, will use current logged-in user if not provided",
     )
     email: Optional[str] = Field(
         None, description="deprecated - not used, tool automatically uses current user"
@@ -29,7 +52,8 @@ class DatabaseQueryInput(BaseModel):
         10, description="maximum number of results to return (default: 10)"
     )
     specialty: Optional[str] = Field(
-        None, description="filter providers by specialty (e.g., 'cardiology', 'pediatrics')"
+        None,
+        description="filter providers by specialty (e.g., 'cardiology', 'pediatrics')",
     )
 
 
@@ -40,16 +64,16 @@ def database_query(
     phone: Optional[str] = None,
     limit: Optional[int] = 10,
     specialty: Optional[str] = None,
-) -> str:
+) -> Dict[str, Any]:
     """retrieve user data from the database.
-    
+
     use this tool to:
     - get current user's profile information
     - get current user's interaction history
     - get current user's appointments
     - get available healthcare providers
     - get current user's complete history (profile + interactions + consents)
-    
+
     note: this tool can only access data for the currently logged-in user. if no user is
     logged in, the tool will return an error. the tool automatically uses the current
     user's id from session context.
@@ -57,18 +81,26 @@ def database_query(
     # automatically use current user_id from context if not provided
     if not user_id:
         user_id = current_user_id.get()
-    
+
     logger.info(f"database_query called: query_type={query_type}")
-    logger.debug(f"arguments: user_id={user_id}, email={email}, phone={phone}, limit={limit}, specialty={specialty}")
+    logger.debug(
+        f"arguments: user_id={user_id}, email={email}, phone={phone}, limit={limit}, specialty={specialty}"
+    )
 
     try:
         with get_db_cursor() as cur:
             # email/phone lookup only allowed during login (no user context)
             if query_type == "get_user_by_email":
                 if user_id:
-                    return "error: unable to retrieve data - user lookup by email is only available during login. use get_user_by_id to access current user's profile."
+                    return DatabaseOutput(
+                        status="error",
+                        message="user lookup by email is only available during login. use get_user_by_id to access current user's profile.",
+                    ).model_dump()
                 if not email:
-                    return "error: email is required for get_user_by_email"
+                    return DatabaseOutput(
+                        status="error",
+                        message="email is required for get_user_by_email",
+                    ).model_dump()
                 cur.execute(
                     """
                     SELECT user_id, fhir_patient_id, primary_channel, phone_e164, 
@@ -81,15 +113,25 @@ def database_query(
                 )
                 user = cur.fetchone()
                 if user:
-                    return f"user found: {dict(user)}"
+                    return DatabaseOutput(
+                        message="user found", data=serialize_db_row(dict(user))
+                    ).model_dump()
                 else:
-                    return f"user not found for email: {email}"
+                    return DatabaseOutput(
+                        status="error", message=f"user not found for email: {email}"
+                    ).model_dump()
 
             elif query_type == "get_user_by_phone":
                 if user_id:
-                    return "error: unable to retrieve data - user lookup by phone is only available during login. use get_user_by_id to access current user's profile."
+                    return DatabaseOutput(
+                        status="error",
+                        message="user lookup by phone is only available during login. use get_user_by_id to access current user's profile.",
+                    ).model_dump()
                 if not phone:
-                    return "error: phone is required for get_user_by_phone"
+                    return DatabaseOutput(
+                        status="error",
+                        message="phone is required for get_user_by_phone",
+                    ).model_dump()
                 cur.execute(
                     """
                     SELECT user_id, fhir_patient_id, primary_channel, phone_e164, 
@@ -102,14 +144,21 @@ def database_query(
                 )
                 user = cur.fetchone()
                 if user:
-                    return f"user found: {dict(user)}"
+                    return DatabaseOutput(
+                        message="user found", data=serialize_db_row(dict(user))
+                    ).model_dump()
                 else:
-                    return f"user not found for phone: {phone}"
+                    return DatabaseOutput(
+                        status="error", message=f"user not found for phone: {phone}"
+                    ).model_dump()
 
             # all other queries require user context (security: only access current user's data)
             if not user_id:
-                return "error: unable to retrieve data - no user identified in current session. please ensure you are logged in."
-            
+                return DatabaseOutput(
+                    status="error",
+                    message="no user identified in current session. please ensure you are logged in.",
+                ).model_dump()
+
             # get current user's profile (user_id already set from context)
             if query_type == "get_user_by_id":
                 cur.execute(
@@ -124,14 +173,21 @@ def database_query(
                 )
                 user = cur.fetchone()
                 if user:
-                    return f"user found: {dict(user)}"
+                    return DatabaseOutput(
+                        message="user found", data=serialize_db_row(dict(user))
+                    ).model_dump()
                 else:
-                    return f"user not found for user_id: {user_id}"
+                    return DatabaseOutput(
+                        status="error", message=f"user not found for user_id: {user_id}"
+                    ).model_dump()
 
             # get user interactions
             elif query_type == "get_user_interactions":
                 if not user_id:
-                    return "error: user_id is required for get_user_interactions"
+                    return DatabaseOutput(
+                        status="error",
+                        message="user_id is required for get_user_interactions",
+                    ).model_dump()
                 cur.execute(
                     """
                     SELECT interaction_id, channel, input, protocol_invoked,
@@ -146,15 +202,23 @@ def database_query(
                 )
                 interactions = cur.fetchall()
                 if interactions:
-                    return f"found {len(interactions)} interaction(s): {[dict(i) for i in interactions]}"
+                    return DatabaseOutput(
+                        message=f"found {len(interactions)} interaction(s)",
+                        data=[serialize_db_row(dict(i)) for i in interactions],
+                    ).model_dump()
                 else:
-                    return f"no interactions found for user_id: {user_id}"
+                    return DatabaseOutput(
+                        message="no interactions found", data=[]
+                    ).model_dump()
 
             # get complete user history (profile + interactions + consents)
             elif query_type == "get_user_history":
                 if not user_id:
-                    return "error: user_id is required for get_user_history"
-                
+                    return DatabaseOutput(
+                        status="error",
+                        message="user_id is required for get_user_history",
+                    ).model_dump()
+
                 # get user profile
                 cur.execute(
                     """
@@ -167,10 +231,12 @@ def database_query(
                     (user_id,),
                 )
                 user = cur.fetchone()
-                
+
                 if not user:
-                    return f"user not found for user_id: {user_id}"
-                
+                    return DatabaseOutput(
+                        status="error", message=f"user not found for user_id: {user_id}"
+                    ).model_dump()
+
                 # get interactions
                 cur.execute(
                     """
@@ -185,7 +251,7 @@ def database_query(
                     (user_id, limit),
                 )
                 interactions = cur.fetchall()
-                
+
                 # get consents
                 cur.execute(
                     """
@@ -199,18 +265,23 @@ def database_query(
                     (user_id, limit),
                 )
                 consents = cur.fetchall()
-                
+
                 result = {
-                    "user": dict(user),
-                    "interactions": [dict(i) for i in interactions],
-                    "consents": [dict(c) for c in consents],
+                    "user": serialize_db_row(dict(user)),
+                    "interactions": [serialize_db_row(dict(i)) for i in interactions],
+                    "consents": [serialize_db_row(dict(c)) for c in consents],
                 }
-                return f"user history: {result}"
+                return DatabaseOutput(
+                    message="user history retrieved", data=result
+                ).model_dump()
 
             # get user appointments
             elif query_type == "get_user_appointments":
                 if not user_id:
-                    return "error: user_id is required for get_user_appointments"
+                    return DatabaseOutput(
+                        status="error",
+                        message="user_id is required for get_user_appointments",
+                    ).model_dump()
                 cur.execute(
                     """
                     SELECT 
@@ -236,9 +307,14 @@ def database_query(
                 )
                 appointments = cur.fetchall()
                 if appointments:
-                    return f"found {len(appointments)} appointment(s): {[dict(appt) for appt in appointments]}"
+                    return DatabaseOutput(
+                        message=f"found {len(appointments)} appointment(s)",
+                        data=[serialize_db_row(dict(appt)) for appt in appointments],
+                    ).model_dump()
                 else:
-                    return f"no appointments found for user_id: {user_id}"
+                    return DatabaseOutput(
+                        message="no appointments found", data=[]
+                    ).model_dump()
 
             # get available providers (no user context required)
             elif query_type == "get_providers":
@@ -248,15 +324,15 @@ def database_query(
                     try:
                         cur.execute(
                             "SELECT country_context_id FROM users WHERE user_id = %s",
-                            (user_id,)
+                            (user_id,),
                         )
                         user_row = cur.fetchone()
                         if user_row:
-                            country_context = user_row['country_context_id']
+                            country_context = user_row["country_context_id"]
                     except Exception as e:
                         logger.warning(f"could not get user country context: {e}")
                         # continue without country filter
-                
+
                 # build query with optional filters
                 query = """
                     SELECT 
@@ -271,35 +347,47 @@ def database_query(
                     WHERE is_active = true
                 """
                 params = []
-                
+
                 # filter by specialty if provided
                 if specialty:
                     query += " AND specialty = %s"
                     params.append(specialty)
-                
+
                 # filter by user's country if available
                 if country_context:
                     query += " AND country_context_id = %s"
                     params.append(country_context)
-                
+
                 query += " ORDER BY specialty, name LIMIT %s"
                 params.append(limit)
-                
+
                 cur.execute(query, tuple(params))
                 providers = cur.fetchall()
-                
+
                 if providers:
-                    return f"found {len(providers)} provider(s): {[dict(p) for p in providers]}"
+                    return DatabaseOutput(
+                        message=f"found {len(providers)} provider(s)",
+                        data=[serialize_db_row(dict(p)) for p in providers],
+                    ).model_dump()
                 else:
-                    specialty_msg = f" with specialty '{specialty}'" if specialty else ""
-                    return f"no providers found{specialty_msg}"
+                    specialty_msg = (
+                        f" with specialty '{specialty}'" if specialty else ""
+                    )
+                    return DatabaseOutput(
+                        message=f"no providers found{specialty_msg}", data=[]
+                    ).model_dump()
 
             else:
-                return f"error: unknown query_type '{query_type}'. valid types: get_user_by_id, get_user_by_email, get_user_by_phone, get_user_interactions, get_user_history, get_user_appointments, get_providers"
+                return DatabaseOutput(
+                    status="error",
+                    message=f"unknown query_type '{query_type}'. valid types: get_user_by_id, get_user_by_email, get_user_by_phone, get_user_interactions, get_user_history, get_user_appointments, get_providers",
+                ).model_dump()
 
     except Exception as e:
         logger.error(f"database query error: {e}", exc_info=True)
-        return f"database query error: {str(e)}"
+        return DatabaseOutput(
+            status="error", message=f"database query error: {str(e)}"
+        ).model_dump()
 
 
 database_tool = StructuredTool.from_function(
@@ -334,4 +422,3 @@ examples:
 do not use for: creating new records, updating data, deleting records, or accessing other users' data.""",
     args_schema=DatabaseQueryInput,
 )
-

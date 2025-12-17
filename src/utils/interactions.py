@@ -1,9 +1,11 @@
 """utilities for storing user interactions."""
 
-import uuid
 import json
+import uuid
 from typing import Optional, List, Dict, Any
+
 from langchain_core.messages import AIMessage, ToolMessage
+
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
 from src.utils.logger import get_logger
@@ -142,7 +144,17 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
         if isinstance(msg, ToolMessage) and hasattr(msg, "content"):
             content = msg.content
 
-            # try to parse as json (structured response)
+            # all tools now return pydantic models serialized as json
+            # if parsing fails, it indicates a bug in tool implementation
+            if not isinstance(content, str):
+                logger.warning(f"tool message content is not a string: {type(content)}")
+                continue
+
+            if not content.strip().startswith("{"):
+                # empty or non-json content - could be valid for some edge cases
+                logger.debug(f"tool message is not json format: {content[:50]}")
+                continue
+
             try:
                 data = json.loads(content)
                 if isinstance(data, dict):
@@ -156,25 +168,12 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             "symptoms": data.get("symptoms"),
                             "urgency": data.get("urgency"),
                         }
-            except (json.JSONDecodeError, AttributeError):
-                # fallback to string parsing for backward compatibility
-                content_lower = content.lower()
-                if "triage assessment completed" in content_lower:
-                    # extract risk level
-                    if "risk level:" in content_lower:
-                        parts = content_lower.split("risk level:")
-                        if len(parts) > 1:
-                            risk_part = parts[1].split(".")[0].strip()
-                            if risk_part in ["red", "yellow", "green"]:
-                                risk_level = risk_part
-
-                    # extract recommendation
-                    if "recommendation:" in content_lower:
-                        parts = content_lower.split("recommendation:")
-                        if len(parts) > 1:
-                            rec = parts[1].split(".")[0].strip()
-                            if rec:
-                                recommendations.append(rec)
+            except json.JSONDecodeError as e:
+                # all tools should return valid json now - this is a bug!
+                logger.error(
+                    f"failed to parse tool json - this indicates a bug! "
+                    f"error: {e} | content: {content[:200]}"
+                )
 
     return {
         "protocol_invoked": protocol_invoked,

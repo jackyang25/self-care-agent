@@ -2,12 +2,15 @@
 
 import os
 import subprocess
-from typing import Optional
+from typing import Optional, Dict, Any
+
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from src.utils.tool_helpers import get_tool_logger, log_tool_call, format_tool_response
-from src.utils.context import current_user_id, current_user_age, current_user_gender
+
 from src.db import get_db_cursor
+from src.utils.context import current_user_id, current_user_age, current_user_gender
+from src.utils.tool_helpers import get_tool_logger, log_tool_call
+from src.utils.tool_outputs import TriageOutput
 
 logger = get_tool_logger("triage")
 
@@ -16,11 +19,11 @@ def get_user_demographics():
     """get age and gender from current user's context (set at login)."""
     age = current_user_age.get()
     gender = current_user_gender.get()
-    
+
     if age is not None and gender is not None:
         logger.debug(f"using cached user demographics: age={age}, gender={gender}")
         return age, gender
-    
+
     # fallback: fetch from database if not in context (shouldn't happen normally)
     user_id = current_user_id.get()
     if not user_id:
@@ -36,7 +39,9 @@ def get_user_demographics():
                 demographics = result["demographics"]
                 age = demographics.get("age")
                 gender = demographics.get("gender")
-                logger.info(f"fetched user demographics from database: age={age}, gender={gender}")
+                logger.info(
+                    f"fetched user demographics from database: age={age}, gender={gender}"
+                )
                 return age, gender
     except Exception as e:
         logger.error(f"error fetching user demographics: {e}")
@@ -158,7 +163,7 @@ def triage_and_risk_flagging(
     severe_symptom: Optional[int] = None,
     moderate_symptom: Optional[int] = None,
     pregnant: Optional[int] = None,
-) -> str:
+) -> Dict[str, Any]:
     """assess patient triage and risk level.
 
     this tool validates and formats triage assessments. you should analyze the symptoms
@@ -270,16 +275,9 @@ def triage_and_risk_flagging(
             "low acuity - can wait, self-care or pharmacy support may be appropriate"
         )
 
-    # return structured json response
-    return format_tool_response(
-        risk_level=risk_level,
-        recommendation=recommendation,
-        symptoms=symptoms,
-        urgency=urgency,
-        patient_id=patient_id,
-        notes=notes,
-        verification_method=verification_method,
-        vitals={
+    # return pydantic model instance
+    vitals_dict = (
+        {
             "breathing": breathing,
             "conscious": conscious,
             "walking": walking,
@@ -288,8 +286,19 @@ def triage_and_risk_flagging(
             "pregnant": pregnant,
         }
         if vitals_available
-        else None,
+        else None
     )
+
+    return TriageOutput(
+        risk_level=risk_level,
+        recommendation=recommendation,
+        symptoms=symptoms,
+        urgency=urgency,
+        patient_id=patient_id,
+        notes=notes,
+        verification_method=verification_method,
+        vitals=vitals_dict,
+    ).model_dump()
 
 
 triage_tool = StructuredTool.from_function(
