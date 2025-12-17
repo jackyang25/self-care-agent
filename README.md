@@ -123,7 +123,7 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 - **Full interaction logging for safety monitoring** instead of no audit trail
 - **Self-care focused, avoids diagnosis claims** instead of diagnostic language
 
-> **Key Takeaway:** The "last 20%" of clinical correctness comes from grounding every response in validated protocols, verified triage logic, and governed safety layers rather than relying solely on LLM knowledge.
+> **Key Takeaway:** The "last 20%" of clinical correctness comes from grounding every response in validated protocols via RAG (and knowledge graphs, if feasible), verified triage logic, and governed safety layers rather than relying solely on LLM knowledge.
 
 ## Quick Start
 
@@ -281,7 +281,7 @@ User Input (Streamlit/WhatsApp)
 - [ ] Safety monitoring dashboard for red-flag interactions
 
 ### Medium-Term (Scale & Governance)
-- [ ] National guideline adapters for South Africa ([APC Clinical Tool](https://knowledgehub.health.gov.za/system/files/elibdownloads/2023-10/APC_2023_Clinical_tool-EBOOK.pdf)), Kenya, Nigeria
+- [ ] National guideline adapters for South Africa ([APC Clinical Tool](https://knowledgehub.health.gov.za/system/files/elibdownloads/2023-10/APC_2023_Clinical_tool-EBOOK.pdf)), Senegal, Malawi
 - [ ] Continuous safety monitoring and audit reporting
 - [ ] Integration with national health information systems
 - [ ] Community health worker interface for assisted interactions
@@ -328,6 +328,70 @@ POC focuses on **proving the architecture works** before tackling integration co
 - Integration points (architectural slots)
 
 > **Note:** Production swaps mock data sources for real APIs **without changing tool interfaces**.
+
+</details>
+
+## Data Privacy & Compliance
+
+<details>
+<summary><b>Regulatory Considerations for Production Deployment</b></summary>
+
+**This POC demonstrates technical capabilities. Production deployment requires compliance with applicable data protection and healthcare regulations.**
+
+### Healthcare Data Regulations
+
+**Target Country Requirements:**
+- **South Africa**: POPIA (Protection of Personal Information Act), National Health Act
+- **Senegal**: Loi n°2008-12 sur la Protection des Données à Caractère Personnel
+- **Malawi**: Data Protection Act 2023, National Health Act
+- **General**: GDPR for EU data subjects, local healthcare information privacy laws
+
+**Key Compliance Areas:**
+- Patient consent management (implemented: `consents` table with version tracking)
+- Data minimization and purpose limitation
+- Right to access and erasure (architectural slots for user data export/deletion)
+- Healthcare provider licensing and supervision requirements
+- Cross-border data transfer restrictions
+
+### Data Localization
+
+Many LMIC countries require health data to be stored within national borders:
+- Database deployment must respect data residency requirements
+- Cloud region selection (e.g., AWS Cape Town, Azure South Africa)
+- Encryption in transit and at rest (TLS 1.3, AES-256)
+
+### Audit & Accountability
+
+**Already implemented:**
+- Full interaction logging (`interactions` table with timestamps)
+- Tool call tracking for reproducibility
+- User consent records with evidence trail
+- Timezone-aware timestamps for legal compliance
+
+**Production additions needed:**
+- Automated compliance reporting
+- Data retention policies (configurable retention periods)
+- Breach notification workflows
+- Regular security audits and penetration testing
+
+### AI-Specific Regulations
+
+**Emerging Requirements:**
+- EU AI Act: High-risk system classification for healthcare AI
+- Algorithmic accountability and explainability
+- Model versioning and audit trails (LangSmith integration recommended)
+- Human oversight requirements for clinical decisions
+
+### Recommended Practices
+
+1. **Conduct legal review** for each target country before deployment
+2. **Implement data protection impact assessments** (DPIA) per jurisdiction
+3. **Obtain appropriate licenses** for telemedicine/health information services
+4. **Establish data processing agreements** with cloud providers
+5. **Deploy within country-specific regulatory sandboxes** where available
+6. **Partner with local health authorities** for compliance guidance
+
+> **Note:** This framework provides technical infrastructure. Legal compliance requires jurisdiction-specific implementation with qualified legal counsel.
 
 </details>
 
