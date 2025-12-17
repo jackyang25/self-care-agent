@@ -7,12 +7,14 @@ Instructions for AI coding agents working on this project.
 Healthcare self-care agent prototype using LangGraph for multi-step reasoning and tool chaining. The system helps users access health services and commodities in low and middle income country settings.
 
 **Key Architecture:**
-- LangGraph agent with native tool calling
-- PostgreSQL database for user data and interactions
-- Streamlit interface for user interaction
-- Docker-based development environment
+- LangGraph agent with native tool calling and dynamic routing
+- PostgreSQL database with user profiles, providers, appointments, and audit trail
+- Verified triage via compiled Lean formal logic (primitive POC)
+- RAG with pgvector for clinical guideline grounding
+- Multi-channel support (Streamlit UI, WhatsApp webhook)
+- Docker-based development environment (all services containerized)
 
-**Important:** This is a prototype. Tool responses contain mocked data, but input/output schemas represent architectural slots for future integration.
+**Important:** This is a prototype. Tool responses contain mocked data for commodity/pharmacy orders, but database schemas and tool interfaces represent architectural slots for future integration with real APIs (EHR, pharmacy systems, etc.).
 
 ## Setup Commands
 
@@ -46,25 +48,7 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 - **Stop services:** `make down`
 - **Reset database:** `make reset-db` (destructive)
 
-### Local Development (without Docker)
-
-1. **Create virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set environment variables** (see above)
-
-4. **Run application:**
-   ```bash
-   python streamlit_server.py
-   ```
+**Note:** All development is Docker-based. No local Python or PostgreSQL setup required.
 
 ## Code Style
 
@@ -86,15 +70,25 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 ### Important Patterns
 
 - **Context Variables:** Use `contextvars.ContextVar` for thread-safe user context (see `src/utils/context.py`)
+  - `current_user_id`: User UUID
+  - `current_user_age`: User age for triage
+  - `current_user_gender`: User gender for triage
+  - `current_user_timezone`: User timezone for time-aware prompts
 - **Tool Responses:** Triage tool returns structured JSON; other tools return strings (see `docs/tools.md`)
 - **Error Handling:** Tools should handle missing/invalid inputs gracefully
 - **Logging:** Use `src/utils/logger.py` for consistent logging
+- **Database Tables:** 
+  - `users`: User profiles with demographics and timezone
+  - `interactions`: Full audit trail of agent conversations
+  - `consents`: User consent records for sensitive actions
+  - `providers`: Healthcare providers by specialty and location
+  - `appointments`: Scheduled appointments with sync status
 
 ## Testing Instructions
 
 ### Database Testing
 
-- **Test connection:** `make test-db` (in container) or `make test-db-local` (local)
+- **Test connection:** `make test-db`
 - **Check and seed:** `make seed-db-auto` (automatically seeds if empty)
 
 ### Manual Testing
@@ -118,35 +112,44 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 ├── webhook_server.py       # FastAPI webhook server entry point
 ├── src/
 │   ├── agent.py           # LangGraph agent with tool calling
+│   ├── config.py          # Application configuration
+│   ├── db.py              # Database connection utilities
 │   ├── channels/
+│   │   ├── base.py        # Channel abstraction base class
 │   │   ├── streamlit.py   # Streamlit channel handler
 │   │   └── whatsapp.py    # WhatsApp channel handler
-│   ├── db.py              # Database connection utilities
 │   ├── tools/             # Tool implementations
-│   │   ├── triage.py      # Triage and risk flagging
-│   │   ├── commodity.py  # Commodity orders
-│   │   ├── pharmacy.py   # Pharmacy orders
-│   │   ├── referrals.py  # Referrals and scheduling
-│   │   └── database.py   # Database queries
+│   │   ├── triage.py      # Verified triage with Lean
+│   │   ├── commodity.py   # Commodity orders (mock)
+│   │   ├── pharmacy.py    # Pharmacy orders (mock)
+│   │   ├── referrals.py   # Referrals and scheduling
+│   │   ├── rag.py         # RAG with citations
+│   │   └── database.py    # Database queries
 │   └── utils/             # Shared utilities
-│       ├── context.py     # Context variables
+│       ├── context.py     # Thread-safe context variables
 │       ├── interactions.py # Interaction storage
-│       └── logger.py      # Logging utilities
+│       ├── logger.py      # Logging utilities
+│       └── user_lookup.py # User identification
 ├── scripts/               # Database management scripts
 │   ├── db_create_tables.py
 │   ├── db_seed.py
 │   ├── db_check_and_seed.py
 │   └── db_test_connection.py
 ├── docs/                  # Human-facing documentation
-│   ├── agent.md          # Agent architecture
-│   ├── tools.md          # Tool documentation
-│   ├── database.md       # Database schema
-│   └── fixtures.md       # Fixture data structure
-├── fixtures/             # Seed data
+│   ├── agent.md           # Agent architecture
+│   ├── tools.md           # Tool documentation
+│   ├── database.md        # Database schema
+│   ├── triage-verification.md # Verified triage approach
+│   ├── rag.md             # RAG architecture
+│   └── whatsapp.md        # WhatsApp integration
+├── fixtures/              # Seed data
 │   └── seed_data.json
 ├── docker-compose.yml     # Docker services
-├── Dockerfile            # App container image
-└── Makefile             # Common commands
+├── Dockerfile             # App container image
+├── Makefile               # Common commands
+├── README.md              # Project overview
+├── SETUP.md               # Installation & configuration
+└── AGENTS.md              # AI agent instructions (this file)
 ```
 
 ## Database Management
@@ -242,8 +245,13 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ## References
 
+- **Project Overview:** `README.md`
+- **Setup Guide:** `SETUP.md`
 - **Agent Architecture:** `docs/agent.md`
 - **Tool Documentation:** `docs/tools.md`
 - **Database Schema:** `docs/database.md`
+- **Verified Triage:** `docs/triage-verification.md`
+- **RAG Architecture:** `docs/rag.md`
+- **WhatsApp Integration:** `docs/whatsapp.md`
 - **Testing Guide:** `docs/testing.md`
 

@@ -67,9 +67,6 @@ shell-db: ## open psql shell in database container
 test-db: ## test database connection
 	docker-compose exec streamlit python scripts/db_test_connection.py
 
-test-db-local: ## test database connection from local machine
-	python scripts/db_test_connection.py
-
 # use streamlit container for db scripts (has python + codebase mounted)
 APP_CONTAINER = streamlit
 

@@ -1,186 +1,338 @@
-# Self-Care Agent Framework
+# Self-Care Agent Framework (SCAF)
 
-General-purpose healthcare self-care agent framework with core functionalities for triage, commodity ordering, pharmacy services, and referrals. Built with LangGraph for multi-step reasoning and tool chaining.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## P0: Core Framework
+**Proof-of-concept for a stigma-free, AI-powered self-care agent for LMIC settings.**
 
-The current implementation provides a foundational agent framework with essential self-care capabilities:
+The Self-Care Agent Framework is a standardized set of APIs, digital self-care protocols, and safety governance layers that any certified AI system can invoke to deliver evidence-based self-care, triage, and referral services.
 
-### Core Features
 
-- **Multi-Channel Support**: Unified agent accessible via multiple channels
-  - Streamlit UI for web-based interactions
-  - WhatsApp webhook integration for messaging
-  - Extensible channel architecture for future integrations
+## Why This Matters
 
-- **Agent Architecture**:
-  - LangGraph-based agent with native tool calling
-  - Multi-step reasoning and automatic tool chaining
-  - Context-aware tool execution with user session management
+### The Problem
+In low- and middle-income countries, people face significant barriers to healthcare:
+- **Stigma** prevents individuals from seeking care for sensitive health concerns (HIV, TB, sexual health, mental health)
+- **Cost and access** issues lead to delayed care or unnecessary clinic visits
+- **Fragmented systems** mean patient context is lost across pharmacies, labs, and clinics
+- **Language and literacy barriers** exclude rural and underserved communities
 
-- **Core Tools**:
-  - **Triage & Risk Assessment**: Symptom evaluation and risk flagging
-  - **Commodity Orders**: Self-test kits and health commodity fulfillment
-  - **Pharmacy Services**: Prescription refills and medication orders
-  - **Referrals & Scheduling**: Clinical appointment booking and referrals
-  - **Database Queries**: User data and interaction history access
+### The Idea
+- **Stigma-free navigation and triage:** Individuals privately ask sensitive questions via voice or text on any channel, receiving validated guidance in plain, non-judgmental language.
+- **Right-siting of care:** AI safely triages cases, guiding low-risk conditions to self-care while escalating urgent cases to providers, reducing costs and unnecessary visits.
+- **Continuity across channels:** With user consent, a longitudinal record maintains context between pharmacies, labs, telemedicine, and clinics to improve adherence and follow-up.
+- **Seamless access to services:** One interaction can order self-tests, book labs, schedule teleconsults, or arrange pharmacy pickup/delivery.
+- **Equity at scale:** Works in any language, supports low-literacy users via audio/voice, runs on WhatsApp/SMS and basic mobile networks.
+- **Governed safety:** Every interaction runs through certified Self-Care Protocol APIs with continuous monitoring, ensuring evidence-based, traceable, compliant advice.
 
-- **Infrastructure**:
-  - PostgreSQL database for user data and interactions
-  - Docker-based development environment
-  - Separate containers for UI and webhook services
-  - Automatic interaction logging and storage
 
-### Architecture Highlights
+## What This POC Demonstrates
 
-- **Channel Abstraction**: Base channel handler class for consistent agent access
-- **Shared Agent Core**: Single agent instance used across all channels
-- **Tool-Based Workflow**: Modular tools that can be chained based on user needs
-- **User Context Management**: Thread-safe user context for multi-user scenarios
+This prototype proves the **technical and clinical feasibility** of the core SCAF architecture:
 
-### Design Decision: Single Agent Architecture
+### Implemented & Working
 
-The framework uses a **single agent** approach where one agent orchestrates all interactions and tool calls. This design choice offers:
+#### 1. Agent Metacognition via Dynamic Graph
+- **LangGraph-based agent** with conditional routing and multi-step reasoning
+- **Dynamic tool chaining**: Agent autonomously decides which tools to call and in what order based on user needs
+- **Stateful conversations**: Maintains context across multi-turn interactions
+- **Prompting strategies**: Context-aware system prompts with patient demographics, timezone, and current time
 
-- **Simplicity**: Single agent is easier to manage, debug, and maintain
-- **Flexibility**: Agent can dynamically chain any combination of tools based on user needs
-- **Consistency**: Unified reasoning and decision-making across all interactions
-- **Tool Specialization**: Specialized functionality lives in tools, not separate agents
+*Details: [docs/agent.md](docs/agent.md)*
 
-**Alternative Consideration (Multi-Agent)**: For P1 HIV use case, we could consider a specialized HIV agent that collaborates with the main agent, but the current single-agent design with specialized tools is likely sufficient and maintains simplicity.
+#### 2. Dynamic Tool Calling
+- **StructuredTool definitions** with Pydantic input schemas for type-safe tool invocation
+- **Native tool binding** via LangChain for seamless LLM-to-tool communication
+- **Tool chaining patterns**: Triage → Referral → Database queries automatically orchestrated
+- **Intelligent routing**: Heart symptoms → cardiologist, pregnancy → obstetrics (prompt-based, not hardcoded rules)
 
-## P1: HIV Use Case Extension
+*Details: [docs/tools.md](docs/tools.md)*
 
-Building on the core framework, the next phase will add HIV-specific modules without changing the underlying architecture:
+#### 3. Verified Triage via Formal Logic (Primitive POC)
+- **Simplified WHO iITT protocol** implementation using compiled Lean formal logic (basic ruleset, not comprehensive)
+- **Binary executable triage** demonstrates concept of verified logic (no LLM hallucination risk for acuity assessment)
+- **Red/yellow/green classification** with basic rule-based recommendations
+- **Vitals collection** through structured questioning before triage execution
 
-### Planned Modules
+> **Note:** Early-stage POC with limited protocol coverage. Production requires comprehensive clinical logic.
 
-- **HIV-Specific Tools**:
-  - HIV risk assessment and testing guidance
-  - PrEP/PEP information and access
-  - ART medication management
-  - HIV care navigation and support
+*Details: [docs/triage-verification.md](docs/triage-verification.md)*
 
-- **Clinical Protocols**:
-  - HIV testing protocols and recommendations
-  - Treatment adherence support
-  - Stigma reduction and counseling guidance
-  - Linkage to care workflows
+#### 4. RAG with Clinical Grounding
+- **Semantic search** over clinical guidelines using pgvector
+- **Source attribution**: Every RAG response includes document citations
+- **Mock guideline grounding**: Demonstrates integration pattern for real WHO/national guidelines
 
-- **Data & Analytics**:
-  - HIV-specific interaction tracking
-  - Testing and treatment outcome metrics
-  - Care pathway analytics
+*Details: [docs/rag.md](docs/rag.md)*
 
-### Implementation Approach
+#### 5. Multi-Channel Support
+- **Streamlit UI**: Web-based chat interface with visual source display
+- **WhatsApp webhook**: Full integration with message handling and user lookup
+- **Mock phone login**: E.164 phone number-based user identification
+- **Channel abstraction**: Unified agent accessible via any channel with consistent behavior
 
-- **No Architectural Changes**: All HIV functionality will be added as new tools and protocols
-- **Reuse Existing Infrastructure**: Leverage current channel architecture, database, and agent framework
-- **Modular Design**: HIV tools will follow the same pattern as existing tools
-- **Backward Compatible**: Core self-care functionality remains unchanged
-- **Single Agent Continuation**: HIV functionality will be integrated into the existing single agent through specialized tools, maintaining the current architecture's simplicity and flexibility
+*Details: [docs/whatsapp.md](docs/whatsapp.md)*
 
-## Setup
+#### 6. Database & Memory Layer
+- **PostgreSQL** with user profiles, interaction history, consents, providers, and appointments
+- **User context**: Demographics (age, gender), timezone, country for localized routing
+- **Audit trail**: Full interaction logging with tool calls, triage results, and risk levels
+- **Provider matching**: Database-backed provider routing by specialty and location
 
-### Option 1: Docker (Recommended)
+*Details: [docs/database.md](docs/database.md)*
 
-1. **Install Docker and Docker Compose**:
-   - Download from [docker.com](https://www.docker.com/products/docker-desktop)
-   - Ensure Docker Desktop is running
+### Mocked (Architectural Slots for Production)
 
-2. **Create `.env` file**:
+> **Note:** These components use **mock data** but have **real schemas and integration patterns** ready for production APIs.
+
+**Provider availability**
+- Current: Static seed data
+- Production: Integrate with EHR scheduling APIs (Epic, Cerner, OpenMRS) via FHIR
+
+**Appointment times**
+- Current: User-specified or defaults
+- Production: Real-time calendar availability queries
+
+**Commodity fulfillment**
+- Current: Mock order IDs
+- Production: Integration with pharmacy/logistics systems (ShopRite, Dis-Chem)
+
+**Clinical guidelines**
+- Current: Sample RAG documents
+- Production: Load validated WHO/national self-care protocols
+
+**External scheduling**
+- Current: Database-only
+- Production: Dual-write to local DB + external scheduling system
+
+**Key Insight:** The tool interfaces, database schemas, and data flows are **production-ready**. Integration simply swaps mock data sources for real APIs.
+
+## Why This Is Better Than Generic ChatGPT
+
+**SCAF goes beyond generic LLMs:**
+
+- **Verified triage via formal logic (Lean)** instead of hallucinated medical advice
+- **Cited sources for all clinical guidance** instead of no source attribution
+- **LMIC-specific with local provider/pharmacy/lab integrations** instead of generic global context
+- **Age, gender, timezone, country context in every interaction** instead of no patient specificity
+- **Multi-step reasoning with tool chaining** (triage → consent → schedule) instead of one-shot responses
+- **RAG over validated self-care protocols** instead of no clinical grounding
+- **WhatsApp, SMS, IVR-ready architecture** instead of no integration
+- **Full interaction logging for safety monitoring** instead of no audit trail
+- **Self-care focused, avoids diagnosis claims** instead of diagnostic language
+
+> **Key Takeaway:** The "last 20%" of clinical correctness comes from grounding every response in validated protocols, verified triage logic, and governed safety layers rather than relying solely on LLM knowledge.
+
+## Quick Start
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) (required)
+- [OpenAI API Key](https://platform.openai.com/api-keys) (required)
+- [VS Code](https://code.visualstudio.com/) (recommended)
+
+### Installation
+
    ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` and set `OPENAI_API_KEY=your_key_here`
+make up && make create-tables && make seed-db
+# Open http://localhost:8501
+# Login with: jack.yang@gatesfoundation.org
+```
 
-3. **Start services**:
+> **Note:** All services run in Docker containers. No local Python or PostgreSQL setup required.
+
+<details>
+<summary><b>Optional: LangSmith Integration for Observability</b></summary>
+
+To trace LLM calls, monitor costs, and audit agent behavior:
+
+1. Create free account at [LangSmith](https://smith.langchain.com/)
+2. Add to `.env`:
    ```bash
-   make up
+   LANGCHAIN_TRACING_V2=true
+   LANGCHAIN_API_KEY=your_langsmith_key
+   LANGCHAIN_PROJECT=scaf-poc
    ```
+3. Restart: `make change`
+4. View traces at https://smith.langchain.com/
 
-4. **Create database tables**:
-   ```bash
-   make create-tables
-   ```
+See every tool call, token usage, and conversation flow in real-time.
 
-5. **Seed database (optional)**:
-   ```bash
-   make seed-db
-   ```
+</details>
 
-The Streamlit UI will be available at `http://localhost:8501`
+For detailed installation instructions, environment configuration, troubleshooting, and development workflows, see **[SETUP.md](SETUP.md)**.
 
-### Option 2: Local Development
+## Technical Architecture
 
-1. Create and activate virtual environment:
+<details>
+<summary><b>High-Level Flow</b></summary>
 
-```
-python3 -m venv venv
-source venv/bin/activate
-```
+**Full System Architecture:** [View detailed diagram](https://bmgf-my.sharepoint.com/:u:/r/personal/jack_yang_gatesfoundation_org/_layouts/15/Doc.aspx?sourcedoc=%7B603ad649-8ba7-4558-855a-3f05b268c58a%7D&action=edit)
 
-2. Install dependencies:
+**Simplified Flow:**
 
 ```
-pip install -r requirements.txt
+User Input (Streamlit/WhatsApp)
+           ↓
+   Agent (GPT-4 + LangGraph)
+           ↓
+   Dynamic Tool Selection
+           ↓
+┌─────────────┬──────────────┬───────────────┬──────────────┬─────────┐
+│   Triage    │  Scheduling  │   Database    │     RAG      │  Other  │
+│ (Lean POC)  │  (Providers  │ (PostgreSQL)  │ (pgvector)   │ (Mocked)│
+│             │   + Appts)   │               │              │         │
+└─────────────┴──────────────┴───────────────┴──────────────┴─────────┘
+           ↓
+ Interaction Storage & Audit Trail
+         (PostgreSQL)
+           ↓
+   Response with Citations
 ```
 
-3. Create `.env` file and add your OpenAI API key:
+> **Note:** "Other" includes commodity orders and pharmacy tools (mock APIs demonstrating integration patterns).
+
+</details>
+
+### Key Components
+
+- **Agent Layer**: LangGraph orchestration with GPT-4, conditional routing, multi-turn state
+- **Tool Layer**: Modular, type-safe tools with structured I/O (triage, scheduling, RAG, database)
+- **Verification Layer**: Lean-compiled triage binary for formal correctness
+- **Memory Layer**: PostgreSQL with user profiles, interaction history, providers, appointments
+- **Channel Layer**: Abstracted handlers for Streamlit, WhatsApp, future SMS/IVR
+
+## Project Structure
+
+<details>
+<summary><b>Expand to view full directory structure</b></summary>
 
 ```
-cp .env.example .env
+.
+├── src/
+│   ├── agent.py                    # LangGraph agent with tool calling
+│   ├── config.py                   # Application configuration
+│   ├── db.py                       # Database connection utilities
+│   ├── channels/                   # Multi-channel support
+│   │   ├── base.py                # Channel abstraction
+│   │   ├── streamlit.py           # Web UI handler
+│   │   └── whatsapp.py            # WhatsApp webhook handler
+│   ├── tools/                      # Tool implementations
+│   │   ├── triage.py              # Verified triage with Lean
+│   │   ├── referrals.py           # Appointment scheduling
+│   │   ├── rag.py                 # RAG with citations
+│   │   ├── database.py            # User data queries
+│   │   ├── commodity.py           # Commodity orders (mock)
+│   │   └── pharmacy.py            # Pharmacy orders (mock)
+│   └── utils/                     # Shared utilities
+│       ├── context.py             # Thread-safe context variables
+│       ├── interactions.py        # Interaction logging
+│       ├── logger.py              # Logging configuration
+│       └── user_lookup.py         # User identification
+├── docs/                           # Technical documentation
+│   ├── agent.md                   # Agent architecture
+│   ├── tools.md                   # Tool specifications
+│   ├── database.md                # Database schema & queries
+│   ├── triage-verification.md     # Verified triage approach
+│   ├── rag.md                     # RAG architecture
+│   └── whatsapp.md                # WhatsApp integration
+├── bin/
+│   └── triage-verifier            # Lean-compiled triage binary
+├── fixtures/
+│   └── seed_data.json             # Mock users, providers, consents
+├── scripts/                        # Database management
+│   ├── db_create_tables.py
+│   ├── db_seed.py
+│   └── db_test_connection.py
+├── streamlit_server.py             # Streamlit UI entry point
+├── webhook_server.py               # WhatsApp webhook entry point
+├── docker-compose.yml              # Multi-container orchestration
+├── Dockerfile                      # Application container
+├── Makefile                        # Development commands
+├── requirements.txt                # Python dependencies
+├── README.md                       # Project overview (this file)
+├── SETUP.md                        # Installation & configuration
+└── AGENTS.md                       # AI coding assistant instructions
 ```
 
-Then edit `.env` and set `OPENAI_API_KEY=your_key_here`
+</details>
 
-4. **Set up PostgreSQL** (if not using Docker):
-   - Install PostgreSQL locally
-   - Update `.env` with your database credentials
+## What's Next
 
-## Usage
+### Near-Term (Production MVP)
+- [ ] Integrate real EHR scheduling APIs (Epic/Cerner/OpenMRS via FHIR)
+- [ ] Load validated WHO self-care protocols into RAG system
+- [ ] Connect pharmacy/logistics APIs (ShopRite, Dis-Chem, public-sector)
+- [ ] Add SMS and IVR channels for low-data access
+- [ ] Multi-language support (Swahili, Zulu, French, Portuguese)
+- [ ] LangSmith integration for LLM tracing, cost analysis, and auditability
+- [ ] Safety monitoring dashboard for red-flag interactions
 
-### Docker
+### Medium-Term (Scale & Governance)
+- [ ] National guideline adapters for South Africa, Kenya, Nigeria
+- [ ] Continuous safety monitoring and audit reporting
+- [ ] Integration with national health information systems
+- [ ] Community health worker interface for assisted interactions
+- [ ] Offline-first mobile app for low-connectivity areas
 
-```bash
-# Start all services
-make up
+### Long-Term (Ecosystem)
+- [ ] Certification framework for third-party AI systems
+- [ ] Open API standard for self-care protocol invocation
+- [ ] Multi-country deployment with localized protocols
+- [ ] Integration with insurance/payment systems
 
-# View logs
-make logs
+## Architecture Decisions
 
-# Stop services
-make down
+<details>
+<summary><b>Why Single Agent (Not Multi-Agent)?</b></summary>
 
-# See all available commands
-make help
-```
+The framework uses **one agent** that orchestrates all tools rather than multiple specialized agents. This choice prioritizes:
+- **Simplicity**: Easier to debug, maintain, and reason about
+- **Flexibility**: Agent can dynamically chain any tool combination
+- **Consistency**: Unified decision-making across all interactions
+- **Tool specialization**: Complex logic lives in tools (verified triage, RAG), not agent orchestration
 
-The Streamlit UI will be available at `http://localhost:8501`
+> **Note:** For future HIV/TB/mental health verticals, specialized logic will be added as **new tools**, not new agents, maintaining architectural simplicity.
 
-### Local Development
+</details>
 
-```
-source venv/bin/activate
-python streamlit_server.py
-```
+<details>
+<summary><b>Why PostgreSQL (Not Document Store)?</b></summary>
 
-Then wait for interface to launch at `http://localhost:8501`
+Relational database chosen for:
+- **ACID compliance** for clinical data integrity
+- **Structured audit trails** with foreign key relationships
+- **SQL expressiveness** for complex queries (user history, provider matching)
+- **pgvector extension** enables semantic search without separate vector DB
 
-## Structure
+</details>
 
-- `streamlit_server.py` - Streamlit UI server entry point
-- `webhook_server.py` - FastAPI webhook server entry point
-- `src/agent.py` - LangGraph agent with tool calling
-- `src/channels/` - Channel handlers
-  - `base.py` - Base channel handler class
-  - `streamlit.py` - Streamlit UI channel
-  - `whatsapp.py` - WhatsApp webhook channel
-- `src/tools/` - Tool implementations
-  - `triage.py` - Triage and risk assessment
-  - `commodity.py` - Commodity orders
-  - `pharmacy.py` - Pharmacy services
-  - `referrals.py` - Referrals and scheduling
-  - `database.py` - Database queries
-- `src/utils/` - Shared utilities (logger, context, user lookup, etc.)
-- `src/config.py` - Application configuration defaults
+<details>
+<summary><b>Why Mock Data (Not Real Integrations)?</b></summary>
+
+POC focuses on **proving the architecture works** before tackling integration complexity. Mock data demonstrates:
+- Correct data flows and schemas
+- Tool chaining patterns
+- Integration points (architectural slots)
+
+> **Note:** Production swaps mock data sources for real APIs **without changing tool interfaces**.
+
+</details>
+
+## License
+
+MIT License
+
+Copyright (c) 2024 Bill & Melinda Gates Foundation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+## Contact
+
+Jack Yang  
+AI Fellow, Gates Foundation Global Health  
+jack.yang@gatesfoundation.org
