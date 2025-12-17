@@ -1,17 +1,29 @@
 """langgraph agent with native tool calling."""
 
 import json
+import os
+
 from datetime import datetime
-from typing import TypedDict, Annotated, Optional, List, Dict, Any, Literal
+from pathlib import Path
+from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
+
 import pytz
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+import yaml
+
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode
+
 from src.tools import TOOLS
+from src.utils.context import (
+    current_user_age,
+    current_user_gender,
+    current_user_id,
+    current_user_timezone,
+)
+from src.utils.interactions import extract_tool_info_from_messages, save_interaction
 from src.utils.logger import get_logger
-from src.utils.context import current_user_id, current_user_age, current_user_gender, current_user_timezone
-from src.utils.interactions import save_interaction, extract_tool_info_from_messages
 
 logger = get_logger("agent")
 
@@ -24,111 +36,122 @@ class AgentState(TypedDict, total=False):
     user_id: Optional[str]
 
 
-SYSTEM_PROMPT = """you are a healthcare self-care assistant helping users access health services and commodities in low and middle income country settings.
+# system prompt configuration
+DEFAULT_PROMPT_VERSION = "v1"
 
-## core workflow
 
-**step 1: triage first**
-when users report symptoms, health concerns, or ask "should i see a doctor?", immediately call triage_and_risk_flagging. this is mandatory for any health-related query.
+def _get_default_prompt_path() -> Path:
+    """get default path to system prompt yaml file."""
+    return Path(__file__).resolve().parent.parent / "config" / "system_prompt.yaml"
 
-**step 2: fulfill all requests**
-after triage, review the original user request. if the user asked for medication, commodities, or services, call the appropriate tool (commodity, pharmacy, or referrals). complete all requested actions before ending.
 
-**step 3: chain tools as needed**
-use tool results to determine next steps:
-- triage → commodity/pharmacy (if user requested medication)
-- triage → referrals (if risk level warrants and user consents)
-- analyze each tool result and call additional tools if indicated
+def _load_system_prompt() -> Dict[str, str]:
+    """load system prompt from yaml file.
 
-## risk-based actions (who iitt - interagency integrated triage tool)
+    supports environment variable overrides:
+    - SYSTEM_PROMPT_PATH: custom path to prompt yaml file
+    - SYSTEM_PROMPT_VERSION: override version metadata
 
-**red (high acuity):**
-1. provide emergency safety instructions immediately (e.g., "if symptoms worsen, go to emergency immediately")
-2. strongly recommend clinical evaluation
-3. ask: "would you like me to schedule an appointment for you?"
-4. if user agrees, ask: "do you have a preferred date and time, or would you like the earliest available?"
-5. when calling referrals tool, choose appropriate specialty based on symptoms:
-   - cardiac/heart/chest pain → cardiology
-   - pregnancy/prenatal → obstetrics
-   - children (age < 12) → pediatrics
-   - otherwise → general_practice
-6. only call referrals tool after explicit user consent
-7. never suggest "continue monitoring" for emergency symptoms (chest pain, severe breathing difficulty, etc.)
+    returns:
+        dict with 'prompt', 'version', and 'path' keys
 
-**yellow (moderate acuity):**
-1. recommend clinical evaluation soon
-2. ask if user wants to schedule before calling referrals tool
-3. if user agrees, ask about date/time preferences (or use earliest available if not specified)
+    raises:
+        FileNotFoundError: if prompt file not found
+        ValueError: if prompt file missing 'prompt' field
+    """
+    prompt_path_env = os.getenv("SYSTEM_PROMPT_PATH")
+    prompt_path = (
+        Path(prompt_path_env).expanduser()
+        if prompt_path_env
+        else _get_default_prompt_path()
+    )
 
-**green (low acuity):**
-1. suggest self-care or pharmacy support as appropriate
-2. can wait for evaluation if needed
+    if not prompt_path.exists():
+        raise FileNotFoundError(
+            f"system prompt file not found at {prompt_path}. "
+            f"ensure config/system_prompt.yaml exists or set SYSTEM_PROMPT_PATH."
+        )
 
-## safety and consent
+    try:
+        data = yaml.safe_load(prompt_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        raise ValueError(f"failed to parse yaml from {prompt_path}: {exc}") from exc
 
-- prioritize user safety: emergency instructions come before scheduling
-- always ask for consent before scheduling appointments
-- after consent, ask for scheduling preferences (date, time) before calling referrals tool
-- if user doesn't specify preferences, you may use reasonable defaults
-- wait for user response before proceeding with consent-required tool calls
+    prompt_text = data.get("prompt")
+    if not prompt_text:
+        raise ValueError(f"missing 'prompt' field in {prompt_path}")
 
-## communication
+    prompt_version = str(data.get("version", DEFAULT_PROMPT_VERSION))
 
-- be clear and empathetic
-- provide clear summaries when tool results indicate completion
-- when confirming appointments, always include: provider name, facility, date, time, and reason
-- verify you have fulfilled every part of the user's original request before ending"""
+    # allow env override for version metadata
+    env_version = os.getenv("SYSTEM_PROMPT_VERSION")
+    if env_version:
+        prompt_version = env_version
+
+    return {
+        "prompt": prompt_text,
+        "version": prompt_version,
+        "path": str(prompt_path),
+    }
+
+
+# load prompt at module initialization
+SYSTEM_PROMPT_DATA = _load_system_prompt()
+logger.info(
+    f"loaded system prompt version={SYSTEM_PROMPT_DATA['version']} from {SYSTEM_PROMPT_DATA['path']}"
+)
 
 
 def create_agent(llm_model: str, temperature: float) -> Any:
-    """create a langgraph agent with native tool calling."""
+    """create a langgraph agent with tool calling and multi-step reasoning.
+
+    the agent uses a state graph with conditional routing:
+    - agent node: calls llm with system prompt and tool bindings
+    - tools node: executes tool calls and returns results
+    - loop continues until no more tool calls needed
+
+    args:
+        llm_model: openai model name (e.g., "gpt-4o")
+        temperature: llm temperature (0.0-1.0)
+
+    returns:
+        compiled langgraph workflow
+    """
     llm = ChatOpenAI(model=llm_model, temperature=temperature)
     llm_with_tools = llm.bind_tools(TOOLS)
-
     tool_node = ToolNode(TOOLS)
 
     def should_continue(state: AgentState) -> Literal["tools", "end"]:
-        """determine if we should continue or end."""
-        messages = state["messages"]
-        last_message = messages[-1]
-
-        # only AIMessage can have tool_calls
+        """route to tools if llm made tool calls, otherwise end."""
+        last_message = state["messages"][-1]
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tools"
         return "end"
 
     def call_model(state: AgentState) -> Dict[str, List[AIMessage]]:
-        """call the llm with tools."""
-        # note: user_id context is set in process_message() before agent.invoke()
-        # use system prompt from state if available, otherwise use default
-        system_prompt = state.get("system_prompt", SYSTEM_PROMPT)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            *state["messages"],
-        ]
+        """invoke llm with system prompt and conversation history."""
+        system_prompt = state.get("system_prompt", SYSTEM_PROMPT_DATA["prompt"])
+        messages = [{"role": "system", "content": system_prompt}, *state["messages"]]
         response = llm_with_tools.invoke(messages)
-        
-        # log when agent decides to call tools
+
         if hasattr(response, "tool_calls") and response.tool_calls:
             for tool_call in response.tool_calls:
-                tool_name = tool_call.get("name", "unknown")
-                tool_args = tool_call.get("args", {})
-                logger.info(f"calling tool: {tool_name} with args: {tool_args}")
-        
+                logger.info(
+                    f"tool call: {tool_call.get('name', 'unknown')} "
+                    f"args={tool_call.get('args', {})}"
+                )
+
         return {"messages": [response]}
 
     def call_tools(state: AgentState) -> Dict[str, List[ToolMessage]]:
-        """call tools with user context set."""
-        # note: user_id context is set in process_message() before agent.invoke()
-        # call the standard tool node
+        """execute tool calls and return results."""
         result = tool_node.invoke(state)
-        
-        # log tool results after execution
+
         if isinstance(result, dict) and "messages" in result:
             for msg in result["messages"]:
                 if isinstance(msg, ToolMessage):
-                    logger.info(f"tool result: {msg.content[:200]}")
-        
+                    logger.info(f"tool result: {msg.content[:200]}...")
+
         return result
 
     workflow = StateGraph(AgentState)
@@ -136,23 +159,96 @@ def create_agent(llm_model: str, temperature: float) -> Any:
     workflow.add_node("tools", call_tools)
     workflow.set_entry_point("agent")
     workflow.add_conditional_edges(
-        "agent",
-        should_continue,
-        {
-            "tools": "tools",
-            "end": END,
-        },
+        "agent", should_continue, {"tools": "tools", "end": END}
     )
-
     workflow.add_edge("tools", "agent")
 
-    # above is a loop that will continue to call the agent until the end is reached
-    # multi-step reasoning
-    # tool chaining
-    # error correction (If a tool result is insufficient, the model may call it again with new params)
-    # safety checks (The agent can inject guardrails between tool calls)
-
     return workflow.compile()
+
+
+def _build_patient_context(
+    age: Optional[int], gender: Optional[str], timezone: str
+) -> str:
+    """build patient context section for system prompt.
+
+    args:
+        age: patient age
+        gender: patient gender
+        timezone: patient timezone (e.g., "America/New_York")
+
+    returns:
+        formatted context string to append to system prompt
+    """
+    context_parts = []
+
+    # add current time in user's timezone
+    try:
+        tz = pytz.timezone(timezone) if timezone else pytz.UTC
+        current_time = datetime.now(tz)
+        time_str = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
+    except Exception:
+        current_time = datetime.now(pytz.UTC)
+        time_str = current_time.strftime("%A, %B %d, %Y at %I:%M %p UTC")
+
+    context_parts.append(f"Current time: {time_str}")
+
+    if age is not None:
+        context_parts.append(f"Age: {age}")
+    if gender is not None:
+        context_parts.append(f"Gender: {gender}")
+
+    if not context_parts:
+        return ""
+
+    context_lines = "\n".join(f"- {part}" for part in context_parts)
+    return (
+        f"\n\n## current patient context\n\n{context_lines}\n\n"
+        f"use this information to provide appropriate, personalized care. "
+        f"use the current time to schedule appointments appropriately "
+        f"(e.g., 'tomorrow' means the next day from current time)."
+    )
+
+
+def _extract_rag_sources(messages: List) -> List[Dict[str, Any]]:
+    """extract rag sources from tool messages.
+
+    args:
+        messages: list of agent messages
+
+    returns:
+        list of source dicts with title, content_type, similarity
+    """
+    # find rag tool call ids
+    rag_tool_call_ids = []
+    for msg in messages:
+        if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
+            for tool_call in msg.tool_calls:
+                if tool_call.get("name") == "rag_retrieval":
+                    tool_call_id = tool_call.get("id")
+                    if tool_call_id:
+                        rag_tool_call_ids.append(tool_call_id)
+
+    # extract sources from matching tool messages
+    sources = []
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            tool_call_id = getattr(msg, "tool_call_id", None)
+            if tool_call_id in rag_tool_call_ids:
+                try:
+                    data = json.loads(msg.content)
+                    if isinstance(data, dict) and "documents" in data:
+                        for doc in data["documents"]:
+                            sources.append(
+                                {
+                                    "title": doc.get("title", "Unknown"),
+                                    "content_type": doc.get("content_type"),
+                                    "similarity": doc.get("similarity", 0),
+                                }
+                            )
+                except (json.JSONDecodeError, KeyError, AttributeError):
+                    pass
+
+    return sources
 
 
 def process_message(
@@ -164,8 +260,21 @@ def process_message(
     user_gender: Optional[str] = None,
     user_timezone: Optional[str] = None,
 ) -> tuple[str, list[dict[str, str]]]:
-    """process a user message through the agent."""
-    # set context variables once at the start for tools to access
+    """process user message through agent and return response with sources.
+
+    args:
+        agent: compiled langgraph agent
+        user_input: user message text
+        conversation_history: previous messages (list of {"role": str, "content": str})
+        user_id: user uuid
+        user_age: user age for triage/context
+        user_gender: user gender for triage/context
+        user_timezone: user timezone for scheduling (default: UTC)
+
+    returns:
+        tuple of (response text, rag sources)
+    """
+    # set context variables for tools to access
     if user_id:
         current_user_id.set(user_id)
     if user_age is not None:
@@ -174,40 +283,17 @@ def process_message(
         current_user_gender.set(user_gender)
     if user_timezone is not None:
         current_user_timezone.set(user_timezone)
-    
-    # build dynamic system prompt with user context
-    system_prompt = SYSTEM_PROMPT
+
+    # build system prompt with patient context
     age = current_user_age.get()
     gender = current_user_gender.get()
-    timezone = current_user_timezone.get()
-    
-    # add patient context and current time
-    context_parts = []
-    
-    # add current time in user's timezone
-    try:
-        tz = pytz.timezone(timezone) if timezone else pytz.UTC
-        current_time = datetime.now(tz)
-        context_parts.append(f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p %Z')}")
-    except Exception:
-        # fallback to UTC if timezone invalid
-        current_time = datetime.now(pytz.UTC)
-        context_parts.append(f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p UTC')}")
-    
-    if age is not None:
-        context_parts.append(f"Age: {age}")
-    if gender is not None:
-        context_parts.append(f"Gender: {gender}")
-    
-    if context_parts:
-        user_context = "\n\n## current patient context\n\n" + "\n".join(f"- {part}" for part in context_parts)
-        user_context += "\n\nuse this information to provide appropriate, personalized care. use the current time to schedule appointments appropriately (e.g., 'tomorrow' means the next day from current time)."
-        system_prompt = SYSTEM_PROMPT + user_context
-    
-    # build message history
-    messages = []
+    timezone = current_user_timezone.get() or "UTC"
 
-    # add conversation history if provided
+    patient_context = _build_patient_context(age, gender, timezone)
+    system_prompt = SYSTEM_PROMPT_DATA["prompt"] + patient_context
+
+    # build message history from conversation
+    messages = []
     if conversation_history:
         for msg in conversation_history:
             if msg["role"] == "user":
@@ -215,62 +301,20 @@ def process_message(
             elif msg["role"] == "assistant":
                 messages.append(AIMessage(content=msg["content"]))
 
-    # add current user message
     messages.append(HumanMessage(content=user_input))
 
-    # pass user_id and custom system prompt in state
+    # invoke agent with state
     state = {"messages": messages, "user_id": user_id, "system_prompt": system_prompt}
     result = agent.invoke(state)
 
-    messages = result["messages"]
-    last_message = messages[-1]
+    result_messages = result["messages"]
+    last_message = result_messages[-1]
 
-    # extract RAG sources from tool messages
-    # track which tool calls were RAG to match with results
-    rag_tool_call_ids = []
-    for msg in messages:
-        if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
-            for tool_call in msg.tool_calls:
-                if tool_call.get("name") == "rag_retrieval":
-                    tool_call_id = tool_call.get("id")
-                    if tool_call_id:
-                        rag_tool_call_ids.append(tool_call_id)
-    
-    rag_sources = []
-    for msg in messages:
-        if isinstance(msg, ToolMessage):
-            # check if this tool message corresponds to a RAG tool call
-            tool_call_id = getattr(msg, "tool_call_id", None)
-            if tool_call_id in rag_tool_call_ids:
-                try:
-                    # parse RAG tool response
-                    data = json.loads(msg.content)
-                    if isinstance(data, dict) and "documents" in data:
-                        for doc in data["documents"]:
-                            rag_sources.append({
-                                "title": doc.get("title", "Unknown"),
-                                "content_type": doc.get("content_type"),
-                                "similarity": doc.get("similarity", 0),
-                            })
-                except (json.JSONDecodeError, KeyError, AttributeError):
-                    pass
+    # extract rag sources and tool data
+    rag_sources = _extract_rag_sources(result_messages)
+    tool_data = extract_tool_info_from_messages(result_messages)
 
-    # find tool execution info in message chain (for response formatting only)
-    tool_info = []
-    for i, msg in enumerate(messages):
-        if isinstance(msg, ToolMessage):
-            tool_info.append("tool executed")
-        elif (
-            isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls
-        ):
-            for tool_call in msg.tool_calls:
-                tool_name = tool_call.get("name", "unknown")
-                tool_info.append(f"tool: {tool_name}")
-
-    # extract tool information for interaction storage
-    tool_data = extract_tool_info_from_messages(messages)
-    
-    # save interaction to database (all interactions, not just when tools are called)
+    # save interaction to database
     interaction_id = save_interaction(
         user_input=user_input,
         channel="streamlit",
@@ -282,15 +326,23 @@ def process_message(
         tools_called=tool_data.get("tools_called"),
         user_id=user_id,
     )
-    
+
     if interaction_id:
         logger.info(f"saved interaction: {interaction_id}")
 
+    # format response
     if isinstance(last_message, AIMessage):
         if last_message.content:
+            # append tool execution summary for debugging
+            tool_names = [
+                tool_call.get("name", "unknown")
+                for msg in result_messages
+                if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls")
+                for tool_call in (msg.tool_calls or [])
+            ]
             response = last_message.content
-            if tool_info:
-                response = f"{response}\n\n[tool execution: {', '.join(tool_info)}]"
+            if tool_names:
+                response += f"\n\n[tools used: {', '.join(set(tool_names))}]"
             return response, rag_sources
         elif hasattr(last_message, "tool_calls") and last_message.tool_calls:
             tool_name = last_message.tool_calls[0].get("name", "unknown")
