@@ -39,9 +39,9 @@ def pharmacy_orders_and_fulfillment(
     )
 
     # mock data - production would integrate with pharmacy management systems
-    prescription_id = "RX-67890 (mock)"
-    pharmacy_name = pharmacy or "Main Pharmacy (mock)"
-    ready_date = "2025-12-05 (mock)"
+    prescription_id = "RX-67890"
+    pharmacy_name = pharmacy or "Main Pharmacy"
+    ready_date = "2025-12-05"
 
     # return pydantic model instance
     return PharmacyOutput(
