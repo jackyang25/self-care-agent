@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from src.db import get_db_cursor
+from src.database import get_db_cursor
 from src.utils.context import current_user_id
 from src.utils.logger import get_logger
 

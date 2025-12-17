@@ -5,7 +5,7 @@ import json
 import uuid
 from typing import List, Optional, Dict, Any
 from openai import OpenAI
-from src.db import get_db_cursor
+from src.database import get_db_cursor
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 

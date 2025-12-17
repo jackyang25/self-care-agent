@@ -1,7 +1,7 @@
 """utilities for user lookup during authentication."""
 
 from typing import Optional, Dict, Any
-from src.db import get_db_cursor
+from src.database import get_db_cursor
 from src.utils.logger import get_logger
 
 logger = get_logger("user_lookup")

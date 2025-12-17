@@ -9,7 +9,7 @@ from typing import Optional
 # add project root to path (scripts/db/ -> scripts/ -> root/)
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.db import get_db_cursor
+from src.database import get_db_cursor
 from src.services.rag import store_document
 
 
