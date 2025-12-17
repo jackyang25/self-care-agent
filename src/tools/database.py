@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
 from src.utils.logger import get_logger
-from src.utils.tool_outputs import DatabaseOutput
+from src.schemas.tool_outputs import DatabaseOutput
 
 logger = get_logger("database")
 

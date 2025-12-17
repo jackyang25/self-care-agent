@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from src.db import get_db_cursor
 from src.utils.context import current_user_id
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.utils.tool_outputs import ReferralOutput
+from src.schemas.tool_outputs import ReferralOutput
 
 logger = get_tool_logger("referrals")
 

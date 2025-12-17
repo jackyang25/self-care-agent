@@ -7,9 +7,10 @@ print("=" * 60)
 print("testing triage-verifier executable")
 print("=" * 60)
 
-# get path to executable
+# get path to executable (scripts/tools/ -> scripts/ -> root/)
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(script_dir)
+scripts_dir = os.path.dirname(script_dir)
+project_root = os.path.dirname(scripts_dir)
 executable = os.path.join(project_root, "bin", "triage-verifier")
 
 if not os.path.exists(executable):

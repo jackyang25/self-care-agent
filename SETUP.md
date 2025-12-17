@@ -233,16 +233,16 @@ This will:
 
 ```bash
 # Create tables only
-docker-compose exec streamlit python scripts/db_create_tables.py
+docker-compose exec streamlit python scripts/db/db_create_tables.py
 
 # Seed data only
-docker-compose exec streamlit python scripts/db_seed.py
+docker-compose exec streamlit python scripts/db/db_seed.py
 
 # Clear and reseed
-docker-compose exec streamlit python scripts/db_seed.py --clear
+docker-compose exec streamlit python scripts/db/db_seed.py --clear
 
 # Test connection
-docker-compose exec streamlit python scripts/db_test_connection.py
+docker-compose exec streamlit python scripts/db/db_test_connection.py
 ```
 
 ## Troubleshooting
@@ -356,8 +356,8 @@ See [AGENTS.md](AGENTS.md) for detailed development instructions.
 
 ### Database Schema Changes
 
-1. Update `scripts/db_create_tables.py`
-2. Update `scripts/db_seed.py` if needed
+1. Update `scripts/db/db_create_tables.py`
+2. Update `scripts/db/db_seed.py` if needed
 3. Update `fixtures/seed_data.json` if needed
 4. Reset database:
    ```bash

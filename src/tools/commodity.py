@@ -6,7 +6,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.utils.tool_outputs import CommodityOutput
+from src.schemas.tool_outputs import CommodityOutput
 
 logger = get_tool_logger("commodity")
 

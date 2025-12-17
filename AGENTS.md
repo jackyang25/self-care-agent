@@ -217,7 +217,7 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ### Database Schema Changes
 
-1. Update `scripts/db_create_tables.py`
+1. Update `scripts/db/db_create_tables.py`
 2. Run `make create-tables` to apply changes
 3. Update seed data in `fixtures/seed_data.json` if needed
 4. Document changes in `docs/database.md`

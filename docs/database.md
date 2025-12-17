@@ -398,7 +398,7 @@ with get_db_cursor() as cur:
 
 ### Adding New Columns
 
-1. Update `scripts/db_create_tables.py` with new column definition
+1. Update `scripts/db/db_create_tables.py` with new column definition
 2. Run `make create-tables` (uses `CREATE TABLE IF NOT EXISTS`, so existing tables won't be modified)
 3. For existing databases, create migration script or manually add column:
    ```sql

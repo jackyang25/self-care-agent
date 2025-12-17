@@ -20,7 +20,7 @@ from src.utils.context import (
     current_user_id,
     current_user_timezone,
 )
-from src.utils.interactions import extract_tool_info_from_messages, save_interaction
+from src.services.interactions import extract_tool_info_from_messages, save_interaction
 from src.utils.logger import get_logger
 
 logger = get_logger("agent")

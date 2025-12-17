@@ -3,13 +3,12 @@
 import sys
 from pathlib import Path
 
-# add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-# add scripts to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# add project root to path (scripts/db/ -> scripts/ -> root/)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.db import get_db_cursor
-from db_seed import seed_all
+# import from same directory
+from scripts.db.db_seed import seed_all
 
 
 def is_database_empty() -> bool:

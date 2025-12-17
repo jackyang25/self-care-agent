@@ -3,8 +3,8 @@
 import sys
 from pathlib import Path
 
-# add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# add project root to path (scripts/db/ -> scripts/ -> root/)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.services.rag import store_document
 
@@ -12,7 +12,7 @@ from src.services.rag import store_document
 def seed_sample_documents():
     """seed sample healthcare documents."""
     print("seeding sample healthcare documents...")
-
+    
     documents = [
         {
             "title": "Fever Management Guidelines",
@@ -171,10 +171,7 @@ Seek medical attention if:
 - Head injury preceded vomiting
 - Suspected poisoning""",
             "content_type": "guideline",
-            "metadata": {
-                "category": "symptom_management",
-                "condition": "nausea_vomiting",
-            },
+            "metadata": {"category": "symptom_management", "condition": "nausea_vomiting"},
         },
         {
             "title": "Common Cold and Flu Management",
@@ -362,10 +359,7 @@ When to contact healthcare provider:
 - Need to stop or change medication
 - Starting new medications or supplements""",
             "content_type": "guideline",
-            "metadata": {
-                "category": "preventive_care",
-                "condition": "medication_safety",
-            },
+            "metadata": {"category": "preventive_care", "condition": "medication_safety"},
         },
         {
             "title": "Nutrition and Healthy Eating Basics",
@@ -490,7 +484,7 @@ When to seek medical care:
             "metadata": {"category": "preventive_care", "condition": "dehydration"},
         },
     ]
-
+    
     stored_count = 0
     for doc in documents:
         try:
@@ -504,9 +498,10 @@ When to seek medical care:
             stored_count += 1
         except Exception as e:
             print(f"  ✗ error storing {doc['title']}: {e}")
-
+    
     print(f"✓ seeded {stored_count} sample documents")
 
 
 if __name__ == "__main__":
     seed_sample_documents()
+

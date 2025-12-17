@@ -65,21 +65,21 @@ shell-db: ## open psql shell in database container
 	docker-compose exec db psql -U postgres -d selfcare
 
 test-db: ## test database connection
-	docker-compose exec streamlit python scripts/db_test_connection.py
+	docker-compose exec streamlit python scripts/db/db_test_connection.py
 
 # use streamlit container for db scripts (has python + codebase mounted)
 APP_CONTAINER = streamlit
 
 create-tables: ## create all database tables (main + RAG)
-	docker-compose exec $(APP_CONTAINER) python scripts/db_create_tables.py
-	docker-compose exec $(APP_CONTAINER) python scripts/db_create_rag_tables.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/db_create_tables.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/db_create_rag_tables.py
 
 seed-db: ## seed all database data (main + RAG, idempotent)
-	docker-compose exec $(APP_CONTAINER) python scripts/db_seed.py
-	docker-compose exec $(APP_CONTAINER) python scripts/db_seed_rag_sample.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed_rag_sample.py
 
 clear-db: ## clear all database data but keep tables (destructive)
-	docker-compose exec $(APP_CONTAINER) python scripts/db_seed.py --clear
+	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed.py --clear
 	@echo "note: RAG documents are not cleared by this command"
 
 reset-db: ## completely reset database (delete volumes, recreate tables, seed data)
@@ -100,5 +100,5 @@ stop: down ## alias for down
 start: up ## alias for up
 
 ngrok: ## start ngrok tunnel for webhook (default port 8000)
-	@./scripts/start_ngrok.sh 8000
+	@./scripts/dev/start_ngrok.sh 8000
 

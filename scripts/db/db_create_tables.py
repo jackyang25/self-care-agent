@@ -3,8 +3,8 @@
 import sys
 from pathlib import Path
 
-# add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# add project root to path (scripts/db/ -> scripts/ -> root/)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.db import get_db_cursor
 

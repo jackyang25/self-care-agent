@@ -5,9 +5,9 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.utils.rag import search_documents
+from src.services.rag import search_documents
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.utils.tool_outputs import RAGOutput
+from src.schemas.tool_outputs import RAGOutput
 
 logger = get_tool_logger("rag")
 
