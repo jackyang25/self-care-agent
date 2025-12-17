@@ -1,50 +1,53 @@
-# Fixtures
+# Seeds
 
-Fixture data files for seeding the database are located in `fixtures/` (at the project root). This document describes their structure and usage.
+Seed data files for seeding the database are located in `seeds/` (at the project root). This document describes their structure and usage.
 
-## Fixture Files vs Templates
+## Seed Files vs Templates
 
-- **Fixture files** (e.g., `seed_data.json`) = actual data that gets loaded into the database
-- **Templates** (below) = structure examples for reference when creating new fixtures
+- **Seed files** (e.g., `demo.json`) = actual data that gets loaded into the database
+- **Templates** (below) = structure examples for reference when creating new seed files
 
 ## Structure
 
-Fixture files should be JSON files with the following structure:
+Seed files should be JSON files with the following structure:
 
 ```json
 {
   "users": [...],
   "interactions": [...],
-  "consents": [...]
+  "consents": [...],
+  "providers": [...],
+  "appointments": [...],
+  "documents": [...]
 }
 ```
 
-## Available Fixtures
+## Available Seed Files
 
-- `seed_data.json` - default seed data with example users, interactions, and consents
+- `demo.json` - all demo data (users, interactions, providers, appointments, consents, RAG documents)
 
-You can create additional fixture files (e.g., `test_data.json`, `demo_data.json`) following the same structure.
+You can create additional seed files (e.g., `test.json`, `production.json`) following the same structure.
 
 ## Usage
 
-Seed all tables from `seed_data.json`:
+Seed all data (app + RAG):
 ```bash
-python scripts/seed_db.py
+python scripts/db/seed.py
 ```
 
 Seed a specific table:
 ```bash
-python scripts/seed_db.py --table users
+python scripts/db/seed.py --table users
 ```
 
 Clear existing data before seeding:
 ```bash
-python scripts/seed_db.py --clear
+python scripts/db/seed.py --clear
 ```
 
-Use a different fixture file:
+Use a different seed file:
 ```bash
-python scripts/seed_db.py --file test_data.json
+python scripts/db/seed.py --file test.json
 ```
 
 Or use the Makefile:
@@ -54,7 +57,7 @@ make seed-db
 
 ## Data Structure Templates
 
-Use these templates as a reference when creating new fixture files. The templates show the expected structure and field types.
+Use these templates as a reference when creating new seed files. The templates show the expected structure and field types.
 
 ### Users Template
 ```json

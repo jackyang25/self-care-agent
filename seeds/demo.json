@@ -235,5 +235,34 @@
       },
       "is_active": true
     }
+  ],
+  "documents": [
+    {
+      "title": "Fever Management Guidelines",
+      "content": "Fever is a common symptom that indicates the body is fighting an infection.\n\nFor adults with fever:\n- Rest and stay hydrated by drinking plenty of fluids\n- Take acetaminophen (paracetamol) or ibuprofen to reduce fever and discomfort\n- Monitor temperature regularly\n- Seek medical attention if fever persists for more than 3 days, exceeds 39.4°C (103°F), or is accompanied by severe symptoms like difficulty breathing, chest pain, or confusion\n\nFor children with fever:\n- Ensure adequate fluid intake\n- Use age-appropriate fever reducers (acetaminophen or ibuprofen) following dosage guidelines\n- Seek immediate medical attention if child is under 3 months with any fever, or if fever is above 40°C (104°F)\n- Watch for signs of dehydration or unusual behavior",
+      "content_type": "guideline",
+      "metadata": {
+        "category": "symptom_management",
+        "condition": "fever"
+      }
+    },
+    {
+      "title": "Chest Pain Red Flags",
+      "content": "Chest pain can be a sign of serious medical conditions and requires immediate evaluation in certain situations.\n\nRed flag symptoms requiring immediate emergency care:\n- Severe chest pain that radiates to arm, neck, or jaw\n- Chest pain accompanied by shortness of breath, sweating, or nausea\n- Chest pain in someone with known heart disease or risk factors\n- Chest pain that worsens with exertion\n- Chest pain with dizziness or fainting\n\nIf experiencing any red flag symptoms, seek emergency medical care immediately. Do not delay.\n\nFor non-urgent chest pain:\n- Rest and avoid activities that trigger the pain\n- Monitor symptoms and note any changes\n- Consider evaluation within 24-48 hours if symptoms persist or worsen",
+      "content_type": "protocol",
+      "metadata": {
+        "category": "emergency",
+        "condition": "chest_pain"
+      }
+    },
+    {
+      "title": "Common Cold and Flu Management",
+      "content": "The common cold and influenza (flu) are viral respiratory infections. While similar, flu symptoms are typically more severe.\n\nSelf-care for cold and flu:\n- Rest and allow your body to recover\n- Stay hydrated with water, herbal teas, or clear broths\n- Use saline nasal sprays or rinses for congestion\n- Gargle with warm salt water for sore throat\n- Use humidifier or steam to ease breathing\n- Over-the-counter medications can help with symptoms\n- Wash hands frequently to prevent spread\n\nWhen to seek medical care:\n- Symptoms persist beyond 10 days\n- High fever (above 38.9°C or 102°F) that doesn't respond to treatment\n- Difficulty breathing or chest pain\n- Persistent cough with colored mucus",
+      "content_type": "guideline",
+      "metadata": {
+        "category": "symptom_management",
+        "condition": "cold_flu"
+      }
+    }
   ]
 }

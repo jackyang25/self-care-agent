@@ -1,4 +1,4 @@
-"""seed database with fixture data from json files."""
+"""seed database with seed data from json files."""
 
 import json
 import sys
@@ -10,20 +10,21 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.db import get_db_cursor
+from src.services.rag import store_document
 
 
 def load_fixture_file(fixture_file: str) -> dict:
-    """load fixture data from json file."""
-    fixture_path = Path(__file__).parent.parent / "fixtures" / fixture_file
+    """load seed data from json file."""
+    fixture_path = Path(__file__).parent.parent.parent / "seeds" / fixture_file
     if not fixture_path.exists():
-        raise FileNotFoundError(f"fixture file not found: {fixture_path}")
+        raise FileNotFoundError(f"seed file not found: {fixture_path}")
     with open(fixture_path, "r") as f:
         return json.load(f)
 
 
-def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False, table: Optional[str] = None):
-    """seed database from fixture file."""
-    print(f"loading fixture file: {fixture_file}")
+def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, table: Optional[str] = None):
+    """seed database from seed file (app data + RAG documents)."""
+    print(f"loading seed file: {fixture_file}")
     data = load_fixture_file(fixture_file)
     
     with get_db_cursor() as cur:
@@ -212,14 +213,39 @@ def seed_all(fixture_file: str = "seed_data.json", clear_existing: bool = False,
                 ))
             print(f"  seeded {len(data['appointments'])} appointment(s)")
     
+    # seed RAG documents (only if not seeding specific table)
+    if table is None and data.get("documents"):
+        seed_rag_documents(data["documents"])
+    
     print("✓ seeding completed")
+
+
+def seed_rag_documents(documents: list):
+    """seed healthcare documents for RAG."""
+    print("seeding RAG documents...")
+    
+    stored_count = 0
+    for doc in documents:
+        try:
+            document_id = store_document(
+                title=doc["title"],
+                content=doc["content"],
+                content_type=doc["content_type"],
+                metadata=doc["metadata"],
+            )
+            print(f"  ✓ stored: {doc['title']}")
+            stored_count += 1
+        except Exception as e:
+            print(f"  ✗ error storing {doc['title']}: {e}")
+    
+    print(f"  seeded {stored_count} RAG document(s)")
 
 
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="seed database with fixture data")
-    parser.add_argument("--file", default="seed_data.json", help="fixture file name")
+    parser = argparse.ArgumentParser(description="seed database with seed data")
+    parser.add_argument("--file", default="demo.json", help="seed file name")
     parser.add_argument("--clear", action="store_true", help="clear existing data before seeding")
     parser.add_argument("--table", choices=["users", "interactions", "consents", "providers", "appointments"], help="seed only a specific table")
     

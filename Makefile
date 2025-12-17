@@ -65,21 +65,19 @@ shell-db: ## open psql shell in database container
 	docker-compose exec db psql -U postgres -d selfcare
 
 test-db: ## test database connection
-	docker-compose exec streamlit python scripts/db/db_test_connection.py
+	docker-compose exec streamlit python scripts/db/test.py
 
 # use streamlit container for db scripts (has python + codebase mounted)
 APP_CONTAINER = streamlit
 
 create-tables: ## create all database tables (main + RAG)
-	docker-compose exec $(APP_CONTAINER) python scripts/db/db_create_tables.py
-	docker-compose exec $(APP_CONTAINER) python scripts/db/db_create_rag_tables.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/create_tables.py
 
 seed-db: ## seed all database data (main + RAG, idempotent)
-	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed.py
-	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed_rag_sample.py
+	docker-compose exec $(APP_CONTAINER) python scripts/db/seed.py
 
 clear-db: ## clear all database data but keep tables (destructive)
-	docker-compose exec $(APP_CONTAINER) python scripts/db/db_seed.py --clear
+	docker-compose exec $(APP_CONTAINER) python scripts/db/seed.py --clear
 	@echo "note: RAG documents are not cleared by this command"
 
 reset-db: ## completely reset database (delete volumes, recreate tables, seed data)

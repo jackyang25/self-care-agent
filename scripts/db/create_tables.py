@@ -10,10 +10,14 @@ from src.db import get_db_cursor
 
 
 def create_tables():
-    """create all database tables."""
+    """create all database tables (app + RAG)."""
     print("creating database tables...")
     
     with get_db_cursor() as cur:
+        # enable pgvector extension for RAG
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        print("  ✓ enabled pgvector extension")
+        
         # create users table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -107,6 +111,37 @@ def create_tables():
             )
         """)
         print("  ✓ created appointments table")
+        
+        # create documents table for RAG
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                document_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                content_type TEXT,
+                metadata JSONB,
+                embedding vector(1536),
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+            )
+        """)
+        print("  ✓ created documents table")
+        
+        # create vector similarity index
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_embedding_idx 
+            ON documents 
+            USING ivfflat (embedding vector_cosine_ops)
+            WITH (lists = 100)
+        """)
+        print("  ✓ created vector similarity index")
+        
+        # create content type index
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_content_type_idx 
+            ON documents (content_type)
+        """)
+        print("  ✓ created content type index")
     
     print("✓ all tables created successfully")
 

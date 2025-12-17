@@ -238,12 +238,17 @@ User Input (Streamlit/WhatsApp)
 │   └── whatsapp.md                # WhatsApp integration
 ├── bin/
 │   └── triage-verifier            # Lean-compiled triage binary
-├── fixtures/
-│   └── seed_data.json             # Mock users, providers, consents
+├── seeds/
+│   └── demo.json                  # All demo data (users, providers, appointments, RAG documents)
 ├── scripts/                        # Database management
-│   ├── db_create_tables.py
-│   ├── db_seed.py
-│   └── db_test_connection.py
+│   ├── db/
+│   │   ├── create_tables.py       # Create all tables (app + RAG)
+│   │   ├── seed.py                # Seed all data (app + RAG)
+│   │   └── test.py                # Test database connection
+│   ├── dev/
+│   │   └── start_ngrok.sh
+│   └── tools/
+│       └── test_verified_triage.py
 ├── streamlit_server.py             # Streamlit UI entry point
 ├── webhook_server.py               # WhatsApp webhook entry point
 ├── docker-compose.yml              # Multi-container orchestration

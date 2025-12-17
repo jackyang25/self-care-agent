@@ -361,13 +361,13 @@ AND i.protocol_invoked = 'triage'
 ORDER BY i.created_at DESC;
 ```
 
-## Fixture Files
+## Seed Files
 
-Fixture data is in `fixtures/`:
-- `seed_data.json` - default seed data
-- Add more fixture files as needed
+Seed data is in `seeds/`:
+- `demo.json` - all demo data (users, providers, appointments, consents, RAG documents)
+- Add more seed files as needed (e.g., `production.json`, `test.json`)
 
-See `docs/fixtures.md` for fixture templates and structure.
+See `docs/seeds.md` for seed templates and structure.
 
 ## Database Access
 
@@ -398,7 +398,7 @@ with get_db_cursor() as cur:
 
 ### Adding New Columns
 
-1. Update `scripts/db/db_create_tables.py` with new column definition
+1. Update `scripts/db/create_tables.py` with new column definition
 2. Run `make create-tables` (uses `CREATE TABLE IF NOT EXISTS`, so existing tables won't be modified)
 3. For existing databases, create migration script or manually add column:
    ```sql
@@ -408,7 +408,7 @@ with get_db_cursor() as cur:
 ### Future Schema Changes
 
 When adding the `tools` JSONB column:
-1. Add to `CREATE TABLE` statement in `db_create_tables.py`
+1. Add to `CREATE TABLE` statement in `create_tables.py`
 2. Create migration script for existing databases
 3. Update `save_interaction()` to populate the column
 4. Update `extract_tool_info_from_messages()` to capture full tool details

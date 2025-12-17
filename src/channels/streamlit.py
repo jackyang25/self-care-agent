@@ -79,7 +79,7 @@ class StreamlitHandler(BaseChannelHandler):
     def launch(self) -> None:
         """launch the streamlit interface."""
         # load gates foundation logo
-        logo_path = Path("assets/gates_logo.png")
+        logo_path = Path("src/assets/gates_logo.png")
         page_icon = None
         if logo_path.exists():
             try:

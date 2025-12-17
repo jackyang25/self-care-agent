@@ -131,10 +131,14 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 │       ├── logger.py      # Logging utilities
 │       └── user_lookup.py # User identification
 ├── scripts/               # Database management scripts
-│   ├── db_create_tables.py
-│   ├── db_seed.py
-│   ├── db_check_and_seed.py
-│   └── db_test_connection.py
+│   ├── db/
+│   │   ├── create_tables.py       # Create all tables (app + RAG)
+│   │   ├── seed.py                # Seed all data (app + RAG, idempotent)
+│   │   └── test.py                # Test database connection
+│   ├── dev/
+│   │   └── start_ngrok.sh
+│   └── tools/
+│       └── test_verified_triage.py
 ├── docs/                  # Human-facing documentation
 │   ├── agent.md           # Agent architecture
 │   ├── tools.md           # Tool documentation
@@ -142,8 +146,8 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 │   ├── triage-verification.md # Verified triage approach
 │   ├── rag.md             # RAG architecture
 │   └── whatsapp.md        # WhatsApp integration
-├── fixtures/              # Seed data
-│   └── seed_data.json
+├── seeds/                 # Seed data
+│   └── demo.json          # All demo data (users, providers, appointments, RAG documents)
 ├── docker-compose.yml     # Docker services
 ├── Dockerfile             # App container image
 ├── Makefile               # Common commands
@@ -217,9 +221,9 @@ Healthcare self-care agent prototype using LangGraph for multi-step reasoning an
 
 ### Database Schema Changes
 
-1. Update `scripts/db/db_create_tables.py`
+1. Update `scripts/db/create_tables.py`
 2. Run `make create-tables` to apply changes
-3. Update seed data in `fixtures/seed_data.json` if needed
+3. Update seed data in `seeds/demo.json` if needed
 4. Document changes in `docs/database.md`
 
 ## Troubleshooting
