@@ -24,7 +24,7 @@ def load_fixture_file(fixture_file: str) -> dict:
 
 def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, table: Optional[str] = None):
     """seed database from seed file (app data + RAG documents)."""
-    print(f"loading seed file: {fixture_file}")
+    print(f"Loading seed file: {fixture_file}")
     data = load_fixture_file(fixture_file)
     
     with get_db_cursor() as cur:
@@ -56,7 +56,7 @@ def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, tabl
                     json.dumps(user.get("demographics", {})),
                     json.dumps(user.get("accessibility", {})),
                 ))
-            print(f"  seeded {len(data['users'])} user(s)")
+            print(f"  ✓ Seeded {len(data['users'])} user(s)")
         
         # seed interactions
         if (table is None or table == "interactions") and data.get("interactions"):
@@ -98,7 +98,7 @@ def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, tabl
                     json.dumps(interaction.get("recommendations", [])),
                     follow_up_at,
                 ))
-            print(f"  seeded {len(data['interactions'])} interaction(s)")
+            print(f"  ✓ Seeded {len(data['interactions'])} interaction(s)")
         
         # seed consents
         if (table is None or table == "consents") and data.get("consents"):
@@ -134,7 +134,7 @@ def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, tabl
                     json.dumps(consent.get("evidence", {})),
                     recorded_at,
                 ))
-            print(f"  seeded {len(data['consents'])} consent(s)")
+            print(f"  ✓ Seeded {len(data['consents'])} consent(s)")
         
         # seed providers
         if (table is None or table == "providers") and data.get("providers"):
@@ -163,7 +163,7 @@ def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, tabl
                     json.dumps(provider.get("contact_info", {})),
                     provider.get("is_active", True),
                 ))
-            print(f"  seeded {len(data['providers'])} provider(s)")
+            print(f"  ✓ Seeded {len(data['providers'])} provider(s)")
         
         # seed appointments
         if (table is None or table == "appointments") and data.get("appointments"):
@@ -211,18 +211,18 @@ def seed_all(fixture_file: str = "demo.json", clear_existing: bool = False, tabl
                     appointment.get("sync_status", "pending"),
                     last_synced_at,
                 ))
-            print(f"  seeded {len(data['appointments'])} appointment(s)")
+            print(f"  ✓ Seeded {len(data['appointments'])} appointment(s)")
     
     # seed RAG documents (only if not seeding specific table)
     if table is None and data.get("documents"):
         seed_rag_documents(data["documents"])
     
-    print("✓ seeding completed")
+    print("✓ Seeding completed")
 
 
 def seed_rag_documents(documents: list):
     """seed healthcare documents for RAG."""
-    print("seeding RAG documents...")
+    print("Seeding RAG documents...")
     
     stored_count = 0
     for doc in documents:
@@ -233,12 +233,12 @@ def seed_rag_documents(documents: list):
                 content_type=doc["content_type"],
                 metadata=doc["metadata"],
             )
-            print(f"  ✓ stored: {doc['title']}")
+            print(f"  ✓ Stored: {doc['title']}")
             stored_count += 1
         except Exception as e:
-            print(f"  ✗ error storing {doc['title']}: {e}")
+            print(f"  ✗ Error storing {doc['title']}: {e}")
     
-    print(f"  seeded {stored_count} RAG document(s)")
+    print(f"  ✓ Seeded {stored_count} RAG document(s)")
 
 
 if __name__ == "__main__":
