@@ -1,5 +1,6 @@
 """commodity orders and fulfillment tool."""
 
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
@@ -38,7 +39,7 @@ def commodity_orders_and_fulfillment(
 
     # mock data - production would integrate with logistics/pharmacy APIs
     order_id = "ORD-12345"
-    estimated_delivery = "2025-12-10"
+    estimated_delivery = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
 
     # return pydantic model instance
     return CommodityOutput(

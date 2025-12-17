@@ -1,5 +1,6 @@
 """pharmacy orders and fulfillment tool."""
 
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
@@ -41,7 +42,7 @@ def pharmacy_orders_and_fulfillment(
     # mock data - production would integrate with pharmacy management systems
     prescription_id = "RX-67890"
     pharmacy_name = pharmacy or "Main Pharmacy"
-    ready_date = "2025-12-05"
+    ready_date = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
 
     # return pydantic model instance
     return PharmacyOutput(

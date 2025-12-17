@@ -1,7 +1,7 @@
 """referrals and scheduling tool."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
@@ -127,27 +127,29 @@ def referrals_and_scheduling(
         appointment_uuid = uuid.uuid4()
         appointment_id = f"APT-{appointment_uuid.hex[:8].upper()}"
 
-        # handle date/time formats
-        date = preferred_date or "2025-12-20"
-        time_raw = preferred_time or "10:00 AM"
+        # use user-provided date/time or simple demo defaults
+        date = preferred_date or (datetime.now() + timedelta(days=7)).strftime(
+            "%Y-%m-%d"
+        )
+        time_display = preferred_time or "10:00 AM"
 
-        # convert time to database format (HH:MM:SS)
-        # handle various formats: "10:00 AM", "14:00", "2pm", etc.
-        time_db = time_raw
-        if "AM" in time_raw.upper() or "PM" in time_raw.upper():
-            # convert 12-hour to 24-hour format
+        # convert time to database format
+        time_db = "10:00:00"
+        if time_display and ":" in time_display:
             try:
-                time_obj = datetime.strptime(time_raw.strip(), "%I:%M %p")
-                time_db = time_obj.strftime("%H:%M:%S")
-            except (ValueError, AttributeError):
-                # fallback if parsing fails
+                if "AM" in time_display.upper() or "PM" in time_display.upper():
+                    time_obj = datetime.strptime(
+                        time_display.strip().upper(), "%I:%M %p"
+                    )
+                    time_db = time_obj.strftime("%H:%M:%S")
+                else:
+                    time_db = (
+                        time_display
+                        if time_display.count(":") == 2
+                        else f"{time_display}:00"
+                    )
+            except ValueError:
                 time_db = "10:00:00"
-        elif ":" not in time_raw:
-            # just hour like "14" or "2pm"
-            time_db = f"{time_raw.strip().replace('pm', '').replace('am', '')}:00:00"
-        elif time_raw.count(":") == 1:
-            # format like "14:30" - add seconds
-            time_db = f"{time_raw}:00"
 
         # store appointment in database
         try:
@@ -180,14 +182,14 @@ def referrals_and_scheduling(
             logger.error(f"failed to store appointment in database: {e}", exc_info=True)
             # continue anyway to return appointment info to user
 
-    # return pydantic model instance (use original user-friendly time format)
+    # return pydantic model instance (use user-friendly time format)
     return ReferralOutput(
         appointment_id=appointment_id,
         provider=provider_name,
         specialty=provider_specialty,
         facility=facility,
         date=date,
-        time=time_raw,  # use original format for display
+        time=time_display,  # use parsed display format
         reason=reason,
     ).model_dump()
 
