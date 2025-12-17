@@ -62,7 +62,8 @@ prompt: |
   **triage_and_risk_flagging:**
   - mandatory for symptom reports or health concerns
   - include all symptom details: duration, severity, location, associated symptoms
-  - use urgency parameter if user indicates time sensitivity
+  - must provide either: (1) urgency assessment ('red', 'yellow', 'green'), or (2) complete vitals for verified triage
+  - if tool returns risk_level "unknown", gather the missing information from user and retry
   - use result to determine next steps (see risk-based actions below)
 
   **commodity_orders_and_fulfillment:**

@@ -259,20 +259,26 @@ def triage_and_risk_flagging(
             risk_level = urgency.strip().lower()
             logger.info(f"using agent-provided urgency: {risk_level}")
         else:
-            # fallback: default to yellow (moderate acuity - conservative/safe default)
+            # no urgency or vitals provided - mark as unknown
             logger.warning(
-                "no urgency provided by agent, defaulting to 'yellow' (moderate acuity - conservative default)"
+                f"insufficient information for triage - no urgency provided and vitals incomplete (missing: {', '.join(missing_vitals)})"
             )
-            risk_level = "yellow"
+            risk_level = "unknown"
 
     # determine recommendation based on risk level (who iitt)
     if risk_level == "red":
         recommendation = "high acuity - immediate clinical evaluation required"
     elif risk_level == "yellow":
         recommendation = "moderate acuity - clinical evaluation recommended soon"
-    else:  # green
+    elif risk_level == "green":
         recommendation = (
             "low acuity - can wait, self-care or pharmacy support may be appropriate"
+        )
+    else:  # unknown
+        recommendation = (
+            "unable to assess risk - insufficient information. gather either: "
+            "(1) urgency assessment based on symptom analysis, or "
+            "(2) complete vitals for verified triage"
         )
 
     # return pydantic model instance
