@@ -163,7 +163,7 @@ To trace LLM calls, monitor costs, and audit agent behavior:
    ```bash
    LANGCHAIN_TRACING_V2=true
    LANGCHAIN_API_KEY=your_langsmith_key
-   LANGCHAIN_PROJECT=scaf-poc
+   LANGCHAIN_PROJECT=gh-ai-self-care
    ```
 3. Restart: `make change`
 4. View traces at https://smith.langchain.com/
@@ -305,7 +305,7 @@ User Input (Streamlit/WhatsApp)
 - [ ] Multi-country deployment with localized protocols
 - [ ] Integration with insurance/payment systems
 - [ ] Knowledge graph for symptom → protocol → commodity routing
-- [ ] Standardized SCAF platform for certified AI systems (global data MCPs?)
+- [ ] Standardized SCAF platform for certified AI systems (global MCPs?)
 
 ## Architecture Decisions
 
