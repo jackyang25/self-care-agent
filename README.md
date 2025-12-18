@@ -179,7 +179,7 @@ For detailed installation instructions, environment configuration, troubleshooti
 <details>
 <summary><b>High-Level Flow</b></summary>
 
-**Full System Architecture:** [View detailed diagram](https://bmgf-my.sharepoint.com/:u:/r/personal/jack_yang_gatesfoundation_org/_layouts/15/Doc.aspx?sourcedoc=%7B603ad649-8ba7-4558-855a-3f05b268c58a%7D&action=edit)
+**System Architecture:** [View expanded diagram](https://bmgf-my.sharepoint.com/:u:/r/personal/jack_yang_gatesfoundation_org/_layouts/15/Doc.aspx?sourcedoc=%7B603ad649-8ba7-4558-855a-3f05b268c58a%7D&action=edit)
 
 **Simplified Flow:**
 
