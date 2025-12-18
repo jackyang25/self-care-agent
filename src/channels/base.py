@@ -1,9 +1,11 @@
 """base channel handler class."""
 
+import uuid
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
 
 from src.agent import get_agent, process_message
+from src.utils.context import correlation_id, channel
 
 
 class BaseChannelHandler(ABC):
@@ -44,6 +46,7 @@ class BaseChannelHandler(ABC):
         user_age: Optional[int] = None,
         user_gender: Optional[str] = None,
         user_timezone: Optional[str] = None,
+        channel_name: Optional[str] = None,
     ) -> tuple[str, list[dict[str, str]]]:
         """process user message and return response with sources.
 
@@ -53,10 +56,19 @@ class BaseChannelHandler(ABC):
             user_age: optional user age for context
             user_gender: optional user gender for context
             user_timezone: optional user timezone for context
+            channel_name: optional channel name for logging (e.g., "streamlit", "whatsapp")
 
         returns:
             tuple of (agent response text, list of source dicts with title/content_type/similarity)
         """
+        # generate unique correlation id for this request
+        corr_id = str(uuid.uuid4())
+        correlation_id.set(corr_id)
+
+        # set channel context for logging
+        if channel_name:
+            channel.set(channel_name)
+
         # use provided user_id or get from channel-specific method
         if user_id is None:
             user_id = self.get_user_id()

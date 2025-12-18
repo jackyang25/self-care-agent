@@ -208,6 +208,7 @@ class StreamlitHandler(BaseChannelHandler):
                         user_age=user_age,
                         user_gender=user_gender,
                         user_timezone=user_timezone,
+                        channel_name="streamlit",
                     )
                     st.markdown(response)
 

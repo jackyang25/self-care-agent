@@ -245,6 +245,7 @@ async def handle_webhook(
                 user_age=age,
                 user_gender=gender,
                 user_timezone=timezone,
+                channel_name="whatsapp",
             )
 
             # format sources as plain text for whatsapp (no markdown support)
