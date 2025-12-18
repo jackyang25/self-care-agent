@@ -1,13 +1,25 @@
-# Self-Care Agent Framework (SCAF)
+# Self-Care Agent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-0.1.0--alpha-orange.svg)](https://github.com/yourusername/self-care-agent)
+[![Status](https://img.shields.io/badge/status-proof--of--concept-blue.svg)](https://github.com/yourusername/self-care-agent)
 
-**Proof-of-concept for a stigma-free, AI-powered self-care agent for LMIC settings.**
+## What This Is
 
-The Self-Care Agent Framework is a standardized set of APIs, digital self-care protocols, and safety governance layers that any certified AI system can invoke to deliver evidence-based self-care, triage, and referral services.
+AI-powered self-care navigation system for low and middle income countries. Demonstrates:
+- Multi-step agent reasoning with tool orchestration
+- Verified triage via formal logic (primitive POC)
+- RAG-grounded clinical guidance with citations
+- Multi-channel support (Streamlit, WhatsApp)
+- Database-backed user context and audit trails
 
-**This proof-of-concept validates workflow interactions and multi-step reasoning patterns using simplified mock data and integrations due to external dependencies (EHR, pharmacy, and scheduling systems).**
+**Current state:** Core workflows function with mock data for external integrations (EHR, pharmacy, scheduling APIs). Architecture and integration patterns are designed for production.
 
+## Self-Care Agent Framework (SCAF)
+
+The long-term vision is a **standardized framework**: a set of APIs, digital self-care protocols, and safety governance layers that certified AI systems can invoke to deliver evidence-based self-care, triage, and referral services across LMIC health systems.
+
+> *Note*: This is research and development prototype with mock data, sample guidelines, and primitive triage verifier. 
 
 ## Why This Matters
 
@@ -27,9 +39,9 @@ In low- and middle-income countries, people face significant barriers to healthc
 - **Governed safety:** Every interaction runs through certified Self-Care Protocol APIs with continuous monitoring, ensuring evidence-based, traceable, compliant advice.
 
 
-## What This POC Demonstrates
+## What This Demonstrates
 
-This prototype proves the **technical and clinical feasibility** of the core SCAF architecture:
+Validates the **technical feasibility** of core architecture patterns.
 
 ### Implemented & Working
 
@@ -109,19 +121,17 @@ This prototype proves the **technical and clinical feasibility** of the core SCA
 
 **Key Insight:** The tool interfaces, database schemas, and data flows are **production-ready**. Integration simply swaps mock data sources for real APIs.
 
-## What Are the Advantages Over ChatGPT?
+## How This Differs From Generic LLMs
 
-**SCAF goes beyond generic LLMs:**
 
-- **Verified triage via formal logic (Lean)** instead of hallucinated medical advice
-- **Cited sources for all clinical guidance** instead of no source attribution
-- **LMIC-specific with local provider/pharmacy/lab integrations** instead of generic global context
-- **Age, gender, timezone, country context in every interaction** instead of no patient specificity
-- **Multi-step reasoning with tool chaining** (triage → consent → schedule) instead of one-shot responses
-- **RAG over validated self-care protocols** instead of no clinical grounding
-- **WhatsApp, SMS, IVR-ready architecture** instead of no integration
-- **Full interaction logging for safety monitoring** instead of no audit trail
-- **Self-care focused, avoids diagnosis claims** instead of diagnostic language
+- **Verified triage via formal logic (Lean)** - primitive POC showing triage can be provably correct, not hallucinated
+- **Cited sources for all clinical guidance** - RAG with document attribution instead of black-box responses
+- **LMIC-contextualized** - user demographics (age, gender, timezone, country) inform every interaction
+- **Multi-step tool chaining** - autonomous orchestration (triage → consent → schedule) instead of one-shot responses
+- **Structured clinical grounding** - RAG over protocols (currently sample data) instead of pure LLM knowledge
+- **Multi-channel architecture** - WhatsApp, Streamlit working; SMS/IVR patterns defined
+- **Full interaction logging** - every tool call and triage decision auditable for safety monitoring
+- **Self-care positioning** - deliberately avoids diagnostic language, focuses on navigation
 
 > **Key Takeaway:** The "last 20%" of clinical correctness comes from grounding every response in validated protocols via RAG (and knowledge graphs, if feasible), verified triage logic, and governed safety layers rather than relying solely on LLM knowledge.
 
@@ -141,7 +151,7 @@ make setup  # First-time setup (starts containers, creates tables, seeds data)
 # Login with: jack.yang@gatesfoundation.org
 ```
 
-> **Note:** All services run in Docker containers. No local Python or PostgreSQL setup required.
+> **Note:** All services run in Docker containers. No local Python or PostgreSQL setup required. Just be sure to have an IDE! :)
 
 <details>
 <summary><b>Optional: LangSmith Integration for Observability</b></summary>
@@ -274,10 +284,11 @@ User Input (Streamlit/WhatsApp)
 ### Near-Term (Production MVP)
 - [ ] Integrate real EHR scheduling APIs (Epic/Cerner/OpenMRS via FHIR)
 - [ ] Load validated WHO self-care protocols into RAG system
-- [ ] Connect pharmacy/logistics APIs (ShopRite, Dis-Chem, public-sector)
-- [ ] Add SMS and IVR channels for low-data access
+- [ ] Connect pharmacy/logistics APIs (ShopRite, Dis-Chem, or public-sector equivalents)
+- [ ] Add SMS and IVR channels for low-data/low-literacy access
 - [ ] Multi-language support (Swahili, Zulu, French, Portuguese)
 - [ ] LangSmith integration for LLM tracing, cost analysis, and auditability
+- [ ] Expand verified triage logic to ground truths (WHO guidelines)
 - [ ] Safety monitoring dashboard for red-flag interactions
 
 ### Medium-Term (Scale & Governance)
@@ -286,12 +297,15 @@ User Input (Streamlit/WhatsApp)
 - [ ] Integration with national health information systems
 - [ ] Community health worker interface for assisted interactions
 - [ ] Offline-first mobile app for low-connectivity areas
+- [ ] Data residency and compliance infrastructure per jurisdiction
 
 ### Long-Term (Ecosystem)
 - [ ] Certification framework for third-party AI systems
 - [ ] Open API standard for self-care protocol invocation
 - [ ] Multi-country deployment with localized protocols
 - [ ] Integration with insurance/payment systems
+- [ ] Knowledge graph for symptom → protocol → commodity routing
+- [ ] Standardized SCAF platform for certified AI systems (global data MCPs?)
 
 ## Architecture Decisions
 
@@ -391,7 +405,7 @@ Many LMIC countries require health data to be stored within national borders:
 5. **Deploy within country-specific regulatory sandboxes** where available
 6. **Partner with local health authorities** for compliance guidance
 
-> **Note:** This framework provides technical infrastructure. Legal compliance requires jurisdiction-specific implementation with qualified legal counsel.
+> **Note:** This provides technical infrastructure. Legal compliance requires jurisdiction-specific implementation with qualified legal counsel.
 
 </details>
 
