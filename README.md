@@ -13,13 +13,13 @@ AI-powered self-care navigation system for low and middle income countries. Demo
 - Multi-channel support (Streamlit, WhatsApp)
 - Database-backed user context and audit trails
 
-**Current state:** Core workflows function with mock data for external integrations (EHR, pharmacy, scheduling APIs). Architecture and integration patterns are designed for production.
+**Current state:** Core workflows function with mock data for external integrations (EHR, pharmacy, scheduling APIs). Architecture and integration patterns are designed with production in mind.
 
 ## Self-Care Agent Framework (SCAF)
 
 The long-term vision is a **standardized framework**: a set of APIs, digital self-care protocols, and safety governance layers that certified AI systems can invoke to deliver evidence-based self-care, triage, and referral services across LMIC health systems.
 
-> *Note*: This is research and development prototype with mock data, sample guidelines, and simple triage verifier. 
+> *Note*: This repository includes a R&D prototype with mock data, sample guidelines, and simple triage verifier. 
 
 ## Why This Matters
 
@@ -393,7 +393,7 @@ Many LMIC countries require health data to be stored within national borders:
 **Emerging Requirements:**
 - EU AI Act: High-risk system classification for healthcare AI
 - Algorithmic accountability and explainability
-- Model versioning and audit trails (LangSmith integration recommended)
+- Model versioning and audit trails (LangSmith recommended)
 - Human oversight requirements for clinical decisions
 
 ### Recommended Practices
