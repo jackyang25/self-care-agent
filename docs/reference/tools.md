@@ -190,9 +190,6 @@ appointment scheduled successfully. appointment_id: APT-11111, provider: dr. smi
   - `"get_user_appointments"`: Get current user's scheduled appointments with provider details
   - `"get_providers"`: Get available healthcare providers (optionally filter by specialty)
   - `"get_user_history"`: Get current user's complete history including profile, interactions, and consents
-- `user_id` (string, optional): Deprecated - tool automatically uses current logged-in user from session context
-- `email` (string, optional): Deprecated - not used
-- `phone` (string, optional): Deprecated - not used
 - `specialty` (string, optional): Filter providers by specialty (e.g., `"cardiology"`, `"pediatrics"`) - only used with `get_providers`
 - `limit` (integer, optional): Maximum number of results to return (default: 10)
 
@@ -212,98 +209,15 @@ appointment scheduled successfully. appointment_id: APT-11111, provider: dr. smi
 
 ---
 
-## Tool Chaining Patterns
+## Tool Integration Notes
 
-The agent is designed to chain tools sequentially to complete multi-step workflows:
+**Prototype Status:**
+- All tools return mocked data for POC demonstration
+- Tool schemas represent production API contracts
+- Future integration: EHR systems, pharmacy networks, scheduling platforms
 
-### Common Workflows:
-
-1. **Symptom Assessment → Commodity Order:**
-   ```
-   triage_and_risk_flagging → commodity_orders_and_fulfillment
-   ```
-   Example: User reports symptoms and requests medication
-
-2. **Symptom Assessment → Referral:**
-   ```
-   triage_and_risk_flagging → referrals_and_scheduling (with user consent)
-   ```
-   Example: User reports high-risk symptoms, triage recommends clinical evaluation, user consents to appointment
-
-3. **Symptom Assessment → Pharmacy Refill:**
-   ```
-   triage_and_risk_flagging → pharmacy_orders_and_fulfillment
-   ```
-   Example: User needs prescription refill after assessment
-
-4. **Multi-Request Handling:**
-   ```
-   triage_and_risk_flagging → commodity_orders_and_fulfillment → referrals_and_scheduling
-   ```
-   Example: User says "I have symptoms X and need medication Y and want to see a doctor"
-
-### Tool Chaining Rules:
-
-- **Triage First:** Always call `triage_and_risk_flagging` when users report symptoms or health concerns
-- **Fulfill All Requests:** After triage, review original user request and call appropriate tools for medication/commodities/services
-- **Consent Before Scheduling:** For referrals, always ask for user consent before calling `referrals_and_scheduling`
-- **Emergency Priority:** For high/critical risk, provide emergency instructions first, then ask about scheduling
-
----
-
-## Interaction Storage Architecture
-
-All tool invocations are automatically tracked and stored in the `interactions` table:
-
-**Current Storage:**
-- `input.tools_called`: Array of tool names that were called (e.g., `["triage_and_risk_flagging", "commodity_orders_and_fulfillment"]`)
-- `protocol_invoked`: Protocol name if triage was called (e.g., `"triage"`)
-- `protocol_version`: Protocol version (e.g., `"1.0"`)
-- `triage_result`: JSONB with triage assessment results (symptoms, urgency)
-- `risk_level`: Extracted risk level from triage (`"low"`, `"medium"`, `"high"`, `"critical"`)
-- `recommendations`: Array of recommendations from tool results
-
-**Future Architectural Slot:**
-- `tools` JSONB column: Full tool invocation details including:
-  ```json
-  [
-    {
-      "name": "triage_and_risk_flagging",
-      "args": {"symptoms": "...", "urgency": "high"},
-      "result": {"status": "success", "risk_level": "high", ...}
-    }
-  ]
-  ```
-
-This will enable:
-- Complete audit trail of tool usage
-- Easy querying: `WHERE tools @> '[{"name": "triage_and_risk_flagging"}]'`
-- Analytics on tool usage patterns
-- Debugging and troubleshooting
-
----
-
-## General Architecture Notes
-
-### Prototype Implementation:
-- All tools return mocked data (order IDs, appointment IDs, etc.)
-- Tool schemas and response formats represent architectural contracts
-- Tool chaining logic is implemented and functional
-- Database storage captures tool invocation metadata
-
-### Future Integration Points:
-- **Triage:** Clinical decision support systems, validated protocols
-- **Commodity/Pharmacy:** Inventory management, logistics, fulfillment systems
-- **Referrals:** Appointment scheduling systems, provider networks, EHR integration
-- **Database:** Analytics, reporting, audit logging
-
-### Input Validation:
-- All parameters are currently optional (prototype flexibility)
-- Production should enforce required fields based on tool purpose
-- Date/time formats should be standardized (ISO 8601 recommended)
-- Urgency/priority values should be validated against allowed enums
-
-### Error Handling:
-- Tools should handle missing required information gracefully
-- Agent should request clarification when information is insufficient
-- Tool failures should be logged and stored in interaction records
+**Input/Output Contracts:**
+- All tools use Pydantic schemas for validation
+- Triage returns structured JSON; other tools return strings
+- See `docs/reference/database.md` for interaction storage details
+- See `docs/architecture/agent.md` for tool chaining workflows

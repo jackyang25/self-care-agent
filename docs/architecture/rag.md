@@ -80,10 +80,10 @@ This seeds 5 sample healthcare documents covering:
 
 ### Adding Documents
 
-Use the `store_document()` function from `src/utils/rag.py`:
+Use the `store_document()` function from `src/services/rag.py`:
 
 ```python
-from src.utils.rag import store_document
+from src.services.rag import store_document
 
 document_id = store_document(
     title="Diabetes Management Guidelines",
@@ -112,7 +112,7 @@ Agent → Response with retrieved information
 ### Manual Search (Python)
 
 ```python
-from src.utils.rag import search_documents
+from src.services.rag import search_documents
 
 results = search_documents(
     query="fever treatment",

@@ -117,3 +117,57 @@ Use these templates as a reference when creating new seed files. The templates s
 }
 ```
 
+### Providers Template
+```json
+{
+  "provider_id": "uuid (optional)",
+  "external_provider_id": "string (optional)",
+  "external_system": "epic|openmrs|cerner|...",
+  "name": "Dr. Jane Smith",
+  "specialty": "cardiology|pediatrics|general_practice|...",
+  "facility": "Main Hospital",
+  "available_days": ["monday", "wednesday", "friday"],
+  "country_context_id": "us|mx|ke|... (ISO 3166-1 alpha-2)",
+  "contact_info": {
+    "phone": "+1234567890",
+    "email": "provider@example.com"
+  },
+  "is_active": true
+}
+```
+
+### Appointments Template
+```json
+{
+  "appointment_id": "uuid (optional)",
+  "external_appointment_id": "string (optional)",
+  "external_system": "epic|openmrs|cerner|...",
+  "user_id": "uuid (required)",
+  "provider_id": "uuid (required)",
+  "specialty": "cardiology|pediatrics|...",
+  "appointment_date": "2024-12-25",
+  "appointment_time": "10:00:00",
+  "status": "scheduled|confirmed|cancelled|completed",
+  "reason": "Follow-up for chest pain",
+  "triage_interaction_id": "uuid (optional)",
+  "consent_id": "uuid (optional)",
+  "sync_status": "pending|synced|failed",
+  "last_synced_at": "2024-01-01T00:00:00Z or null"
+}
+```
+
+### Documents Template (RAG)
+```json
+{
+  "document_id": "uuid (optional)",
+  "title": "Fever Management Guidelines",
+  "content": "Full document text content...",
+  "content_type": "protocol|guideline|reference|...",
+  "metadata": {
+    "category": "symptom_management",
+    "condition": "fever",
+    "source": "WHO Guidelines 2024"
+  }
+}
+```
+

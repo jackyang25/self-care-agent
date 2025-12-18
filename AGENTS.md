@@ -121,21 +121,30 @@ Or run steps individually:
 ├── src/
 │   ├── agent.py           # LangGraph agent with tool calling
 │   ├── config.py          # Application configuration
-│   ├── database.py        # Database connection utilities
+│   ├── db.py              # Database connection utilities
 │   ├── channels/
 │   │   ├── base.py        # Channel abstraction base class
 │   │   ├── streamlit.py   # Streamlit channel handler
 │   │   └── whatsapp.py    # WhatsApp channel handler
+│   ├── data/              # Data access layer (database queries)
+│   │   ├── users.py       # User queries
+│   │   ├── providers.py   # Provider queries
+│   │   ├── appointments.py # Appointment queries
+│   │   ├── interactions.py # Interaction queries
+│   │   ├── documents.py   # Document queries (RAG)
+│   │   └── consents.py    # Consent queries
+│   ├── services/          # Business logic services
+│   │   ├── rag.py         # RAG document orchestration
+│   │   └── interactions.py # Interaction logging
 │   ├── tools/             # Tool implementations
 │   │   ├── triage.py      # Verified triage with Lean
 │   │   ├── commodity.py   # Commodity orders (mock)
 │   │   ├── pharmacy.py    # Pharmacy orders (mock)
 │   │   ├── referrals.py   # Referrals and scheduling
 │   │   ├── rag.py         # RAG with citations
-│   │   └── database.py    # Database queries
+│   │   └── database.py    # Database queries (agent tool)
 │   └── utils/             # Shared utilities
 │       ├── context.py     # Thread-safe context variables
-│       ├── interactions.py # Interaction storage
 │       ├── logger.py      # Logging utilities
 │       └── user_lookup.py # User identification
 ├── scripts/               # Database management scripts
@@ -199,7 +208,7 @@ Or run steps individually:
 - **System Prompt:** Located in `src/agent.py` as `SYSTEM_PROMPT` constant
 - **State Management:** Agent state uses `TypedDict` with `Annotated` for message accumulation
 - **Tool Chaining:** Agent automatically chains tools based on results (see `docs/architecture/agent.md`)
-- **Interaction Storage:** All interactions automatically saved via `save_interaction()` in `src/utils/interactions.py`
+- **Interaction Storage:** All interactions automatically saved via `save_interaction()` in `src/services/interactions.py`
 
 ### Documentation
 

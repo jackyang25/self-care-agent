@@ -223,23 +223,32 @@ User Input (Streamlit/WhatsApp)
 .
 ├── src/
 │   ├── agent.py                    # LangGraph agent with tool calling
-│   ├── config.py                   # Application configuration
-│   ├── database.py                 # Database connection utilities
+│   ├── db.py                       # Database connection utilities
 │   ├── channels/                   # Multi-channel support
 │   │   ├── base.py                # Channel abstraction
 │   │   ├── streamlit.py           # Web UI handler
 │   │   └── whatsapp.py            # WhatsApp webhook handler
+│   ├── data/                       # Data access layer (Repository Pattern)
+│   │   ├── users.py               # User queries
+│   │   ├── providers.py           # Provider queries
+│   │   ├── appointments.py        # Appointment queries
+│   │   ├── interactions.py        # Interaction queries
+│   │   ├── documents.py           # Document queries (RAG)
+│   │   └── consents.py            # Consent queries
+│   ├── services/                   # Business logic layer
+│   │   ├── rag.py                 # RAG orchestration
+│   │   └── interactions.py        # Interaction logging
 │   ├── tools/                      # Tool implementations
 │   │   ├── triage.py              # Verified triage with Lean
 │   │   ├── referrals.py           # Appointment scheduling
 │   │   ├── rag.py                 # RAG with citations
-│   │   ├── database.py            # User data queries
+│   │   ├── database.py            # Database queries (agent tool)
 │   │   ├── commodity.py           # Commodity orders (mock)
 │   │   └── pharmacy.py            # Pharmacy orders (mock)
 │   └── utils/                     # Shared utilities
 │       ├── context.py             # Thread-safe context variables
-│       ├── interactions.py        # Interaction logging
-│       ├── logger.py              # Logging configuration
+│       ├── logger.py              # Logging with context
+│       ├── tool_helpers.py        # Tool utilities
 │       └── user_lookup.py         # User identification
 ├── docs/                           # Technical documentation
 │   ├── architecture/              # System design & concepts

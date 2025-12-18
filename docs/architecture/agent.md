@@ -181,43 +181,20 @@ The Streamlit interface manages user sessions:
 
 ## Interaction Storage
 
-All interactions are automatically stored in the database:
+All interactions are automatically stored in the database for audit and continuity of care:
 
-### Storage Trigger
+**What's Stored:**
+- User input and conversation history
+- Tools called and their results
+- Triage assessments and risk levels
+- Timestamp and channel metadata
 
-Every call to `process_message()` triggers:
-1. Tool information extraction from message chain
-2. Interaction record creation in `interactions` table
-3. Tool metadata storage (names, results, risk levels)
+**Storage Architecture:**
+- Automatic logging after each `process_message()` call
+- Tool metadata extracted from message chain
+- Structured storage in `interactions` table
 
-### Stored Data
-
-**Required Fields:**
-- `interaction_id`: UUID primary key
-- `user_id`: Current user (from context)
-- `channel`: Communication channel (e.g., `"streamlit"`)
-- `input`: JSONB with user input and tools called
-- `created_at`: Timestamp
-
-**Optional Fields (extracted from tools):**
-- `protocol_invoked`: Protocol name if triage called (e.g., `"triage"`)
-- `protocol_version`: Protocol version (e.g., `"1.0"`)
-- `triage_result`: JSONB with triage assessment results
-- `risk_level`: Extracted risk level (`"low"`, `"medium"`, `"high"`, `"critical"`)
-- `recommendations`: Array of recommendations from tool results
-- `tools_called`: Array of tool names (stored in `input.tools_called`)
-
-### Extraction Logic
-
-`extract_tool_info_from_messages()` processes the message chain:
-- Scans for `AIMessage` with `tool_calls` (tool invocations)
-- Scans for `ToolMessage` (tool results)
-- Parses structured JSON responses (triage tool)
-- Falls back to string parsing for backward compatibility
-
-**Future Architectural Slot:**
-- Full tool invocation details (name, args, results) will be stored in `tools` JSONB column
-- Enables complete audit trail and analytics
+See `docs/reference/database.md` for complete schema and query examples.
 
 ---
 
@@ -390,20 +367,7 @@ This enables:
 
 ### Database Queries
 
-Query interaction history:
-```sql
-SELECT input, tools_called, risk_level, recommendations
-FROM interactions
-WHERE user_id = '...'
-ORDER BY created_at DESC;
-```
-
-**Future:** With `tools` JSONB column:
-```sql
-SELECT tools
-FROM interactions
-WHERE tools @> '[{"name": "triage_and_risk_flagging"}]';
-```
+Interaction history and tool usage can be queried via the `interactions` table. See `docs/reference/database.md` for query examples.
 
 ---
 
