@@ -19,7 +19,7 @@ AI-powered self-care navigation system for low and middle income countries. Demo
 
 The long-term vision is a **standardized framework**: a set of APIs, digital self-care protocols, and safety governance layers that certified AI systems can invoke to deliver evidence-based self-care, triage, and referral services across LMIC health systems.
 
-> *Note*: This is research and development prototype with mock data, sample guidelines, and primitive triage verifier. 
+> *Note*: This is research and development prototype with mock data, sample guidelines, and simple triage verifier. 
 
 ## Why This Matters
 
