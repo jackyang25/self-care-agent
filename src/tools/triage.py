@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.database import get_db_cursor
+from src.data.users import get_user_demographics as _get_user_demographics
 from src.utils.context import current_user_id, current_user_age, current_user_gender
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
 from src.schemas.tool_outputs import TriageOutput
@@ -32,21 +32,15 @@ def get_user_demographics():
 
     logger.info("demographics not in context, fetching from database")
     try:
-        with get_db_cursor() as cur:
-            cur.execute("SELECT demographics FROM users WHERE user_id = %s", (user_id,))
-            result = cur.fetchone()
-            if result and result["demographics"]:
-                demographics = result["demographics"]
-                age = demographics.get("age")
-                gender = demographics.get("gender")
-                logger.info(
-                    f"fetched user demographics from database: age={age}, gender={gender}"
-                )
-                return age, gender
+        age, gender = _get_user_demographics(user_id)
+        if age is not None or gender is not None:
+            logger.info(
+                f"fetched user demographics from database: age={age}, gender={gender}"
+            )
+        return age, gender
     except Exception as e:
         logger.error(f"error fetching user demographics: {e}")
-
-    return None, None
+        return None, None
 
 
 def run_verified_triage(

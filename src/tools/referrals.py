@@ -7,7 +7,8 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.database import get_db_cursor
+from src.data.providers import find_provider_for_appointment
+from src.data.appointments import create_appointment
 from src.utils.context import current_user_id
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
 from src.schemas.tool_outputs import ReferralOutput
@@ -62,125 +63,68 @@ def referrals_and_scheduling(
             "message": "no user logged in. please log in to schedule appointments.",
         }
 
-    # query database for provider matching
-    with get_db_cursor() as cur:
+    # find suitable provider
+    provider_data = find_provider_for_appointment(
+        specialty=specialty,
+        provider_name=provider,
+    )
+
+    if provider_data:
+        provider_id = provider_data["provider_id"]
+        provider_name = provider_data["name"]
+        provider_specialty = provider_data["specialty"]
+        facility = provider_data["facility"]
+    else:
+        # ultimate fallback if no providers in database
         provider_id = None
-        provider_name = None
-        provider_specialty = specialty
-        facility = None
+        provider_name = provider or "dr. smith"
+        provider_specialty = specialty or "general_practice"
+        facility = "default clinic"
 
-        if specialty:
-            # match by specialty
-            cur.execute(
-                """
-                SELECT provider_id, name, specialty, facility
-                FROM providers
-                WHERE specialty = %s AND is_active = true
-                LIMIT 1
-            """,
-                (specialty,),
-            )
-            provider_row = cur.fetchone()
-            if provider_row:
-                provider_id = provider_row["provider_id"]
-                provider_name = provider_row["name"]
-                provider_specialty = provider_row["specialty"]
-                facility = provider_row["facility"]
-        elif provider:
-            # match by name
-            cur.execute(
-                """
-                SELECT provider_id, name, specialty, facility
-                FROM providers
-                WHERE name ILIKE %s AND is_active = true
-                LIMIT 1
-            """,
-                (f"%{provider}%",),
-            )
-            provider_row = cur.fetchone()
-            if provider_row:
-                provider_id = provider_row["provider_id"]
-                provider_name = provider_row["name"]
-                provider_specialty = provider_row["specialty"]
-                facility = provider_row["facility"]
+    # generate appointment id
+    appointment_uuid = uuid.uuid4()
+    appointment_id = f"APT-{appointment_uuid.hex[:8].upper()}"
 
-        # fallback to general practice if no match
-        if not provider_name:
-            cur.execute("""
-                SELECT provider_id, name, specialty, facility
-                FROM providers
-                WHERE specialty = 'general_practice' AND is_active = true
-                LIMIT 1
-            """)
-            provider_row = cur.fetchone()
-            if provider_row:
-                provider_id = provider_row["provider_id"]
-                provider_name = provider_row["name"]
-                provider_specialty = provider_row["specialty"]
-                facility = provider_row["facility"]
-            else:
-                # ultimate fallback if no providers in database
-                provider_name = provider or "dr. smith"
-                facility = "default clinic"
+    # use user-provided date/time or simple demo defaults
+    date = preferred_date or (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+    time_display = preferred_time or "10:00 AM"
 
-        # generate appointment id
-        appointment_uuid = uuid.uuid4()
-        appointment_id = f"APT-{appointment_uuid.hex[:8].upper()}"
-
-        # use user-provided date/time or simple demo defaults
-        date = preferred_date or (datetime.now() + timedelta(days=7)).strftime(
-            "%Y-%m-%d"
-        )
-        time_display = preferred_time or "10:00 AM"
-
-        # convert time to database format
-        time_db = "10:00:00"
-        if time_display and ":" in time_display:
-            try:
-                if "AM" in time_display.upper() or "PM" in time_display.upper():
-                    time_obj = datetime.strptime(
-                        time_display.strip().upper(), "%I:%M %p"
-                    )
-                    time_db = time_obj.strftime("%H:%M:%S")
-                else:
-                    time_db = (
-                        time_display
-                        if time_display.count(":") == 2
-                        else f"{time_display}:00"
-                    )
-            except ValueError:
-                time_db = "10:00:00"
-
-        # store appointment in database
+    # convert time to database format
+    time_db = "10:00:00"
+    if time_display and ":" in time_display:
         try:
-            cur.execute(
-                """
-                INSERT INTO appointments (
-                    appointment_id, user_id, provider_id, specialty,
-                    appointment_date, appointment_time, status, reason,
-                    sync_status, created_at
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
+            if "AM" in time_display.upper() or "PM" in time_display.upper():
+                time_obj = datetime.strptime(time_display.strip().upper(), "%I:%M %p")
+                time_db = time_obj.strftime("%H:%M:%S")
+            else:
+                time_db = (
+                    time_display
+                    if time_display.count(":") == 2
+                    else f"{time_display}:00"
                 )
-            """,
-                (
-                    str(appointment_uuid),  # convert UUID to string
-                    str(user_id),  # convert UUID to string
-                    str(provider_id) if provider_id else None,
-                    provider_specialty,
-                    date,
-                    time_db,
-                    "scheduled",
-                    reason,
-                    "pending",
-                ),
-            )
-            logger.info(
-                f"successfully stored appointment {appointment_id} for user {user_id}"
-            )
-        except Exception as e:
-            logger.error(f"failed to store appointment in database: {e}", exc_info=True)
-            # continue anyway to return appointment info to user
+        except ValueError:
+            time_db = "10:00:00"
+
+    # store appointment in database
+    success = create_appointment(
+        appointment_id=str(appointment_uuid),
+        user_id=str(user_id),
+        provider_id=str(provider_id) if provider_id else None,
+        specialty=provider_specialty,
+        appointment_date=date,
+        appointment_time=time_db,
+        status="scheduled",
+        reason=reason,
+        sync_status="pending",
+    )
+
+    if success:
+        logger.info(
+            f"successfully stored appointment {appointment_id} for user {user_id}"
+        )
+    else:
+        logger.error(f"failed to store appointment in database")
+        # continue anyway to return appointment info to user
 
     # return pydantic model instance (use user-friendly time format)
     return ReferralOutput(

@@ -1,12 +1,12 @@
 """utilities for storing user interactions."""
 
-import json
 import uuid
+import json
 from typing import Optional, List, Dict, Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from src.database import get_db_cursor
+from src.data.interactions import insert_interaction
 from src.utils.context import current_user_id
 from src.utils.logger import get_logger
 
@@ -56,35 +56,22 @@ def save_interaction(
         if tools_called:
             input_data["tools_called"] = tools_called
 
-        # prepare recommendations as jsonb
+        # prepare recommendations as list
         recommendations_data = recommendations if recommendations else []
 
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO interactions (
-                    interaction_id, user_id, channel, input,
-                    protocol_invoked, protocol_version,
-                    triage_result, risk_level, recommendations,
-                    created_at
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
-                )
-            """,
-                (
-                    interaction_id,
-                    user_id,
-                    channel,
-                    json.dumps(input_data),
-                    protocol_invoked,
-                    protocol_version,
-                    json.dumps(triage_result) if triage_result else None,
-                    risk_level,
-                    json.dumps(recommendations_data),
-                ),
-            )
+        success = insert_interaction(
+            interaction_id=interaction_id,
+            user_id=user_id,
+            channel=channel,
+            input_data=input_data,
+            protocol_invoked=protocol_invoked,
+            protocol_version=protocol_version,
+            triage_result=triage_result,
+            risk_level=risk_level,
+            recommendations=recommendations_data,
+        )
 
-        return interaction_id
+        return interaction_id if success else None
 
     except Exception as e:
         # log error but don't fail the request
@@ -147,7 +134,7 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
             # all tools return pydantic models serialized as json
             try:
                 data = json.loads(content)
-                
+
                 # extract structured data from tool response
                 if isinstance(data, dict):
                     # extract triage results
