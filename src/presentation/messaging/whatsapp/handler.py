@@ -10,7 +10,7 @@ import requests
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
-from src.channels.base import BaseChannelHandler
+from src.presentation.base import BaseChannelHandler
 from src.utils.context import (
     current_user_age,
     current_user_gender,

@@ -17,7 +17,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-    command: ["streamlit", "run", "streamlit_server.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    command: ["streamlit", "run", "src/presentation/web/streamlit/server.py", "--server.port=8501", "--server.address=0.0.0.0"]
 
   webhook:
     build: .
@@ -43,7 +43,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-    command: ["python", "webhook_server.py"]
+    command: ["python", "src/presentation/messaging/whatsapp/server.py"]
 
   db:
     image: pgvector/pgvector:pg15

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 import streamlit as st
 from PIL import Image
 
-from src.channels.base import BaseChannelHandler
+from src.presentation.base import BaseChannelHandler
 from src.utils.logger import get_logger
 from src.utils.user_lookup import get_user_by_email, get_user_by_phone
 

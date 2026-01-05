@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.infrastructure.persistence.postgres.connection import get_db_cursor
-from src.services.rag import store_document, store_source
+from src.application.services.rag import store_document, store_source
 
 
 def load_fixture_file(fixture_file: str) -> dict:
