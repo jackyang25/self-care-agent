@@ -46,6 +46,7 @@ class BaseChannelHandler(ABC):
         user_age: Optional[int] = None,
         user_gender: Optional[str] = None,
         user_timezone: Optional[str] = None,
+        user_country: Optional[str] = None,
         channel_name: Optional[str] = None,
     ) -> tuple[str, list[dict[str, str]]]:
         """process user message and return response with sources.
@@ -56,6 +57,7 @@ class BaseChannelHandler(ABC):
             user_age: optional user age for context
             user_gender: optional user gender for context
             user_timezone: optional user timezone for context
+            user_country: optional country context for RAG filtering (e.g., "za", "ke")
             channel_name: optional channel name for logging (e.g., "streamlit", "whatsapp")
 
         returns:
@@ -85,5 +87,6 @@ class BaseChannelHandler(ABC):
             user_age=user_age,
             user_gender=user_gender,
             user_timezone=user_timezone,
+            user_country=user_country,
         )
         return response, sources

@@ -16,6 +16,7 @@ from langgraph.prebuilt import ToolNode
 from src.tools import TOOLS
 from src.utils.context import (
     current_user_age,
+    current_user_country,
     current_user_gender,
     current_user_id,
     current_user_timezone,
@@ -236,7 +237,10 @@ def create_agent(llm_model: str, temperature: float) -> Any:
 
 
 def _build_patient_context(
-    age: Optional[int], gender: Optional[str], timezone: str
+    age: Optional[int],
+    gender: Optional[str],
+    timezone: str,
+    country: Optional[str] = None,
 ) -> str:
     """build patient context section for system prompt.
 
@@ -244,6 +248,7 @@ def _build_patient_context(
         age: patient age
         gender: patient gender
         timezone: patient timezone (e.g., "America/New_York")
+        country: patient country context (e.g., "za", "ke", "us")
 
     returns:
         formatted context string to append to system prompt
@@ -265,6 +270,8 @@ def _build_patient_context(
         context_parts.append(f"Age: {age}")
     if gender is not None:
         context_parts.append(f"Gender: {gender}")
+    if country is not None:
+        context_parts.append(f"Country: {country}")
 
     if not context_parts:
         return ""
@@ -274,7 +281,8 @@ def _build_patient_context(
         f"\n\n## current patient context\n\n{context_lines}\n\n"
         f"use this information to provide appropriate, personalized care. "
         f"use the current time to schedule appointments appropriately "
-        f"(e.g., 'tomorrow' means the next day from current time)."
+        f"(e.g., 'tomorrow' means the next day from current time). "
+        f"when using rag_retrieval, country-specific clinical guidelines will be prioritized."
     )
 
 
@@ -328,6 +336,7 @@ def process_message(
     user_age: Optional[int] = None,
     user_gender: Optional[str] = None,
     user_timezone: Optional[str] = None,
+    user_country: Optional[str] = None,
 ) -> tuple[str, list[dict[str, str]]]:
     """process user message through agent and return response with sources.
 
@@ -339,6 +348,7 @@ def process_message(
         user_age: user age for triage/context
         user_gender: user gender for triage/context
         user_timezone: user timezone for scheduling (default: UTC)
+        user_country: user country context for RAG filtering (e.g., "za", "ke")
 
     returns:
         tuple of (response text, rag sources)
@@ -352,13 +362,16 @@ def process_message(
         current_user_gender.set(user_gender)
     if user_timezone is not None:
         current_user_timezone.set(user_timezone)
+    if user_country is not None:
+        current_user_country.set(user_country)
 
     # build system prompt with patient context
     age = current_user_age.get()
     gender = current_user_gender.get()
     timezone = current_user_timezone.get() or "UTC"
+    country = current_user_country.get()
 
-    patient_context = _build_patient_context(age, gender, timezone)
+    patient_context = _build_patient_context(age, gender, timezone, country)
     system_prompt = SYSTEM_PROMPT_DATA["prompt"] + patient_context
 
     # build message history from conversation

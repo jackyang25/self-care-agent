@@ -40,6 +40,23 @@ def create_tables():
         """)
         print("  ✓ created users table")
 
+        # create sources table for RAG document provenance
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS sources (
+                source_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                country_context_id TEXT,
+                version TEXT,
+                url TEXT,
+                publisher TEXT,
+                effective_date DATE,
+                metadata JSONB,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+            )
+        """)
+        print("  ✓ created sources table")
+
         # create interactions table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
@@ -113,15 +130,20 @@ def create_tables():
         """)
         print("  ✓ created appointments table")
 
-        # create documents table for RAG
+        # create documents table for RAG (enhanced schema)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS documents (
                 document_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                source_id UUID REFERENCES sources(source_id),
+                parent_id UUID REFERENCES documents(document_id),
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
-                content_type TEXT,
-                metadata JSONB,
+                content_type TEXT NOT NULL,
+                section_path TEXT[],
+                country_context_id TEXT,
+                conditions TEXT[],
                 embedding vector(1536),
+                metadata JSONB,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
             )
@@ -143,6 +165,34 @@ def create_tables():
             ON documents (content_type)
         """)
         print("  ✓ created content type index")
+
+        # create country context index for filtering
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_country_idx 
+            ON documents (country_context_id)
+        """)
+        print("  ✓ created country context index")
+
+        # create conditions GIN index for array search
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_conditions_idx 
+            ON documents USING GIN (conditions)
+        """)
+        print("  ✓ created conditions index")
+
+        # create section_path GIN index for hierarchy search
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_section_path_idx 
+            ON documents USING GIN (section_path)
+        """)
+        print("  ✓ created section path index")
+
+        # create source_id index for joining
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS documents_source_idx 
+            ON documents (source_id)
+        """)
+        print("  ✓ created source index")
 
     print("✓ all tables created successfully")
 

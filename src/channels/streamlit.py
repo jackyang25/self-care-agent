@@ -57,6 +57,7 @@ class StreamlitHandler(BaseChannelHandler):
             email = user.get("email")
             phone = user.get("phone_e164")
             timezone = user.get("timezone", "UTC")
+            country = user.get("country_context_id")
             demographics = user.get("demographics", {})
             age = demographics.get("age")
             gender = demographics.get("gender")
@@ -66,6 +67,7 @@ class StreamlitHandler(BaseChannelHandler):
             st.session_state.user_age = age
             st.session_state.user_gender = gender
             st.session_state.user_timezone = timezone
+            st.session_state.user_country = country
             st.session_state.user_identified = True
 
             # determine display name (prefer email, fallback to phone, then user id)
@@ -201,6 +203,7 @@ class StreamlitHandler(BaseChannelHandler):
                     user_age = st.session_state.get("user_age")
                     user_gender = st.session_state.get("user_gender")
                     user_timezone = st.session_state.get("user_timezone", "UTC")
+                    user_country = st.session_state.get("user_country")
 
                     response, sources = self.respond(
                         prompt,
@@ -208,6 +211,7 @@ class StreamlitHandler(BaseChannelHandler):
                         user_age=user_age,
                         user_gender=user_gender,
                         user_timezone=user_timezone,
+                        user_country=user_country,
                         channel_name="streamlit",
                     )
                     st.markdown(response)

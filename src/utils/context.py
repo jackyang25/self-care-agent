@@ -8,6 +8,7 @@ current_user_id: ContextVar[Optional[str]] = ContextVar("current_user_id", defau
 current_user_age: ContextVar[Optional[int]] = ContextVar("current_user_age", default=None)
 current_user_gender: ContextVar[Optional[str]] = ContextVar("current_user_gender", default=None)
 current_user_timezone: ContextVar[Optional[str]] = ContextVar("current_user_timezone", default="UTC")
+current_user_country: ContextVar[Optional[str]] = ContextVar("current_user_country", default=None)
 
 # request tracing context
 correlation_id: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)

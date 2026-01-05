@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.db import get_db_cursor
-from src.services.rag import store_document
+from src.services.rag import store_document, store_source
 
 
 def load_fixture_file(fixture_file: str) -> dict:
@@ -239,11 +239,40 @@ def seed_all(
                 )
             print(f"  ✓ Seeded {len(data['appointments'])} appointment(s)")
 
-    # seed RAG documents (only if not seeding specific table)
-    if table is None and data.get("documents"):
-        seed_rag_documents(data["documents"])
+    # seed RAG sources and documents (only if not seeding specific table)
+    if table is None:
+        if data.get("sources"):
+            seed_rag_sources(data["sources"])
+        if data.get("documents"):
+            seed_rag_documents(data["documents"])
 
     print("✓ Seeding completed")
+
+
+def seed_rag_sources(sources: list):
+    """seed document sources for RAG provenance tracking."""
+    print("Seeding RAG sources...")
+
+    stored_count = 0
+    for source in sources:
+        try:
+            store_source(
+                source_id=source["source_id"],
+                name=source["name"],
+                source_type=source["source_type"],
+                country_context_id=source.get("country_context_id"),
+                version=source.get("version"),
+                url=source.get("url"),
+                publisher=source.get("publisher"),
+                effective_date=source.get("effective_date"),
+                metadata=source.get("metadata"),
+            )
+            print(f"  ✓ Stored source: {source['name']}")
+            stored_count += 1
+        except Exception as e:
+            print(f"  ✗ Error storing source {source['name']}: {e}")
+
+    print(f"  ✓ Seeded {stored_count} RAG source(s)")
 
 
 def seed_rag_documents(documents: list):
@@ -257,7 +286,11 @@ def seed_rag_documents(documents: list):
                 title=doc["title"],
                 content=doc["content"],
                 content_type=doc["content_type"],
-                metadata=doc["metadata"],
+                source_id=doc.get("source_id"),
+                section_path=doc.get("section_path"),
+                country_context_id=doc.get("country_context_id"),
+                conditions=doc.get("conditions"),
+                metadata=doc.get("metadata"),
             )
             print(f"  ✓ Stored: {doc['title']}")
             stored_count += 1

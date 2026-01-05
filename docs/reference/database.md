@@ -228,6 +228,58 @@ Stores appointment records created by the referrals tool.
 - Foreign key to `interactions.interaction_id`
 - Foreign key to `consents.consent_id`
 
+#### 6. `sources` (RAG)
+
+Stores document source information for RAG provenance tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `source_id` | UUID | Primary key |
+| `name` | TEXT | Source name (e.g., "Adult Primary Care 2023") |
+| `source_type` | TEXT | Type: "clinical_guideline", "protocol", "guideline" |
+| `country_context_id` | TEXT | Country code (e.g., "za", "ke") or NULL for global |
+| `version` | TEXT | Version string (e.g., "2023", "v3.1") |
+| `url` | TEXT | Original source URL |
+| `publisher` | TEXT | Publishing organization |
+| `effective_date` | DATE | When source became effective |
+| `metadata` | JSONB | Additional metadata |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+
+**Indexes:**
+- Primary key on `source_id`
+- Foreign key references: `documents.source_id`
+
+#### 7. `documents` (RAG)
+
+Stores healthcare knowledge documents with vector embeddings for RAG retrieval.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `document_id` | UUID | Primary key |
+| `source_id` | UUID | Foreign key to `sources.source_id` (provenance) |
+| `parent_id` | UUID | Self-reference for chunked documents |
+| `title` | TEXT | Document title |
+| `content` | TEXT | Full document text |
+| `content_type` | TEXT | Type: "symptom", "condition", "algorithm", "protocol", "guideline", "medication", "reference", "emergency" |
+| `section_path` | TEXT[] | Hierarchical path (e.g., `["Symptoms", "Fever", "Red Flags"]`) |
+| `country_context_id` | TEXT | Country code or NULL for global |
+| `conditions` | TEXT[] | Medical conditions covered (e.g., `["fever", "malaria"]`) |
+| `embedding` | vector(1536) | Vector embedding (OpenAI text-embedding-3-small) |
+| `metadata` | JSONB | Additional metadata |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | Last update timestamp |
+
+**Indexes:**
+- Primary key on `document_id`
+- Foreign key to `sources.source_id`
+- Vector similarity index on `embedding` (IVFFlat with cosine distance)
+- Index on `content_type`
+- Index on `country_context_id`
+- GIN index on `conditions`
+- GIN index on `section_path`
+
+See `docs/architecture/rag.md` for detailed RAG documentation.
+
 ## Interaction Storage Architecture
 
 ### Automatic Storage
@@ -359,6 +411,42 @@ LEFT JOIN consents c ON a.consent_id = c.consent_id
 WHERE i.user_id = 'user-uuid-here'
 AND i.protocol_invoked = 'triage'
 ORDER BY i.created_at DESC;
+```
+
+### RAG: Search Documents by Country
+```sql
+SELECT d.title, d.content_type, d.country_context_id, s.name as source_name
+FROM documents d
+LEFT JOIN sources s ON d.source_id = s.source_id
+WHERE d.country_context_id = 'za' OR d.country_context_id IS NULL
+ORDER BY d.content_type, d.title;
+```
+
+### RAG: Find Documents by Condition
+```sql
+SELECT d.title, d.content_type, d.conditions
+FROM documents d
+WHERE 'fever' = ANY(d.conditions)
+ORDER BY d.title;
+```
+
+### RAG: List Sources by Country
+```sql
+SELECT source_id, name, source_type, version, country_context_id
+FROM sources
+WHERE country_context_id = 'za' OR country_context_id IS NULL
+ORDER BY effective_date DESC;
+```
+
+### RAG: Document Statistics
+```sql
+SELECT 
+    content_type,
+    country_context_id,
+    COUNT(*) as doc_count
+FROM documents
+GROUP BY content_type, country_context_id
+ORDER BY content_type, country_context_id;
 ```
 
 ## Seed Files

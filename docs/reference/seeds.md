@@ -18,9 +18,12 @@ Seed files should be JSON files with the following structure:
   "consents": [...],
   "providers": [...],
   "appointments": [...],
+  "sources": [...],
   "documents": [...]
 }
 ```
+
+**Note:** Sources must be seeded before documents that reference them.
 
 ## Available Seed Files
 
@@ -156,18 +159,50 @@ Use these templates as a reference when creating new seed files. The templates s
 }
 ```
 
-### Documents Template (RAG)
+### Sources Template (RAG)
 ```json
 {
-  "document_id": "uuid (optional)",
-  "title": "Fever Management Guidelines",
-  "content": "Full document text content...",
-  "content_type": "protocol|guideline|reference|...",
+  "source_id": "uuid (required)",
+  "name": "Adult Primary Care 2023",
+  "source_type": "clinical_guideline|protocol|guideline",
+  "country_context_id": "za|ke|us|... or null for global",
+  "version": "2023",
+  "url": "https://example.com/guidelines.pdf",
+  "publisher": "National Department of Health",
+  "effective_date": "2023-10-01",
   "metadata": {
-    "category": "symptom_management",
-    "condition": "fever",
-    "source": "WHO Guidelines 2024"
+    "description": "Comprehensive clinical tool for adult primary care"
   }
 }
 ```
+
+### Documents Template (RAG)
+```json
+{
+  "title": "Fever - Red Flags (South Africa)",
+  "content": "Full document text content...",
+  "content_type": "symptom|condition|algorithm|protocol|guideline|medication|reference|emergency",
+  "source_id": "uuid (optional, reference to sources)",
+  "section_path": ["Symptoms", "Fever", "Red Flags"],
+  "country_context_id": "za|ke|us|... or null for global",
+  "conditions": ["fever", "malaria"],
+  "metadata": {
+    "category": "emergency",
+    "page_ref": "23"
+  }
+}
+```
+
+### Content Type Reference
+
+| content_type | Description | When to use |
+|--------------|-------------|-------------|
+| `symptom` | Entry points for symptom-based triage | Initial symptom assessment |
+| `condition` | Chronic condition information | Disease-specific guidance |
+| `algorithm` | Clinical decision trees/flowcharts | Structured clinical decisions |
+| `protocol` | Step-by-step clinical protocols | Treatment procedures |
+| `guideline` | General management guidance | General health advice |
+| `medication` | Drug info, dosing, prescriber levels | Medication information |
+| `reference` | Helplines, tables, quick reference | Contact info, lookup tables |
+| `emergency` | Red flags, urgent care criteria | Emergency/urgent situations |
 
