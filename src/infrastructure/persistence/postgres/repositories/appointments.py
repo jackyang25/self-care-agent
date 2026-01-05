@@ -1,7 +1,7 @@
 """appointment data access functions."""
 
 from typing import Optional, List, Dict, Any
-from src.db import get_db_cursor
+from src.infrastructure.persistence.postgres.connection import get_db_cursor
 
 
 def create_appointment(
@@ -179,3 +179,4 @@ def update_appointment_status(
             return cur.rowcount > 0
     except Exception:
         return False
+

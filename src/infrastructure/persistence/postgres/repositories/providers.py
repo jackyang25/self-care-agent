@@ -1,7 +1,7 @@
 """provider data access functions."""
 
 from typing import Optional, List, Dict, Any
-from src.db import get_db_cursor
+from src.infrastructure.persistence.postgres.connection import get_db_cursor
 
 
 def search_providers(
@@ -154,3 +154,4 @@ def find_provider_for_appointment(
             return None
     except Exception:
         return None
+

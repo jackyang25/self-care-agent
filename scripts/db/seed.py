@@ -10,7 +10,7 @@ from typing import Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.db import get_db_cursor
+from src.infrastructure.persistence.postgres.connection import get_db_cursor
 from src.services.rag import store_document, store_source
 
 

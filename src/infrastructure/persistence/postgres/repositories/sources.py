@@ -1,7 +1,7 @@
 """source data access functions for RAG document provenance."""
 
 from typing import List, Optional, Dict, Any
-from src.db import get_db_cursor
+from src.infrastructure.persistence.postgres.connection import get_db_cursor
 
 
 def insert_source(

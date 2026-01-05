@@ -89,3 +89,4 @@ def test_connection() -> Dict[str, Any]:
             "connected": False,
             "error": str(e),
         }
+

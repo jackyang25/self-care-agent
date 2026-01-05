@@ -5,12 +5,12 @@ import json
 import uuid
 from typing import List, Optional, Dict, Any
 from openai import OpenAI
-from src.data.documents import (
+from src.infrastructure.persistence.postgres.repositories.documents import (
     insert_document,
     search_documents_by_embedding,
     delete_document as _delete_document,
 )
-from src.data.sources import insert_source
+from src.infrastructure.persistence.postgres.repositories.sources import insert_source
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 

@@ -1,7 +1,7 @@
 """consent data access functions."""
 
 from typing import List, Dict, Any
-from src.db import get_db_cursor
+from src.infrastructure.persistence.postgres.connection import get_db_cursor
 
 
 def get_user_consents(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -38,3 +38,4 @@ def get_user_consents(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
             return [dict(row) for row in results]
     except Exception:
         return []
+

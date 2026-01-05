@@ -1,7 +1,7 @@
 """utilities for user lookup during authentication."""
 
 from typing import Optional, Dict, Any
-from src.data.users import get_user_by_email as _get_user_by_email, get_user_by_phone as _get_user_by_phone
+from src.infrastructure.persistence.postgres.repositories.users import get_user_by_email as _get_user_by_email, get_user_by_phone as _get_user_by_phone
 from src.utils.logger import get_logger
 
 logger = get_logger("user_lookup")

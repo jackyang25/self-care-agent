@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.data.users import get_user_demographics as _get_user_demographics
+from src.infrastructure.persistence.postgres.repositories.users import get_user_demographics as _get_user_demographics
 from src.utils.context import current_user_id, current_user_age, current_user_gender
 from src.utils.tool_helpers import get_tool_logger, log_tool_call
 from src.schemas.tool_outputs import TriageOutput
