@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.11
     container_name: gh-ai-self-care-pgadmin
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@admin.com
