@@ -11,14 +11,14 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from src.presentation.base import BaseChannelHandler
-from src.utils.context import (
+from src.shared.context import (
     current_user_age,
     current_user_gender,
     current_user_id,
     current_user_timezone,
 )
-from src.utils.logger import get_logger
-from src.utils.user_lookup import get_user_by_phone
+from src.shared.logger import get_logger
+from src.infrastructure.persistence.postgres.repositories.users import get_user_by_phone
 
 logger = get_logger("whatsapp")
 
@@ -203,10 +203,14 @@ async def handle_webhook(
                 # for now, try as-is first, then with +
                 normalized_phone = f"+{normalized_phone}"
 
-            user = get_user_by_phone(normalized_phone)
-            # if not found with +, try without +
-            if not user and normalized_phone.startswith("+"):
-                user = get_user_by_phone(from_number)
+            try:
+                user = get_user_by_phone(normalized_phone)
+                # if not found with +, try without +
+                if not user and normalized_phone.startswith("+"):
+                    user = get_user_by_phone(from_number)
+            except Exception as e:
+                logger.error(f"failed to lookup user by phone: {e}", exc_info=True)
+                user = None
 
             user_id = str(user.get("user_id")) if user else None
 

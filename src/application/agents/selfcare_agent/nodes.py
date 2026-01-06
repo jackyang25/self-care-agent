@@ -9,7 +9,7 @@ from langgraph.prebuilt import ToolNode
 from src.application.agents.selfcare_agent.config import SYSTEM_PROMPT_DATA
 from src.application.agents.selfcare_agent.state import AgentState
 from src.application.tools import TOOLS
-from src.utils.logger import get_logger
+from src.shared.logger import get_logger
 
 logger = get_logger("agent.nodes")
 

@@ -9,9 +9,9 @@ from pydantic import BaseModel, Field
 
 from src.infrastructure.persistence.postgres.repositories.providers import find_provider_for_appointment
 from src.infrastructure.persistence.postgres.repositories.appointments import create_appointment
-from src.utils.context import current_user_id
-from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.schemas.tool_outputs import ReferralOutput
+from src.shared.context import current_user_id
+from src.shared.logger import get_tool_logger, log_tool_call
+from src.shared.schemas.tools import ReferralOutput
 
 logger = get_tool_logger("referrals")
 

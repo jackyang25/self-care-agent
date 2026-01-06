@@ -7,8 +7,8 @@ from typing import Optional, List, Dict, Any
 from langchain_core.messages import AIMessage, ToolMessage
 
 from src.infrastructure.persistence.postgres.repositories.interactions import insert_interaction
-from src.utils.context import current_user_id
-from src.utils.logger import get_logger
+from src.shared.context import current_user_id
+from src.shared.logger import get_logger
 
 logger = get_logger("interactions")
 

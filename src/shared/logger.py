@@ -2,9 +2,9 @@
 
 import logging
 import sys
-from typing import Union
+from typing import Any, Union
 
-from src.utils.context import current_user_id, channel, correlation_id
+from src.shared.context import current_user_id, channel, correlation_id
 
 
 _loggers: dict[str, logging.Logger] = {}
@@ -68,3 +68,31 @@ def get_logger(name: str = "app") -> Union[logging.Logger, ContextLoggerAdapter]
 
     # wrap logger with context adapter
     return ContextLoggerAdapter(base_logger, {})
+
+
+def get_tool_logger(tool_name: str) -> Union[logging.Logger, ContextLoggerAdapter]:
+    """get logger instance for a tool.
+
+    args:
+        tool_name: name of the tool (e.g., "triage", "pharmacy")
+
+    returns:
+        logger instance configured for the tool
+    """
+    return get_logger(tool_name)
+
+
+def log_tool_call(logger: Union[logging.Logger, ContextLoggerAdapter], tool_name: str, **kwargs: Any) -> None:
+    """log tool call with arguments.
+
+    args:
+        logger: logger instance
+        tool_name: name of the tool being called
+        **kwargs: tool arguments to log
+    """
+    if kwargs:
+        # format arguments for logging
+        args_dict = {k: v for k, v in kwargs.items() if v is not None}
+        logger.info(f"calling tool: {tool_name} with args: {args_dict}")
+    else:
+        logger.info(f"{tool_name} called")

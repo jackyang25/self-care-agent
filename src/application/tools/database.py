@@ -11,9 +11,9 @@ from src.infrastructure.persistence.postgres.repositories.providers import searc
 from src.infrastructure.persistence.postgres.repositories.appointments import get_user_appointments
 from src.infrastructure.persistence.postgres.repositories.interactions import get_user_interactions
 from src.infrastructure.persistence.postgres.repositories.consents import get_user_consents
-from src.utils.context import current_user_id
-from src.utils.logger import get_logger
-from src.schemas.tool_outputs import DatabaseOutput
+from src.shared.context import current_user_id
+from src.shared.logger import get_logger
+from src.shared.schemas.tools import DatabaseOutput
 
 logger = get_logger("database")
 

@@ -7,8 +7,11 @@ import streamlit as st
 from PIL import Image
 
 from src.presentation.base import BaseChannelHandler
-from src.utils.logger import get_logger
-from src.utils.user_lookup import get_user_by_email, get_user_by_phone
+from src.shared.logger import get_logger
+from src.infrastructure.persistence.postgres.repositories.users import (
+    get_user_by_email,
+    get_user_by_phone,
+)
 
 logger = get_logger("interface")
 
@@ -41,15 +44,19 @@ class StreamlitHandler(BaseChannelHandler):
 
     def _identify_user(self, identifier: str) -> tuple[bool, str]:
         """identify user by phone or email. returns (success, message)."""
-        # try phone first (e164 format)
-        if (
-            identifier.startswith("+")
-            or identifier.replace("-", "").replace(" ", "").isdigit()
-        ):
-            user = get_user_by_phone(identifier)
-        else:
-            # assume email
-            user = get_user_by_email(identifier)
+        try:
+            # try phone first (e164 format)
+            if (
+                identifier.startswith("+")
+                or identifier.replace("-", "").replace(" ", "").isdigit()
+            ):
+                user = get_user_by_phone(identifier)
+            else:
+                # assume email
+                user = get_user_by_email(identifier)
+        except Exception as e:
+            logger.error(f"failed to lookup user: {e}", exc_info=True)
+            return False, "error looking up user. please try again."
 
         if user:
             # extract user data from structured dict

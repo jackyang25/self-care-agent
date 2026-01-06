@@ -6,8 +6,8 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.schemas.tool_outputs import PharmacyOutput
+from src.shared.logger import get_tool_logger, log_tool_call
+from src.shared.schemas.tools import PharmacyOutput
 
 logger = get_tool_logger("pharmacy")
 

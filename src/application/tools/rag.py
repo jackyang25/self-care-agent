@@ -6,9 +6,9 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from src.application.services.rag import search_documents
-from src.utils.context import current_user_country
-from src.utils.tool_helpers import get_tool_logger, log_tool_call
-from src.schemas.tool_outputs import RAGOutput
+from src.shared.context import current_user_country
+from src.shared.logger import get_tool_logger, log_tool_call
+from src.shared.schemas.tools import RAGOutput
 
 logger = get_tool_logger("rag")
 

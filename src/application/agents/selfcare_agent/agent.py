@@ -12,14 +12,14 @@ from src.application.services.interactions import (
     extract_tool_info_from_messages,
     save_interaction,
 )
-from src.utils.context import (
+from src.shared.context import (
     current_user_age,
     current_user_country,
     current_user_gender,
     current_user_id,
     current_user_timezone,
 )
-from src.utils.logger import get_logger
+from src.shared.logger import get_logger
 
 logger = get_logger("agent")
 

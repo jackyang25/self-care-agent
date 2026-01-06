@@ -6,7 +6,7 @@ from langgraph.graph import END, StateGraph
 
 from src.application.agents.selfcare_agent.nodes import create_nodes
 from src.application.agents.selfcare_agent.state import AgentState
-from src.utils.logger import get_logger
+from src.shared.logger import get_logger
 
 logger = get_logger("agent.graph")
 

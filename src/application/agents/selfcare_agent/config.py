@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 import yaml
 
-from src.utils.logger import get_logger
+from src.shared.logger import get_logger
 
 logger = get_logger("agent.config")
 
