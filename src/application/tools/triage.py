@@ -57,11 +57,9 @@ def run_verified_triage(
 
     returns: tuple of (category, exit_code) where category is "red", "yellow", or "green"
     """
-    # get path to executable (relative to project root)
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
-    executable_path = os.path.join(project_root, "bin", "triage-verifier")
+    # get path to verified triage executable
+    application_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    executable_path = os.path.join(application_dir, "verifiers", "triage-verifier")
 
     if not os.path.exists(executable_path):
         logger.error(f"verified triage executable not found at {executable_path}")
