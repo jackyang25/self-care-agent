@@ -12,10 +12,10 @@ from src.infrastructure.postgres.repositories.appointments import get_user_appoi
 from src.infrastructure.postgres.repositories.interactions import get_user_interactions
 from src.infrastructure.postgres.repositories.consents import get_user_consents
 from src.shared.context import current_user_id
-from src.shared.logger import get_logger
+from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import DatabaseOutput
 
-logger = get_logger("database")
+logger = get_tool_logger("database")
 
 
 def serialize_db_row(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -57,25 +57,30 @@ def database_query(
     specialty: Optional[str] = None,
 ) -> Dict[str, Any]:
     """retrieve current user's data from database.
-    
+
     args:
         query_type: type of query (get_user_by_id, get_user_history, etc.)
         limit: max results to return (default: 10)
         specialty: filter providers by specialty
-        
+
     returns:
         dict with query results and user data
     """
+    log_tool_call(
+        logger,
+        "database_query",
+        query_type=query_type,
+        limit=limit,
+        specialty=specialty,
+    )
+
     # get current user from context
     user_id = current_user_id.get()
-
-    logger.info(f"database_query called: query_type={query_type}")
-    if specialty:
-        logger.debug(f"specialty filter: {specialty}")
 
     try:
         # all queries require user context (security: only access current user's data)
         if not user_id:
+            # return pydantic model instance
             return DatabaseOutput(
                 status="error",
                 message="no user identified in current session. please ensure you are logged in.",
@@ -85,10 +90,12 @@ def database_query(
         if query_type == "get_user_by_id":
             user = get_user_by_id(user_id)
             if user:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message="user found", data=serialize_db_row(user)
                 ).model_dump()
             else:
+                # return pydantic model instance
                 return DatabaseOutput(
                     status="error", message=f"user not found for user_id: {user_id}"
                 ).model_dump()
@@ -97,11 +104,13 @@ def database_query(
         elif query_type == "get_user_interactions":
             interactions = get_user_interactions(user_id, limit=limit)
             if interactions:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message=f"found {len(interactions)} interaction(s)",
                     data=[serialize_db_row(i) for i in interactions],
                 ).model_dump()
             else:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message="no interactions found", data=[]
                 ).model_dump()
@@ -111,6 +120,7 @@ def database_query(
             # get user profile
             user = get_user_by_id(user_id)
             if not user:
+                # return pydantic model instance
                 return DatabaseOutput(
                     status="error", message=f"user not found for user_id: {user_id}"
                 ).model_dump()
@@ -126,6 +136,7 @@ def database_query(
                 "interactions": [serialize_db_row(i) for i in interactions],
                 "consents": [serialize_db_row(c) for c in consents],
             }
+            # return pydantic model instance
             return DatabaseOutput(
                 message="user history retrieved", data=result
             ).model_dump()
@@ -134,11 +145,13 @@ def database_query(
         elif query_type == "get_user_appointments":
             appointments = get_user_appointments(user_id, limit=limit)
             if appointments:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message=f"found {len(appointments)} appointment(s)",
                     data=[serialize_db_row(appt) for appt in appointments],
                 ).model_dump()
             else:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message="no appointments found", data=[]
                 ).model_dump()
@@ -163,12 +176,14 @@ def database_query(
             )
 
             if providers:
+                # return pydantic model instance
                 return DatabaseOutput(
                     message=f"found {len(providers)} provider(s)",
                     data=[serialize_db_row(p) for p in providers],
                 ).model_dump()
             else:
                 specialty_msg = f" with specialty '{specialty}'" if specialty else ""
+                # return pydantic model instance
                 return DatabaseOutput(
                     message=f"no providers found{specialty_msg}", data=[]
                 ).model_dump()

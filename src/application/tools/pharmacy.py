@@ -30,13 +30,13 @@ def pharmacy_orders_and_fulfillment(
     pharmacy: Optional[str] = None,
 ) -> Dict[str, Any]:
     """process pharmacy orders and prescription fulfillment.
-    
+
     args:
         medication: medication name or prescription
         dosage: dosage instructions
         patient_id: patient identifier
         pharmacy: preferred pharmacy location
-        
+
     returns:
         dict with prescription details and pharmacy info
     """

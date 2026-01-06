@@ -44,14 +44,14 @@ def rag_retrieval(
     limit: Optional[int] = 5,
 ) -> Dict[str, Any]:
     """search healthcare knowledge base using semantic search.
-    
+
     args:
         query: search query for relevant documents
         content_type: filter by single content type
         content_types: filter by multiple content types
         conditions: filter by medical conditions
         limit: max documents to retrieve (default: 5)
-        
+
     returns:
         dict with query results and formatted documents
     """
@@ -112,6 +112,7 @@ def rag_retrieval(
                 doc["conditions"] = result["conditions"]
             formatted_results.append(doc)
 
+        # return pydantic model instance
         return RAGOutput(
             query=query,
             results_count=len(formatted_results),

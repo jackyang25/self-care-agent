@@ -28,13 +28,13 @@ def commodity_orders_and_fulfillment(
     priority: Optional[str] = None,
 ) -> Dict[str, Any]:
     """process commodity orders and fulfillment.
-    
+
     args:
         items: list of items to order
         quantity: quantities for each item
         patient_id: patient identifier
         priority: order priority (normal or urgent)
-        
+
     returns:
         dict with order confirmation details
     """

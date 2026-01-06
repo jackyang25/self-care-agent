@@ -7,7 +7,9 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.postgres.repositories.providers import find_provider_for_appointment
+from src.infrastructure.postgres.repositories.providers import (
+    find_provider_for_appointment,
+)
 from src.infrastructure.postgres.repositories.appointments import create_appointment
 from src.shared.context import current_user_id
 from src.shared.logger import get_tool_logger, log_tool_call
@@ -44,7 +46,7 @@ def referrals_and_scheduling(
     reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     """process referrals and schedule appointments.
-    
+
     args:
         specialty: medical specialty or department
         provider: preferred provider name
@@ -52,7 +54,7 @@ def referrals_and_scheduling(
         preferred_date: preferred appointment date
         preferred_time: preferred appointment time
         reason: reason for referral or appointment
-        
+
     returns:
         dict with appointment confirmation details
     """

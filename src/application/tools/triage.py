@@ -7,7 +7,9 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.postgres.repositories.users import get_user_demographics as _get_user_demographics
+from src.infrastructure.postgres.repositories.users import (
+    get_user_demographics as _get_user_demographics,
+)
 from src.shared.context import current_user_id, current_user_age, current_user_gender
 from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import TriageOutput
@@ -157,7 +159,7 @@ def triage_and_risk_flagging(
     pregnant: Optional[int] = None,
 ) -> Dict[str, Any]:
     """assess patient triage and assign risk category.
-    
+
     args:
         symptoms: patient symptoms or complaints
         urgency: urgency level ('red', 'yellow', or 'green')
@@ -169,7 +171,7 @@ def triage_and_risk_flagging(
         severe_symptom: 1=severe, 0=not (for verified triage)
         moderate_symptom: 1=moderate, 0=not (for verified triage)
         pregnant: 1=yes, 0=no (for verified triage)
-        
+
     returns:
         dict with risk level and recommendations
     """
@@ -290,6 +292,7 @@ def triage_and_risk_flagging(
         else None
     )
 
+    # return pydantic model instance
     return TriageOutput(
         risk_level=risk_level,
         recommendation=recommendation,
