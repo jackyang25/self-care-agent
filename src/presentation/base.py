@@ -27,8 +27,8 @@ class BaseChannelHandler(ABC):
         user_gender: Optional[str] = None,
         user_timezone: Optional[str] = None,
         user_country: Optional[str] = None,
-    ) -> tuple[str, list[dict[str, str]]]:
-        """process user message and return response with sources."""
+    ) -> tuple[str, list[dict[str, str]], list[str]]:
+        """process user message and return response with sources and tools."""
         if user_id is None:
             user_id = self.get_user_id()
 

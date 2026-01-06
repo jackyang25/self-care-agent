@@ -73,34 +73,33 @@ def rag_retrieval(
         )
 
         if not results:
-            return {
-                "status": "success",
-                "query": query,
-                "country_context": country_context_id,
-                "results_count": 0,
-                "documents": [],
-            }
+            return RAGOutput(
+                status="success",
+                query=query,
+                results_count=0,
+                documents=[],
+            ).model_dump()
 
         # format results for agent consumption
         formatted_results = []
         for result in results:
             doc = {
-                "title": result["title"],
-                "content": result["content"],
-                "content_type": result.get("content_type"),
-                "similarity": round(result["similarity"], 3),
+                "title": result.title,
+                "content": result.content,
+                "content_type": result.content_type,
+                "similarity": round(result.similarity, 3),
             }
             # include source info if available
-            if result.get("source_name"):
-                doc["source"] = result["source_name"]
-                if result.get("source_version"):
-                    doc["source"] += f" ({result['source_version']})"
+            if result.source_name:
+                doc["source"] = result.source_name
+                if result.source_version:
+                    doc["source"] += f" ({result.source_version})"
             # include country context if specific to a country
-            if result.get("country_context_id"):
-                doc["country"] = result["country_context_id"]
+            if result.country_context_id:
+                doc["country"] = result.country_context_id
             # include conditions if tagged
-            if result.get("conditions"):
-                doc["conditions"] = result["conditions"]
+            if result.conditions:
+                doc["conditions"] = result.conditions
             formatted_results.append(doc)
 
         # return pydantic model instance
@@ -112,13 +111,12 @@ def rag_retrieval(
 
     except Exception as e:
         logger.error(f"rag retrieval error: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "message": f"error retrieving documents: {str(e)}",
-            "query": query,
-            "results_count": 0,
-            "documents": [],
-        }
+        return RAGOutput(
+            status="error",
+            query=query,
+            results_count=0,
+            documents=[],
+        ).model_dump()
 
 
 rag_tool = StructuredTool.from_function(

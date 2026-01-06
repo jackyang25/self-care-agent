@@ -4,6 +4,9 @@ from typing import Any, Optional
 
 from langchain_core.messages import HumanMessage
 
+import logging
+import src.shared.logger  # noqa - initialize logging config
+
 from src.application.agent.graph import create_agent_graph
 from src.application.agent.prompt import SYSTEM_PROMPT
 from src.application.services.interactions import (
@@ -17,7 +20,6 @@ from src.infrastructure.redis import (
 )
 from src.shared.config import LLM_MODEL, TEMPERATURE
 from src.shared.context import UserContext
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,6 @@ def get_agent() -> Any:
         _agent_instance = create_agent_graph(
             llm_model=LLM_MODEL, temperature=TEMPERATURE
         )
-        logger.info(f"initialized agent | model={LLM_MODEL} | temperature={TEMPERATURE}")
     return _agent_instance
 
 
@@ -61,7 +62,7 @@ def process_message(
         user_country: user country context (e.g., "za", "ke")
 
     returns:
-        tuple of (response text, rag sources)
+        tuple of (response text, rag sources, tools called)
     """
     # create user context
     user_context = UserContext(
@@ -83,7 +84,6 @@ def process_message(
     # log workflow start
     query_preview = user_input[:100] + "..." if len(user_input) > 100 else user_input
     user_info = f" | user={user_id[:8]}" if user_id else ""
-    logger.info("=" * 80)
     logger.info(f"workflow start | query=\"{query_preview}\"{user_info}")
 
     # invoke agent
@@ -104,7 +104,7 @@ def process_message(
     tool_data = extract_tool_info_from_messages(result_messages)
 
     # save interaction
-    interaction_id = save_interaction(
+    interaction_result = save_interaction(
         user_input=user_input,
         channel="streamlit",
         protocol_invoked=tool_data.get("protocol_invoked"),
@@ -119,9 +119,9 @@ def process_message(
     # log completion
     tools = tool_data.get("tools_called")
     tools_str = f" | tools={', '.join(tools)}" if tools else ""
-    id_str = f" | id={interaction_id[:8]}" if interaction_id else ""
+    id_str = f" | id={interaction_result.interaction_id[:8]}" if interaction_result.interaction_id else ""
     logger.info(f"workflow complete{tools_str}{id_str}")
-    logger.info("=" * 80)
 
-    # return response
-    return result_messages[-1].content, rag_sources
+    # return response with sources and tools
+    tools_called = tool_data.get("tools_called") or []
+    return result_messages[-1].content, rag_sources, tools_called

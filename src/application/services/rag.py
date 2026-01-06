@@ -11,6 +11,7 @@ from src.infrastructure.postgres.repositories.documents import (
     delete_document as _delete_document,
 )
 from src.infrastructure.postgres.repositories.sources import insert_source
+from src.shared.schemas.services import DocumentSearchResult
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -124,7 +125,7 @@ def search_documents(
     conditions: Optional[List[str]] = None,
     min_similarity: float = 0.5,
     include_global: bool = True,
-) -> List[Dict[str, Any]]:
+) -> List[DocumentSearchResult]:
     """search for similar documents using vector similarity.
 
     uses top-k approach with filtering and minimum similarity threshold:
@@ -159,9 +160,21 @@ def search_documents(
         include_global=include_global,
     )
 
-    # apply minimum similarity threshold as quality gate
-    filtered_results = [doc for doc in results if doc["similarity"] >= min_similarity]
-
+    # apply minimum similarity threshold as quality gate and convert to Pydantic models
+    filtered_results = []
+    for doc in results:
+        if doc["similarity"] >= min_similarity:
+            filtered_results.append(DocumentSearchResult(
+                title=doc["title"],
+                content=doc["content"],
+                similarity=doc["similarity"],
+                source_name=doc.get("source_name"),
+                source_version=doc.get("source_version"),
+                content_type=doc.get("content_type"),
+                country_context_id=doc.get("country_context_id"),
+                conditions=doc.get("conditions"),
+            ))
+    
     return filtered_results
 
 

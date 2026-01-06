@@ -60,3 +60,84 @@ class DocumentServiceOutput(BaseModel):
     document_id: str
     success: bool
 
+
+# user service models
+class UserProfile(BaseModel):
+    """user profile data."""
+    
+    user_id: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    country_context_id: Optional[str] = None
+    created_at: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
+
+class InteractionRecord(BaseModel):
+    """single interaction record."""
+    
+    interaction_id: str
+    user_id: str
+    channel: Optional[str] = None
+    user_input: Optional[str] = None
+    risk_level: Optional[str] = None
+    tools_called: Optional[List[str]] = None
+    created_at: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
+
+class AppointmentRecord(BaseModel):
+    """single appointment record."""
+    
+    appointment_id: str
+    user_id: str
+    provider_id: Optional[str] = None
+    specialty: Optional[str] = None
+    appointment_date: Optional[str] = None
+    appointment_time: Optional[str] = None
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
+
+class ConsentRecord(BaseModel):
+    """single consent record."""
+    
+    consent_id: str
+    user_id: str
+    consent_type: Optional[str] = None
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
+
+class ProviderRecord(BaseModel):
+    """healthcare provider record."""
+    
+    provider_id: str
+    name: str
+    specialty: Optional[str] = None
+    facility: Optional[str] = None
+    country_context_id: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
+
+class UserCompleteHistory(BaseModel):
+    """complete user history including profile, interactions, and consents."""
+    
+    user: UserProfile
+    interactions: List[InteractionRecord]
+    consents: List[ConsentRecord]
+

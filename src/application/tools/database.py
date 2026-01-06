@@ -1,40 +1,26 @@
 """database query tool for agent."""
 
-from datetime import datetime
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.postgres.repositories.users import get_user_by_id
-from src.infrastructure.postgres.repositories.providers import search_providers
-from src.infrastructure.postgres.repositories.appointments import get_user_appointments
-from src.infrastructure.postgres.repositories.interactions import get_user_interactions
-from src.infrastructure.postgres.repositories.consents import get_user_consents
 import logging
 
+from src.application.services.users import (
+    get_user_profile,
+    get_user_interaction_history,
+    get_user_appointment_list,
+    get_user_complete_history,
+    get_available_providers,
+)
+from src.infrastructure.postgres.repositories.users import get_user_by_id
 from src.shared.context import current_user_id
 from src.shared.schemas.tools import DatabaseOutput
 
 logger = logging.getLogger(__name__)
 
 
-def serialize_db_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    """convert database row to json-serializable dict.
-
-    converts datetime objects to iso format strings so the dict
-    can be properly serialized to json by langchain.
-    """
-    result = {}
-    for key, value in row.items():
-        if isinstance(value, datetime):
-            result[key] = value.isoformat()
-        elif isinstance(value, dict):
-            # recursively serialize nested dicts
-            result[key] = serialize_db_row(value)
-        else:
-            result[key] = value
-    return result
 
 
 class DatabaseQueryInput(BaseModel):
@@ -78,10 +64,10 @@ def database_query(
             ).model_dump()
 
         if query_type == "get_user_by_id":
-            user = get_user_by_id(user_id)
+            user = get_user_profile(user_id)
             if user:
                 return DatabaseOutput(
-                    message="user found", data=serialize_db_row(user)
+                    message="user found", data=user.model_dump()
                 ).model_dump()
             else:
                 return DatabaseOutput(
@@ -89,11 +75,11 @@ def database_query(
                 ).model_dump()
 
         elif query_type == "get_user_interactions":
-            interactions = get_user_interactions(user_id, limit=limit)
+            interactions = get_user_interaction_history(user_id, limit=limit)
             if interactions:
                 return DatabaseOutput(
                     message=f"found {len(interactions)} interaction(s)",
-                    data=[serialize_db_row(i) for i in interactions],
+                    data=[i.model_dump() for i in interactions],
                 ).model_dump()
             else:
                 return DatabaseOutput(
@@ -102,35 +88,23 @@ def database_query(
 
         # get complete user history (profile + interactions + consents)
         elif query_type == "get_user_history":
-            # get user profile
-            user = get_user_by_id(user_id)
-            if not user:
+            history = get_user_complete_history(user_id, limit=limit)
+            if not history:
                 return DatabaseOutput(
                     status="error", message=f"user not found for user_id: {user_id}"
                 ).model_dump()
 
-            # get interactions
-            interactions = get_user_interactions(user_id, limit=limit)
-
-            # get consents
-            consents = get_user_consents(user_id, limit=limit)
-
-            result = {
-                "user": serialize_db_row(user),
-                "interactions": [serialize_db_row(i) for i in interactions],
-                "consents": [serialize_db_row(c) for c in consents],
-            }
             return DatabaseOutput(
-                message="user history retrieved", data=result
+                message="user history retrieved", data=history.model_dump()
             ).model_dump()
 
         # get user appointments
         elif query_type == "get_user_appointments":
-            appointments = get_user_appointments(user_id, limit=limit)
+            appointments = get_user_appointment_list(user_id, limit=limit)
             if appointments:
                 return DatabaseOutput(
                     message=f"found {len(appointments)} appointment(s)",
-                    data=[serialize_db_row(appt) for appt in appointments],
+                    data=[appt.model_dump() for appt in appointments],
                 ).model_dump()
             else:
                 return DatabaseOutput(
@@ -150,7 +124,7 @@ def database_query(
                     logger.warning(f"could not get user country context: {e}")
                     # continue without country filter
 
-            providers = search_providers(
+            providers = get_available_providers(
                 specialty=specialty,
                 country_context=country_context,
                 limit=limit,
@@ -159,7 +133,7 @@ def database_query(
             if providers:
                 return DatabaseOutput(
                     message=f"found {len(providers)} provider(s)",
-                    data=[serialize_db_row(p) for p in providers],
+                    data=[p.model_dump() for p in providers],
                 ).model_dump()
             else:
                 specialty_msg = f" with specialty '{specialty}'" if specialty else ""

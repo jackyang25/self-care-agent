@@ -49,7 +49,6 @@ def _get_handler() -> WhatsAppHandler:
     global _handler
     if _handler is None:
         _handler = WhatsAppHandler()
-        logger.info("whatsapp handler initialized")
     return _handler
 
 
@@ -92,18 +91,12 @@ async def verify_webhook(request: Request):
     hub_verify_token = query_params.get("hub.verify_token")
     hub_challenge = query_params.get("hub.challenge")
 
-    client_host = request.client.host if request.client else "unknown"
-    
-    logger.info(f"webhook verification | client={client_host} | mode={hub_mode}")
-
     verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
 
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
-        logger.info("webhook verified")
         return Response(content=hub_challenge, media_type="text/plain")
 
     logger.warning(f"verification failed: mode={hub_mode}, token_match={hub_verify_token == verify_token}")
-    logger.info("webhook verification failed")
     raise HTTPException(status_code=403, detail="verification failed")
 
 
@@ -116,11 +109,6 @@ async def handle_webhook(
 
     processes incoming messages and sends responses via agent.
     """
-    # log incoming request
-    client_host = request.client.host if request.client else "unknown"
-    
-    logger.info(f"webhook message received | client={client_host}")
-
     # get raw body for signature verification
     body = await request.body()
 
@@ -129,17 +117,13 @@ async def handle_webhook(
     if webhook_secret:
         if not verify_webhook_signature(body, x_hub_signature_256, webhook_secret):
             logger.warning("invalid webhook signature")
-            logger.error("webhook invalid signature")
             raise HTTPException(status_code=403, detail="invalid signature")
 
     # parse webhook payload
     try:
         data = await request.json()
-        payload_preview = str(data)[:150] + "..." if len(str(data)) > 150 else str(data)
-        logger.info(f"payload: {payload_preview}")
     except Exception as e:
         logger.error(f"parse error: {e}")
-        logger.error("webhook parse error")
         raise HTTPException(status_code=400, detail="invalid payload")
 
     # whatsapp webhook structure
@@ -151,7 +135,6 @@ async def handle_webhook(
 
     if not messages:
         # not a message event (could be status update, etc.)
-        logger.info("webhook no messages")
         return JSONResponse(content={"status": "ok"})
 
     # process each message
@@ -162,16 +145,12 @@ async def handle_webhook(
             message_type = message.get("type")
 
             if message_type != "text":
-                logger.info(f"skipping non-text: {message_type}")
                 continue
 
             text_body = message.get("text", {}).get("body", "")
 
             if not text_body:
                 continue
-
-            msg_preview = text_body[:80] + "..." if len(text_body) > 80 else text_body
-            logger.info(f"from: {from_number} | message: {msg_preview}")
 
             # lookup user by phone number
             # whatsapp sends phone numbers in E.164 format (e.g., "1234567890" or "+1234567890")
@@ -203,8 +182,6 @@ async def handle_webhook(
                     logger.error(f"send error: {e}")
                 continue  # skip processing this message
 
-            logger.info(f"user_id: {user_id[:8]}... | processing message")
-
             # get user demographics
             demographics = user.get("demographics", {}) if user else {}
             age = demographics.get("age")
@@ -213,7 +190,7 @@ async def handle_webhook(
 
             # process message through handler (context vars set in execution_node)
             handler = _get_handler()
-            response, sources = handler.respond(
+            response, sources, _ = handler.respond(
                 text_body,
                 user_id=user_id,
                 user_age=age,
@@ -231,9 +208,6 @@ async def handle_webhook(
                     sources_text += f"{i}. {source.get('title', 'Unknown')}{content_type_label} - {similarity_pct}% match\n"
                 response = response + sources_text
 
-            resp_preview = response[:80] + "..." if len(response) > 80 else response
-            logger.info(f"sending response: {resp_preview}")
-
             # send response via whatsapp api
             try:
                 send_whatsapp_message(from_number, response)
@@ -245,7 +219,6 @@ async def handle_webhook(
             logger.error(f"processing error: {e}")
             continue
 
-    logger.info("webhook processed successfully")
     return JSONResponse(content={"status": "ok"})
 
 

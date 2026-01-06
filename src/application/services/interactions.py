@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from src.infrastructure.postgres.repositories.interactions import insert_interaction
 from src.shared.context import current_user_id
+from src.shared.schemas.services import InteractionServiceOutput
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ def save_interaction(
     recommendations: Optional[List[str]] = None,
     tools_called: Optional[List[str]] = None,
     user_id: Optional[str] = None,
-) -> Optional[str]:
+) -> InteractionServiceOutput:
     """save user interaction to database.
 
     args:
@@ -66,11 +67,17 @@ def save_interaction(
             recommendations=recommendations_data,
         )
 
-        return interaction_id if success else None
+        return InteractionServiceOutput(
+            interaction_id=interaction_id,
+            success=success,
+        )
 
     except Exception as e:
         logger.error(f"failed to save interaction: {e}", exc_info=True)
-        return None
+        return InteractionServiceOutput(
+            interaction_id="",
+            success=False,
+        )
 
 
 def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
@@ -149,7 +156,7 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
     }
 
 
-def extract_rag_sources(messages: List) -> List[Dict[str, Any]]:
+def extract_rag_sources(messages: List) -> List[Dict[str, str]]:
     """extract rag sources from tool messages.
 
     args:

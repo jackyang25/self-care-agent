@@ -198,7 +198,7 @@ class StreamlitHandler(BaseChannelHandler):
                     user_timezone = st.session_state.get("user_timezone", "UTC")
                     user_country = st.session_state.get("user_country")
 
-                    response, sources = self.respond(
+                    response, sources, tools = self.respond(
                         prompt,
                         user_id=user_id,
                         user_age=user_age,
@@ -207,6 +207,10 @@ class StreamlitHandler(BaseChannelHandler):
                         user_country=user_country,
                     )
                     st.markdown(response)
+
+                    # display tools used
+                    if tools:
+                        st.caption(f"Tools: {', '.join(tools)}")
 
                     # display sources if available
                     if sources:

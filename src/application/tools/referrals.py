@@ -58,10 +58,9 @@ def referrals_and_scheduling(
     user_id = current_user_id.get()
     if not user_id:
         logger.error("no user_id in context - appointment cannot be saved")
-        return {
-            "status": "error",
-            "message": "no user logged in. please log in to schedule appointments.",
-        }
+        return ReferralOutput(
+            status="error",
+        ).model_dump()
 
     # schedule appointment using service layer
     appointment = schedule_appointment(
