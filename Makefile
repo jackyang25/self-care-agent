@@ -1,88 +1,119 @@
-.PHONY: help setup dev up down restart ps logs shell shell-db create-tables seed-db reset-db test-db rebuild clean
+.PHONY: help setup start stop restart rebuild logs clean reset db-shell db-create db-seed
 
-# ==============================================================================
+# ============================================================================
 # Help
-# ==============================================================================
+# ============================================================================
 
-help: ## show this help message
-	@echo "Available commands:"
+help:
+	@echo "GH-AI-Self-Care - Available Commands:"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@echo "Setup:"
+	@echo "  make setup       - First-time setup (start containers, create tables, seed data)"
+	@echo ""
+	@echo "Docker Containers:"
+	@echo "  make start       - Start Docker containers"
+	@echo "  make stop        - Stop Docker containers"
+	@echo "  make restart     - Restart Docker containers"
+	@echo "  make rebuild     - Rebuild and restart containers (use after dependency changes)"
+	@echo "  make logs        - View container logs"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  make clean       - Stop containers and remove them"
+	@echo "  make reset       - Reset database with seed data"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-shell    - Access PostgreSQL command line"
+	@echo "  make db-create   - Create database tables"
+	@echo "  make db-seed     - Seed database with demo data"
+	@echo ""
 
-# ==============================================================================
-# Quick Start
-# ==============================================================================
+# ============================================================================
+# Setup
+# ============================================================================
 
-setup: ## first-time setup (start containers, create tables, seed data)
-	docker-compose up -d
+# first-time setup with database initialization
+setup:
+	@echo "Starting first-time setup..."
+	@docker-compose up -d
 	@echo "Waiting for database to be ready..."
 	@sleep 5
-	$(MAKE) create-tables
-	$(MAKE) seed-db
+	@$(MAKE) db-create
+	@$(MAKE) db-seed
 	@echo ""
-	@echo "Setup complete! Access the app at http://localhost:8501"
+	@echo "✓ Setup complete! Access the app at http://localhost:8501"
 
-dev: ## start in development mode (build + follow logs)
-	docker-compose up -d --build
-	docker-compose logs -f
+# ============================================================================
+# Docker Containers
+# ============================================================================
 
-# ==============================================================================
-# Container Management
-# ==============================================================================
+# start all containers in background
+start:
+	@echo "Starting containers..."
+	@docker-compose up -d
+	@echo "✓ Containers started"
 
-up: ## start all containers
-	docker-compose up -d
+# stop containers but keep volumes (data persists)
+stop:
+	@echo "Stopping containers..."
+	@docker-compose down
+	@echo "✓ Containers stopped"
 
-down: ## stop all containers
-	docker-compose down
+# restart containers without recreating them
+restart:
+	@echo "Restarting containers..."
+	@docker-compose restart
+	@echo "✓ Containers restarted"
 
-restart: ## restart all containers
-	docker-compose restart
+# rebuild containers from scratch (use after dependency changes)
+rebuild:
+	@echo "Rebuilding containers..."
+	@docker-compose build --no-cache
+	@docker-compose up -d
+	@echo "✓ Containers rebuilt and started"
 
-ps: ## show running containers
-	docker-compose ps
+# view live logs from all containers
+logs:
+	@docker-compose logs -f
 
-logs: ## follow logs from all containers
-	docker-compose logs -f
+# ============================================================================
+# Cleanup
+# ============================================================================
 
-logs-app: ## follow logs from app containers only
-	docker-compose logs -f streamlit webhook
+# stop and remove containers but keep volumes (data persists)
+clean:
+	@echo "Cleaning up containers..."
+	@docker-compose down
+	@echo "✓ Containers removed"
 
-shell: ## open bash shell in app container
-	docker-compose exec streamlit /bin/bash
-
-# ==============================================================================
-# Database Management
-# ==============================================================================
-
-create-tables: ## create all database tables (app + RAG)
-	docker-compose exec streamlit python scripts/db/create_tables.py
-
-seed-db: ## seed database with demo data (idempotent, safe to rerun)
-	docker-compose exec streamlit python scripts/db/seed.py
-
-reset-db: ## reset database (delete all data, recreate tables, reseed)
-	docker-compose down -v
-	docker-compose up -d
+# stop containers and delete all data (fresh start)
+reset:
+	@echo "WARNING: This will delete all database data!"
+	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
+	@echo "Resetting everything..."
+	@docker-compose down -v
+	@docker-compose up -d
 	@echo "Waiting for database..."
 	@sleep 5
-	$(MAKE) create-tables
-	$(MAKE) seed-db
+	@$(MAKE) db-create
+	@$(MAKE) db-seed
+	@echo "✓ Database reset complete"
 
-test-db: ## test database connection
-	docker-compose exec streamlit python scripts/db/test.py
+# ============================================================================
+# Database
+# ============================================================================
 
-shell-db: ## open postgres shell
-	docker-compose exec db psql -U postgres -d selfcare
+# open postgresql command line interface
+db-shell:
+	@docker-compose exec db psql -U postgres -d selfcare
 
-# ==============================================================================
-# Advanced
-# ==============================================================================
+# create database tables
+db-create:
+	@echo "Creating database tables..."
+	@docker-compose exec streamlit python scripts/db/create_tables.py
+	@echo "✓ Tables created"
 
-rebuild: ## rebuild and restart all containers (force recreate)
-	docker-compose up -d --build --force-recreate
-
-clean: ## stop containers, remove volumes, and clean docker system
-	docker-compose down -v
-	docker system prune -f
-
+# seed database with demo data
+db-seed:
+	@echo "Seeding database with demo data..."
+	@docker-compose exec streamlit python scripts/db/seed.py
+	@echo "✓ Database seeded"
