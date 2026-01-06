@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 # add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.infrastructure.postgres.connection import get_db_cursor
@@ -16,7 +16,7 @@ from src.application.services.rag import store_document, store_source
 
 def load_fixture_file(fixture_file: str) -> dict:
     """load seed data from json file."""
-    fixture_path = Path(__file__).parent.parent.parent / "seeds" / fixture_file
+    fixture_path = Path(__file__).parent.parent / "seeds" / fixture_file
     if not fixture_path.exists():
         raise FileNotFoundError(f"seed file not found: {fixture_path}")
     with open(fixture_path, "r") as f:

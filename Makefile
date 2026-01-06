@@ -5,7 +5,7 @@
 # ============================================================================
 
 help:
-	@echo "GH-AI-Self-Care - Available Commands:"
+	@echo "AI Self-Care Agent - Available Commands:"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make setup       - First-time setup (start containers, create tables, seed data)"
@@ -25,6 +25,15 @@ help:
 	@echo "  make db-shell    - Access PostgreSQL command line"
 	@echo "  make db-create   - Create database tables"
 	@echo "  make db-seed     - Seed database with demo data"
+	@echo ""
+	@echo "Admin Tools:"
+	@echo "  make redis-shell - Access Redis command line"
+	@echo "  make redis-clear - Clear Redis cache"
+	@echo ""
+	@echo "Web Interfaces:"
+	@echo "  Streamlit UI:     http://localhost:8501"
+	@echo "  pgAdmin:          http://localhost:5050  (admin@admin.com / admin)"
+	@echo "  RedisInsight:     http://localhost:5540"
 	@echo ""
 
 # ============================================================================
@@ -104,7 +113,7 @@ reset:
 
 # open postgresql command line interface
 db-shell:
-	@docker-compose exec db psql -U postgres -d selfcare
+	@docker-compose exec postgres psql -U postgres -d selfcare
 
 # create database tables
 db-create:
@@ -117,3 +126,13 @@ db-seed:
 	@echo "Seeding database with demo data..."
 	@docker-compose exec streamlit python scripts/seed_database.py
 	@echo "✓ Database seeded"
+
+# open redis command line interface
+redis-shell:
+	@docker-compose exec redis redis-cli
+
+# clear redis cache
+redis-clear:
+	@echo "Clearing Redis cache..."
+	@docker-compose exec redis redis-cli FLUSHDB
+	@echo "✓ Redis cache cleared"
