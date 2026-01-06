@@ -109,11 +109,11 @@ db-shell:
 # create database tables
 db-create:
 	@echo "Creating database tables..."
-	@docker-compose exec streamlit python scripts/db/create_tables.py
+	@docker-compose exec streamlit python scripts/create_tables.py
 	@echo "✓ Tables created"
 
 # seed database with demo data
 db-seed:
 	@echo "Seeding database with demo data..."
-	@docker-compose exec streamlit python scripts/db/seed.py
+	@docker-compose exec streamlit python scripts/seed_database.py
 	@echo "✓ Database seeded"
