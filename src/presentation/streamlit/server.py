@@ -5,7 +5,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.presentation.web.streamlit.handler import StreamlitHandler
+from src.presentation.streamlit.handler import StreamlitHandler
 
 load_dotenv()
 

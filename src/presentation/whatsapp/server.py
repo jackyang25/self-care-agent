@@ -3,7 +3,7 @@
 import os
 from dotenv import load_dotenv
 import uvicorn
-from src.presentation.messaging.whatsapp.handler import app
+from src.presentation.whatsapp.handler import app
 
 load_dotenv()
 
