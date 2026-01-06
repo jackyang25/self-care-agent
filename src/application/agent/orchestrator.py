@@ -1,13 +1,12 @@
-"""main agent orchestration and message processing."""
+"""agent orchestration and message processing."""
 
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from src.application.agents.selfcare_agent.config import AGENT_CONFIG, SYSTEM_PROMPT_DATA
-from src.application.agents.selfcare_agent.graph import create_agent_graph
-from src.application.agents.selfcare_agent.prompt import build_patient_context
-from src.application.agents.selfcare_agent.utils import extract_rag_sources
+from src.application.agent.config import AGENT_CONFIG, PROMPT_DATA, build_patient_context
+from src.application.agent.graph import create_agent_graph
+from src.application.agent.utils import extract_rag_sources
 from src.application.services.interactions import (
     extract_tool_info_from_messages,
     save_interaction,
@@ -21,7 +20,7 @@ from src.shared.context import (
 )
 from src.shared.logger import get_logger
 
-logger = get_logger("agent")
+logger = get_logger("agent.orchestrator")
 
 # agent singleton
 _agent_instance = None
@@ -90,7 +89,7 @@ def process_message(
     country = current_user_country.get()
 
     patient_context = build_patient_context(age, gender, timezone, country)
-    system_prompt = SYSTEM_PROMPT_DATA["prompt"] + patient_context
+    system_prompt = PROMPT_DATA["prompt"] + patient_context
 
     # build message history from conversation
     messages = []

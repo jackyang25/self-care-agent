@@ -4,7 +4,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
 
-from src.application.agents.selfcare_agent import get_agent, process_message
+from src.application.agent import get_agent, process_message
 from src.shared.context import correlation_id, channel
 
 

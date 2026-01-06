@@ -1,6 +1,7 @@
 streamlit>=1.28.0
 huggingface_hub<0.20.0
 langgraph>=0.0.40
+langgraph-checkpoint-redis>=0.0.1
 langchain>=0.1.0
 langchain-openai>=0.0.5
 python-dotenv>=1.0.0
