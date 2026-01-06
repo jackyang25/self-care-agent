@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   streamlit:
     build: .
@@ -46,8 +44,6 @@ services:
       - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
       - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
-      - WEBHOOK_PORT=8000
-      - WEBHOOK_HOST=0.0.0.0
       - PYTHONPATH=/app
     volumes:
       - .:/app
@@ -99,25 +95,9 @@ services:
       - "5540:5540"
     volumes:
       - redisinsight_data:/data
-      - ./config:/config:ro
     depends_on:
       - redis
     restart: unless-stopped
-    environment:
-      - RIHOST=0.0.0.0
-      - RIPORT=5540
-    entrypoint: >
-      /bin/sh -c "
-      if [ -f /config/redis.connections.json ] && [ ! -f /data/.configured ]; then
-        echo 'Auto-configuring RedisInsight...';
-        sleep 3;
-        mkdir -p /data;
-        cp /config/redis.connections.json /data/redisinsight_db_0.json;
-        touch /data/.configured;
-        echo '✓ RedisInsight configured';
-      fi;
-      /usr/local/bin/docker-entrypoint.sh
-      "
 
   pgadmin:
     image: dpage/pgadmin4:9.11
@@ -150,4 +130,3 @@ volumes:
   redis_data:
   redisinsight_data:
   pgadmin_data:
-

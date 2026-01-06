@@ -2,13 +2,13 @@
   "Servers": {
     "1": {
       "Name": "Self-Care DB",
-      "Group": "Local",
+      "Group": "Servers",
       "Host": "postgres",
       "Port": 5432,
       "MaintenanceDB": "postgres",
       "Username": "postgres",
-      "Password": "postgres",
       "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass",
       "Comment": "Auto-configured Self-Care PostgreSQL Database"
     }
   }
