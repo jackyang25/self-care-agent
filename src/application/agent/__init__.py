@@ -2,7 +2,7 @@
 
 from src.application.agent.config import AGENT_CONFIG, PROMPT_DATA, build_patient_context
 from src.application.agent.graph import AgentState, create_agent_graph
-from src.application.agent.orchestrator import get_agent, process_message
+from src.application.agent.runtime import get_agent, process_message
 
 __all__ = [
     # main API

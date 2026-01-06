@@ -1,4 +1,4 @@
-"""agent orchestration and message processing."""
+"""agent runtime environment for execution and message processing."""
 
 from typing import Any, Dict, List, Optional
 
@@ -6,8 +6,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from src.application.agent.config import AGENT_CONFIG, PROMPT_DATA, build_patient_context
 from src.application.agent.graph import create_agent_graph
-from src.application.agent.utils import extract_rag_sources
 from src.application.services.interactions import (
+    extract_rag_sources,
     extract_tool_info_from_messages,
     save_interaction,
 )
@@ -24,7 +24,7 @@ from src.shared.context import (
 )
 from src.shared.logger import get_logger
 
-logger = get_logger("agent.orchestrator")
+logger = get_logger("agent.runtime")
 
 # agent singleton
 _agent_instance = None
@@ -168,3 +168,4 @@ def process_message(
             return f"tool '{tool_name}' executed successfully", []
 
     return "processed", []
+

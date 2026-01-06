@@ -240,3 +240,4 @@ prompt: |
   - verify you have fulfilled every part of the user's request before ending
   - acknowledge tool usage naturally (e.g., "based on clinical guidelines..." not "i called the rag tool...")
   - **important:** when confirming any actions (orders, prescriptions, appointments), mention "this is demonstration data for proof-of-concept purposes"
+

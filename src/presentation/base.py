@@ -28,7 +28,7 @@ class BaseChannelHandler(ABC):
             user_id: user identifier
 
         returns:
-            None (triggers automatic redis loading in orchestrator)
+            None (triggers automatic redis loading in runtime)
         """
         return None
 

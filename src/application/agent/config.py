@@ -22,12 +22,12 @@ _AGENT_DIR = Path(__file__).resolve().parent
 
 
 def _get_prompt_path() -> Path:
-    """get path to system prompt yaml file."""
-    return _AGENT_DIR / "system_prompt.yaml"
+    """get path to prompt yaml file."""
+    return _AGENT_DIR / "prompt.yaml"
 
 
 def load_prompt() -> Dict[str, str]:
-    """load system prompt from yaml file.
+    """load prompt from yaml file.
 
     supports environment variable overrides:
     - SYSTEM_PROMPT_PATH: custom path to prompt yaml file
@@ -49,8 +49,8 @@ def load_prompt() -> Dict[str, str]:
 
     if not prompt_path.exists():
         raise FileNotFoundError(
-            f"system prompt file not found at {prompt_path}. "
-            f"ensure src/application/agent/system_prompt.yaml exists or set SYSTEM_PROMPT_PATH."
+            f"prompt file not found at {prompt_path}. "
+            f"ensure src/application/agent/prompt.yaml exists or set SYSTEM_PROMPT_PATH."
         )
 
     try:
