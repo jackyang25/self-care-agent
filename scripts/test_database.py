@@ -7,7 +7,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.infrastructure.persistence.postgres.connection import test_connection
+from src.infrastructure.postgres.connection import test_connection
 import json
 
 if __name__ == "__main__":

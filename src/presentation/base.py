@@ -16,19 +16,21 @@ class BaseChannelHandler(ABC):
         """get agent singleton from centralized factory."""
         return get_agent()
 
-    @abstractmethod
     def get_conversation_history(
         self, user_id: Optional[str] = None
     ) -> List[Dict[str, str]]:
         """get conversation history for user.
+        
+        deprecated: conversation history is now managed automatically via redis.
+        override this in subclass only if you need custom history handling.
 
         args:
             user_id: user identifier
 
         returns:
-            list of message dicts with 'role' and 'content'
+            None (triggers automatic redis loading in orchestrator)
         """
-        pass
+        return None
 
     @abstractmethod
     def get_user_id(self) -> Optional[str]:
@@ -75,14 +77,12 @@ class BaseChannelHandler(ABC):
         if user_id is None:
             user_id = self.get_user_id()
 
-        # get conversation history
-        conversation_history = self.get_conversation_history(user_id=user_id)
-
-        # process message through agent
+        # conversation history managed automatically by custom redis manager
+        # pass None to trigger automatic loading from redis based on user_id
         response, sources = process_message(
             agent=self.agent,
             user_input=message,
-            conversation_history=conversation_history,
+            conversation_history=None,  # auto-loads from redis using user_id
             user_id=user_id,
             user_age=user_age,
             user_gender=user_gender,

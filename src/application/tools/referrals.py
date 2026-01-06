@@ -7,8 +7,8 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.persistence.postgres.repositories.providers import find_provider_for_appointment
-from src.infrastructure.persistence.postgres.repositories.appointments import create_appointment
+from src.infrastructure.postgres.repositories.providers import find_provider_for_appointment
+from src.infrastructure.postgres.repositories.appointments import create_appointment
 from src.shared.context import current_user_id
 from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import ReferralOutput

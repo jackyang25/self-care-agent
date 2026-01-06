@@ -1,41 +1,36 @@
-"""persistence layer for database operations."""
+"""postgres repositories for data access."""
 
-# re-export postgres connection utilities for backward compatibility
-from src.infrastructure.persistence.postgres.connection import (
-    get_db,
-    get_db_cursor,
-    test_connection,
-)
-
-# re-export all repository functions
-from src.infrastructure.persistence.postgres.repositories import (
-    # users
+from src.infrastructure.postgres.repositories.users import (
     get_user_by_email,
     get_user_by_phone,
     get_user_by_id,
     get_user_demographics,
-    # interactions
+)
+from src.infrastructure.postgres.repositories.interactions import (
     insert_interaction,
     get_user_interactions,
-    # appointments
+)
+from src.infrastructure.postgres.repositories.appointments import (
     create_appointment,
     get_user_appointments,
     get_appointment_by_id,
     update_appointment_status,
-    # consents
-    get_user_consents,
-    # providers
+)
+from src.infrastructure.postgres.repositories.consents import get_user_consents
+from src.infrastructure.postgres.repositories.providers import (
     search_providers,
     get_provider_by_id,
     find_provider_for_appointment,
-    # documents
+)
+from src.infrastructure.postgres.repositories.documents import (
     insert_document,
     search_documents_by_embedding,
     delete_document,
     get_document_by_id,
     get_documents_by_source,
     get_documents_by_condition,
-    # sources
+)
+from src.infrastructure.postgres.repositories.sources import (
     insert_source,
     get_source_by_id,
     get_sources_by_country,
@@ -43,10 +38,6 @@ from src.infrastructure.persistence.postgres.repositories import (
 )
 
 __all__ = [
-    # connection
-    "get_db",
-    "get_db_cursor",
-    "test_connection",
     # users
     "get_user_by_email",
     "get_user_by_phone",
@@ -79,3 +70,4 @@ __all__ = [
     "get_sources_by_country",
     "delete_source",
 ]
+

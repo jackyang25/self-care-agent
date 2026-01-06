@@ -18,7 +18,7 @@ from src.shared.context import (
     current_user_timezone,
 )
 from src.shared.logger import get_logger
-from src.infrastructure.persistence.postgres.repositories.users import get_user_by_phone
+from src.infrastructure.postgres.repositories.users import get_user_by_phone
 
 logger = get_logger("whatsapp")
 
@@ -28,15 +28,8 @@ app = FastAPI(title="WhatsApp Webhook")
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp message handler."""
 
-    def get_conversation_history(
-        self, user_id: Optional[str] = None
-    ) -> List[Dict[str, str]]:
-        """get conversation history for user.
-
-        note: would need to implement storage/retrieval from database
-        """
-        # todo: implement conversation history storage/retrieval
-        return []
+    # conversation history managed automatically by redis
+    # no need to override get_conversation_history()
 
     def get_user_id(self) -> Optional[str]:
         """get current user id from context variable.

@@ -6,11 +6,11 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.persistence.postgres.repositories.users import get_user_by_id
-from src.infrastructure.persistence.postgres.repositories.providers import search_providers
-from src.infrastructure.persistence.postgres.repositories.appointments import get_user_appointments
-from src.infrastructure.persistence.postgres.repositories.interactions import get_user_interactions
-from src.infrastructure.persistence.postgres.repositories.consents import get_user_consents
+from src.infrastructure.postgres.repositories.users import get_user_by_id
+from src.infrastructure.postgres.repositories.providers import search_providers
+from src.infrastructure.postgres.repositories.appointments import get_user_appointments
+from src.infrastructure.postgres.repositories.interactions import get_user_interactions
+from src.infrastructure.postgres.repositories.consents import get_user_consents
 from src.shared.context import current_user_id
 from src.shared.logger import get_logger
 from src.shared.schemas.tools import DatabaseOutput

@@ -11,6 +11,10 @@ from src.application.services.interactions import (
     extract_tool_info_from_messages,
     save_interaction,
 )
+from src.infrastructure.redis import (
+    get_conversation_history,
+    save_conversation_history,
+)
 from src.shared.context import (
     current_user_age,
     current_user_country,
@@ -29,7 +33,8 @@ _agent_instance = None
 def get_agent() -> Any:
     """get or create agent singleton.
 
-    creates agent with configuration from config/agent_config.yaml.
+    conversation history is managed separately via custom redis manager
+    for full control over PHI data storage and compliance.
 
     returns:
         compiled langgraph agent instance
@@ -38,6 +43,7 @@ def get_agent() -> Any:
     if _agent_instance is None:
         llm_model = AGENT_CONFIG["llm_model"]
         temperature = AGENT_CONFIG["temperature"]
+        
         _agent_instance = create_agent_graph(llm_model=llm_model, temperature=temperature)
         logger.info(
             f"created agent singleton: model={llm_model}, temperature={temperature}"
@@ -57,10 +63,13 @@ def process_message(
 ) -> tuple[str, list[dict[str, str]]]:
     """process user message through agent and return response with sources.
 
+    conversation history is automatically loaded from redis for the user_id
+    and updated after processing.
+
     args:
         agent: compiled langgraph agent
         user_input: user message text
-        conversation_history: previous messages (list of {"role": str, "content": str})
+        conversation_history: optional override for history (uses redis if not provided)
         user_id: user uuid
         user_age: user age for triage/context
         user_gender: user gender for triage/context
@@ -91,16 +100,23 @@ def process_message(
     patient_context = build_patient_context(age, gender, timezone, country)
     system_prompt = PROMPT_DATA["prompt"] + patient_context
 
-    # build message history from conversation
-    messages = []
-    if conversation_history:
-        for msg in conversation_history:
-            if msg["role"] == "user":
-                messages.append(HumanMessage(content=msg["content"]))
-            elif msg["role"] == "assistant":
-                messages.append(AIMessage(content=msg["content"]))
+    # load conversation history from redis (if not provided)
+    if conversation_history is None and user_id:
+        messages = get_conversation_history(user_id)
+        logger.debug(f"loaded {len(messages)} messages from redis for user {user_id[:8]}...")
+    else:
+        # convert dict history to message objects
+        messages = []
+        if conversation_history:
+            for msg in conversation_history:
+                if msg["role"] == "user":
+                    messages.append(HumanMessage(content=msg["content"]))
+                elif msg["role"] == "assistant":
+                    messages.append(AIMessage(content=msg["content"]))
 
-    messages.append(HumanMessage(content=user_input))
+    # add current user message
+    user_message = HumanMessage(content=user_input)
+    messages.append(user_message)
 
     # invoke agent with state
     state = {"messages": messages, "user_id": user_id, "system_prompt": system_prompt}
@@ -108,6 +124,10 @@ def process_message(
 
     result_messages = result["messages"]
     last_message = result_messages[-1]
+
+    # save updated conversation history to redis
+    if user_id:
+        save_conversation_history(user_id, result_messages)
 
     # extract rag sources and tool data
     rag_sources = extract_rag_sources(result_messages)
@@ -148,4 +168,3 @@ def process_message(
             return f"tool '{tool_name}' executed successfully", []
 
     return "processed", []
-

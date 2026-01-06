@@ -1,7 +1,7 @@
 """user data access functions."""
 
 from typing import Optional, Dict, Any
-from src.infrastructure.persistence.postgres.connection import get_db_cursor
+from src.infrastructure.postgres.connection import get_db_cursor
 
 
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:

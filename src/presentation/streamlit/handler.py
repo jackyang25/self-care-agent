@@ -8,7 +8,7 @@ from PIL import Image
 
 from src.presentation.base import BaseChannelHandler
 from src.shared.logger import get_logger
-from src.infrastructure.persistence.postgres.repositories.users import (
+from src.infrastructure.postgres.repositories.users import (
     get_user_by_email,
     get_user_by_phone,
 )
@@ -19,24 +19,9 @@ logger = get_logger("interface")
 class StreamlitHandler(BaseChannelHandler):
     """streamlit channel handler."""
 
-    def get_conversation_history(
-        self, user_id: Optional[str] = None
-    ) -> List[Dict[str, str]]:
-        """get conversation history from streamlit session state."""
-        conversation_history = []
-        if "messages" in st.session_state:
-            for msg in st.session_state.messages:
-                if msg["role"] == "user":
-                    conversation_history.append(
-                        {"role": "user", "content": msg["content"]}
-                    )
-                elif msg["role"] == "assistant":
-                    # remove tool execution info from assistant message for history
-                    clean_msg = msg["content"].split("\n\n[tool execution:")[0].strip()
-                    conversation_history.append(
-                        {"role": "assistant", "content": clean_msg}
-                    )
-        return conversation_history
+    # conversation history managed automatically by redis
+    # streamlit session_state still used for UI display only
+    # no need to override get_conversation_history()
 
     def get_user_id(self) -> Optional[str]:
         """get current user id from streamlit session state."""

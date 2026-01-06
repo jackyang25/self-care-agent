@@ -1,6 +1,6 @@
 """langgraph state, nodes, and graph construction."""
 
-from typing import Annotated, Dict, List, Literal, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
@@ -87,13 +87,15 @@ def _create_nodes(llm_model: str, temperature: float) -> tuple:
 # -----------------------------------------------------------------------------
 
 
-def create_agent_graph(llm_model: str, temperature: float):
+def create_agent_graph(llm_model: str, temperature: float) -> Any:
     """create a langgraph agent with tool calling and multi-step reasoning.
 
     the agent uses a state graph with conditional routing:
     - agent node: calls llm with system prompt and tool bindings
     - tools node: executes tool calls and returns results
     - loop continues until no more tool calls needed
+    
+    conversation history is managed separately via custom redis manager.
 
     args:
         llm_model: openai model name (e.g., "gpt-4o")
