@@ -8,6 +8,10 @@ from psycopg2 import pool, OperationalError
 from psycopg2.extras import RealDictCursor
 from psycopg2.extensions import connection, cursor
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # connection pool (created on first use)
 _connection_pool = None
 
@@ -27,17 +31,22 @@ def _get_connection_pool() -> pool.SimpleConnectionPool:
         # retry connection with exponential backoff
         max_retries = 5
         retry_delay = 1
+        
         for attempt in range(max_retries):
             try:
                 _connection_pool = pool.SimpleConnectionPool(1, 10, **db_config)
                 # test connection
                 test_conn = _connection_pool.getconn()
                 _connection_pool.putconn(test_conn)
+                
+                logger.info(f"postgres connection pool initialized | host={db_config['host']} | port={db_config['port']} | db={db_config['database']}")
                 return _connection_pool
             except (OperationalError, Exception) as e:
                 if attempt < max_retries - 1:
+                    logger.warning(f"attempt {attempt + 1}/{max_retries} failed - retrying...")
                     time.sleep(retry_delay * (2**attempt))
                     continue
+                logger.error(f"INIT: POSTGRES | FAILED after {max_retries} attempts: {e}")
                 raise ConnectionError(
                     f"failed to connect to database after {max_retries} attempts: {e}"
                 )
@@ -89,4 +98,3 @@ def test_connection() -> Dict[str, Any]:
             "connected": False,
             "error": str(e),
         }
-

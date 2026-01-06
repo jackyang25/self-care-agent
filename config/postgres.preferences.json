@@ -1,0 +1,12 @@
+{
+  "Browser": {
+    "show_system_objects": false
+  },
+  "Paths": {
+    "pg_bin_dir": ""
+  },
+  "Security": {
+    "master_password_required": false
+  }
+}
+

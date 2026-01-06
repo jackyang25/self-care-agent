@@ -6,10 +6,7 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import PharmacyOutput
-
-logger = get_tool_logger("pharmacy")
 
 
 class PharmacyInput(BaseModel):
@@ -40,14 +37,6 @@ def pharmacy_orders_and_fulfillment(
     returns:
         dict with prescription details and pharmacy info
     """
-    log_tool_call(
-        logger,
-        "pharmacy_orders_and_fulfillment",
-        medication=medication,
-        dosage=dosage,
-        patient_id=patient_id,
-        pharmacy=pharmacy,
-    )
 
     # mock data - production would integrate with pharmacy management systems
     prescription_id = "RX-67890"

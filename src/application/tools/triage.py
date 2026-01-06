@@ -6,11 +6,8 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from src.application.services.triage import assess_triage
-from src.application.services.users import get_user_demographics
-from src.shared.logger import get_tool_logger, log_tool_call
+from src.shared import context
 from src.shared.schemas.tools import TriageOutput
-
-logger = get_tool_logger("triage")
 
 
 class TriageInput(BaseModel):
@@ -85,26 +82,13 @@ def triage_and_risk_flagging(
     returns:
         dict with risk level and recommendations
     """
-    log_tool_call(
-        logger,
-        "triage_and_risk_flagging",
-        symptoms=symptoms,
-        urgency=urgency,
-        patient_id=patient_id,
-        notes=notes,
-        breathing=breathing,
-        conscious=conscious,
-        walking=walking,
-        severe_symptom=severe_symptom,
-        moderate_symptom=moderate_symptom,
-        pregnant=pregnant,
-    )
 
-    # get user demographics for verified triage (if needed)
-    age, gender = get_user_demographics()
+    # get user demographics from context (set by execution_node)
+    age = context.current_user_age.get()
+    gender = context.current_user_gender.get()
 
     # assess triage using service layer
-    risk_level, verification_method = assess_triage(
+    triage_result = assess_triage(
         symptoms=symptoms,
         urgency=urgency,
         age=age,
@@ -116,6 +100,9 @@ def triage_and_risk_flagging(
         moderate_symptom=moderate_symptom,
         pregnant=pregnant,
     )
+    
+    risk_level = triage_result.risk_level
+    verification_method = triage_result.verification_method
 
     # determine recommendation based on risk level (who iitt)
     if risk_level == "red":

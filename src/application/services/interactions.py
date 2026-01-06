@@ -8,9 +8,9 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from src.infrastructure.postgres.repositories.interactions import insert_interaction
 from src.shared.context import current_user_id
-from src.shared.logger import get_logger
+import logging
 
-logger = get_logger("interactions")
+logger = logging.getLogger(__name__)
 
 
 def save_interaction(
@@ -40,23 +40,18 @@ def save_interaction(
     returns:
         interaction_id if successful, None if failed or no user_id
     """
-    # get user_id from context if not provided
     if not user_id:
         user_id = current_user_id.get()
 
-    # don't save if no user_id (user not logged in)
     if not user_id:
         return None
 
     try:
         interaction_id = str(uuid.uuid4())
-
-        # prepare input as jsonb
         input_data = {"text": user_input}
         if tools_called:
             input_data["tools_called"] = tools_called
 
-        # prepare recommendations as list
         recommendations_data = recommendations if recommendations else []
 
         success = insert_interaction(
@@ -74,7 +69,6 @@ def save_interaction(
         return interaction_id if success else None
 
     except Exception as e:
-        # log error but don't fail the request
         logger.error(f"failed to save interaction: {e}", exc_info=True)
         return None
 
@@ -105,18 +99,15 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
     }
 
     for msg in messages:
-        # check for tool calls (AIMessage with tool_calls)
         if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
             for tool_call in msg.tool_calls:
                 tool_name = tool_call.get("name", "unknown")
                 tools_called.append(tool_name)
 
-                # set protocol_invoked based on tool name
                 if tool_name in tool_to_protocol:
                     protocol_invoked = tool_to_protocol[tool_name]
                     protocol_version = "1.0"
 
-                # extract triage-specific args
                 if tool_name == "triage_and_risk_flagging":
                     args = tool_call.get("args", {})
                     if args.get("urgency"):
@@ -127,17 +118,13 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             "urgency": args.get("urgency"),
                         }
 
-        # check for tool results (ToolMessage)
         if isinstance(msg, ToolMessage) and hasattr(msg, "content"):
             content = msg.content
 
-            # all tools return pydantic models serialized as json
             try:
                 data = json.loads(content)
 
-                # extract structured data from tool response
                 if isinstance(data, dict):
-                    # extract triage results
                     if data.get("risk_level"):
                         risk_level = data["risk_level"].lower()
                     if data.get("recommendation"):
@@ -148,10 +135,8 @@ def extract_tool_info_from_messages(messages: List) -> Dict[str, Any]:
                             "urgency": data.get("urgency"),
                         }
             except (json.JSONDecodeError, TypeError) as e:
-                logger.error(
-                    f"tool returned invalid json (indicates bug in tool implementation): "
-                    f"error={e} | content={content[:200] if isinstance(content, str) else type(content)}"
-                )
+                content_preview = content[:200] if isinstance(content, str) else type(content)
+                logger.error(f"tool returned invalid json: error={e} | content={content_preview}")
                 continue
 
     return {
@@ -173,7 +158,6 @@ def extract_rag_sources(messages: List) -> List[Dict[str, Any]]:
     returns:
         list of source dicts with title, content_type, similarity
     """
-    # find rag tool call ids
     rag_tool_call_ids = []
     for msg in messages:
         if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -183,7 +167,6 @@ def extract_rag_sources(messages: List) -> List[Dict[str, Any]]:
                     if tool_call_id:
                         rag_tool_call_ids.append(tool_call_id)
 
-    # extract sources from matching tool messages
     sources = []
     for msg in messages:
         if isinstance(msg, ToolMessage):

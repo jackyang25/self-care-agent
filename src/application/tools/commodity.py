@@ -6,10 +6,7 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import CommodityOutput
-
-logger = get_tool_logger("commodity")
 
 
 class CommodityInput(BaseModel):
@@ -38,14 +35,6 @@ def commodity_orders_and_fulfillment(
     returns:
         dict with order confirmation details
     """
-    log_tool_call(
-        logger,
-        "commodity_orders_and_fulfillment",
-        items=items,
-        quantity=quantity,
-        patient_id=patient_id,
-        priority=priority,
-    )
 
     # mock data - production would integrate with logistics/pharmacy APIs
     order_id = "ORD-12345"

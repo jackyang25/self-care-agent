@@ -6,14 +6,15 @@ from typing import Dict, List, Optional
 import streamlit as st
 from PIL import Image
 
+import logging
+
 from src.presentation.base import BaseChannelHandler
-from src.shared.logger import get_logger
 from src.infrastructure.postgres.repositories.users import (
     get_user_by_email,
     get_user_by_phone,
 )
 
-logger = get_logger("interface")
+logger = logging.getLogger(__name__)
 
 
 class StreamlitHandler(BaseChannelHandler):
@@ -204,7 +205,6 @@ class StreamlitHandler(BaseChannelHandler):
                         user_gender=user_gender,
                         user_timezone=user_timezone,
                         user_country=user_country,
-                        channel_name="streamlit",
                     )
                     st.markdown(response)
 

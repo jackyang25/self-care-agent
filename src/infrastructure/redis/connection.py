@@ -6,6 +6,10 @@ from typing import Optional, Any
 import redis
 from redis.connection import ConnectionPool
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # redis connection pool (created on first use)
 _redis_pool = None
 
@@ -29,6 +33,8 @@ def _get_redis_pool() -> ConnectionPool:
             redis_config["password"] = password
         
         _redis_pool = ConnectionPool(**redis_config)
+        
+        logger.info(f"redis connection initialized | host={redis_config['host']} | port={redis_config['port']} | db={redis_config['db']}")
     
     return _redis_pool
 
@@ -241,4 +247,3 @@ def cache_clear_pattern(pattern: str) -> int:
         return 0
     except Exception:
         return 0
-

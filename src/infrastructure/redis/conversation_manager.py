@@ -4,21 +4,19 @@ stores conversation history in redis with full control over data format,
 encryption, and audit trails for PHI compliance.
 """
 
-import json
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from src.infrastructure.redis.connection import (
-    get_redis_client,
     cache_set,
     cache_get,
     cache_delete,
 )
-from src.shared.logger import get_logger
+import logging
 
-logger = get_logger("infrastructure.cache.conversation")
+logger = logging.getLogger(__name__)
 
 # conversation TTL: 24 hours (86400 seconds)
 CONVERSATION_TTL = 86400
@@ -117,7 +115,6 @@ def get_conversation_history(user_id: str) -> List:
                 logger.error(f"failed to deserialize message: {e}")
                 continue
         
-        logger.debug(f"retrieved {len(messages)} messages for user {user_id[:8]}...")
         return messages
     
     except Exception as e:
@@ -150,10 +147,6 @@ def add_message_to_history(user_id: str, message) -> bool:
         
         # save back to redis with TTL
         success = cache_set(key, history, ttl=CONVERSATION_TTL, serialize=True)
-        
-        if success:
-            logger.debug(f"added message to conversation for user {user_id[:8]}...")
-        
         return success
     
     except Exception as e:
@@ -182,10 +175,6 @@ def save_conversation_history(user_id: str, messages: List) -> bool:
         
         # save to redis with TTL
         success = cache_set(key, serialized, ttl=CONVERSATION_TTL, serialize=True)
-        
-        if success:
-            logger.info(f"saved {len(messages)} messages for user {user_id[:8]}...")
-        
         return success
     
     except Exception as e:
@@ -208,10 +197,6 @@ def clear_conversation_history(user_id: str) -> bool:
     try:
         key = f"conversation:{user_id}"
         success = cache_delete(key)
-        
-        if success:
-            logger.info(f"cleared conversation history for user {user_id[:8]}...")
-        
         return success
     
     except Exception as e:

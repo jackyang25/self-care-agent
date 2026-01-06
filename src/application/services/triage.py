@@ -4,9 +4,11 @@ import os
 import subprocess
 from typing import Optional, Tuple
 
-from src.shared.logger import get_logger
+import logging
 
-logger = get_logger("triage")
+from src.shared.schemas.services import TriageServiceOutput
+
+logger = logging.getLogger(__name__)
 
 
 def run_verified_triage(
@@ -69,10 +71,6 @@ def run_verified_triage(
         categories = {0: "red", 1: "yellow", 2: "green"}
         category = categories.get(result.returncode)
         
-        logger.info(
-            f"verified triage result: {category} (exit code: {result.returncode})"
-        )
-        logger.debug(f"executable output: {result.stdout.strip()}")
         
         return category, result.returncode
     except subprocess.TimeoutExpired:
@@ -94,7 +92,7 @@ def assess_triage(
     severe_symptom: Optional[int] = None,
     moderate_symptom: Optional[int] = None,
     pregnant: Optional[int] = None,
-) -> Tuple[str, str]:
+) -> TriageServiceOutput:
     """assess triage level using verified classification or LLM assessment.
     
     two modes:
@@ -128,7 +126,6 @@ def assess_triage(
     )
     
     if vitals_available and age is not None and gender is not None:
-        logger.info("all vitals and demographics available - using verified triage")
         
         # default pregnant to 0 if not provided
         pregnant_value = pregnant if pregnant is not None else 0
@@ -148,7 +145,6 @@ def assess_triage(
         if verified_category:
             risk_level = verified_category
             verification_method = "verified"
-            logger.info(f"using verified triage result: {risk_level}")
         else:
             logger.warning("verified triage failed, falling back to llm assessment")
     else:
@@ -170,20 +166,17 @@ def assess_triage(
         if gender is None:
             missing.append("gender")
         
-        logger.info(
-            f"missing data for verified triage ({', '.join(missing)}) - using llm assessment"
-        )
     
     # fallback to llm-provided urgency if verified triage not used
     if risk_level is None:
         if urgency and urgency.lower() in ["red", "yellow", "green"]:
             risk_level = urgency.lower()
-            logger.info(f"using llm-assessed urgency: {risk_level}")
         else:
             risk_level = "unknown"
-            logger.warning(
-                f"no valid urgency provided (got: {urgency}), setting risk_level=unknown"
-            )
+            logger.warning(f"invalid urgency: {urgency} | result: unknown")
     
-    return risk_level, verification_method
+    return TriageServiceOutput(
+        risk_level=risk_level,
+        verification_method=verification_method
+    )
 

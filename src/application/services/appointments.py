@@ -2,13 +2,14 @@
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from src.infrastructure.postgres.repositories.providers import find_provider_for_appointment
 from src.infrastructure.postgres.repositories.appointments import create_appointment
-from src.shared.logger import get_logger
+from src.shared.schemas.services import AppointmentServiceOutput
+import logging
 
-logger = get_logger("appointments")
+logger = logging.getLogger(__name__)
 
 
 def parse_time_to_db_format(time_str: Optional[str]) -> str:
@@ -44,7 +45,7 @@ def schedule_appointment(
     preferred_date: Optional[str] = None,
     preferred_time: Optional[str] = None,
     reason: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> AppointmentServiceOutput:
     """schedule an appointment for a user.
     
     handles provider selection, appointment ID generation, date/time parsing,
@@ -81,9 +82,7 @@ def schedule_appointment(
         facility = provider_data["facility"]
     else:
         # fallback if no providers in database
-        logger.warning(
-            f"no provider found for specialty={specialty}, provider_name={provider_name}"
-        )
+        logger.warning(f"no provider found: specialty={specialty}, provider_name={provider_name}")
         provider_id = None
         provider_display_name = provider_name or "dr. smith"
         provider_specialty = specialty or "general_practice"
@@ -113,21 +112,17 @@ def schedule_appointment(
         sync_status="pending",
     )
     
-    if success:
-        logger.info(
-            f"successfully scheduled appointment {appointment_id} for user {user_id[:8]}..."
-        )
-    else:
-        logger.error(f"failed to store appointment {appointment_id} in database")
-        # continue anyway to return appointment info to user
+    if not success:
+        logger.error(f"failed to store appointment in database: {appointment_id}")
     
-    return {
-        "appointment_id": appointment_id,
-        "provider": provider_display_name,
-        "specialty": provider_specialty,
-        "facility": facility,
-        "date": date,
-        "time": time_display,
-        "reason": reason,
-    }
+    return AppointmentServiceOutput(
+        appointment_id=appointment_id,
+        provider=provider_display_name,
+        specialty=provider_specialty,
+        facility=facility,
+        date=date,
+        time=time_display,
+        status="pending",
+        confirmation_code=appointment_id[:8],
+    )
 

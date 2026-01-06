@@ -5,12 +5,13 @@ from typing import Optional, List, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+import logging
+
 from src.application.services.rag import search_documents
 from src.shared.context import current_user_country
-from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import RAGOutput
 
-logger = get_tool_logger("rag")
+logger = logging.getLogger(__name__)
 
 
 class RAGInput(BaseModel):
@@ -58,16 +59,6 @@ def rag_retrieval(
     # get user's country context for filtering
     country_context_id = current_user_country.get()
 
-    log_tool_call(
-        logger,
-        "rag_retrieval",
-        query=query,
-        content_type=content_type,
-        content_types=content_types,
-        conditions=conditions,
-        country_context_id=country_context_id,
-        limit=limit,
-    )
 
     try:
         results = search_documents(

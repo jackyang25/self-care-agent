@@ -4,23 +4,19 @@ import hashlib
 import hmac
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import requests
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from src.presentation.base import BaseChannelHandler
-from src.shared.context import (
-    current_user_age,
-    current_user_gender,
-    current_user_id,
-    current_user_timezone,
-)
-from src.shared.logger import get_logger
+# context vars no longer needed - set in execution_node during agent execution
+import logging
+
 from src.infrastructure.postgres.repositories.users import get_user_by_phone
 
-logger = get_logger("whatsapp")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="WhatsApp Webhook")
 
@@ -32,11 +28,12 @@ class WhatsAppHandler(BaseChannelHandler):
     # no need to override get_conversation_history()
 
     def get_user_id(self) -> Optional[str]:
-        """get current user id from context variable.
-
-        note: user_id is set in webhook handler via context variable for thread-safe access
+        """get current user id.
+        
+        whatsapp handler always passes user_id explicitly to respond(),
+        so this method is not used.
         """
-        return current_user_id.get()
+        return None
 
 
 # module-level handler singleton (initialized on first use)
@@ -52,7 +49,7 @@ def _get_handler() -> WhatsAppHandler:
     global _handler
     if _handler is None:
         _handler = WhatsAppHandler()
-        logger.info("created whatsapp handler singleton")
+        logger.info("whatsapp handler initialized")
     return _handler
 
 
@@ -96,32 +93,17 @@ async def verify_webhook(request: Request):
     hub_challenge = query_params.get("hub.challenge")
 
     client_host = request.client.host if request.client else "unknown"
-    logger.info(
-        f"webhook verification request from {client_host} - mode: {hub_mode}, token provided: {bool(hub_verify_token)}"
-    )
+    
+    logger.info(f"webhook verification | client={client_host} | mode={hub_mode}")
 
     verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
 
-    # debug logging
-    if verify_token:
-        logger.info(
-            f"verify token from env: {verify_token[:10]}... (length: {len(verify_token)})"
-        )
-    else:
-        logger.warning("WHATSAPP_VERIFY_TOKEN not found in environment")
-
-    if hub_verify_token:
-        logger.info(
-            f"verify token from request: {hub_verify_token[:10]}... (length: {len(hub_verify_token)})"
-        )
-
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
-        logger.info("webhook verified successfully - challenge returned")
+        logger.info("webhook verified")
         return Response(content=hub_challenge, media_type="text/plain")
 
-    logger.warning(
-        f"webhook verification failed - mode: {hub_mode}, token match: {hub_verify_token == verify_token}"
-    )
+    logger.warning(f"verification failed: mode={hub_mode}, token_match={hub_verify_token == verify_token}")
+    logger.info("webhook verification failed")
     raise HTTPException(status_code=403, detail="verification failed")
 
 
@@ -136,7 +118,8 @@ async def handle_webhook(
     """
     # log incoming request
     client_host = request.client.host if request.client else "unknown"
-    logger.info(f"incoming webhook request from {client_host}")
+    
+    logger.info(f"webhook message received | client={client_host}")
 
     # get raw body for signature verification
     body = await request.body()
@@ -146,16 +129,17 @@ async def handle_webhook(
     if webhook_secret:
         if not verify_webhook_signature(body, x_hub_signature_256, webhook_secret):
             logger.warning("invalid webhook signature")
+            logger.error("webhook invalid signature")
             raise HTTPException(status_code=403, detail="invalid signature")
-        else:
-            logger.info("webhook signature verified successfully")
 
     # parse webhook payload
     try:
         data = await request.json()
-        logger.info(f"received webhook payload: {str(data)[:200]}...")
+        payload_preview = str(data)[:150] + "..." if len(str(data)) > 150 else str(data)
+        logger.info(f"payload: {payload_preview}")
     except Exception as e:
-        logger.error(f"failed to parse webhook payload: {e}")
+        logger.error(f"parse error: {e}")
+        logger.error("webhook parse error")
         raise HTTPException(status_code=400, detail="invalid payload")
 
     # whatsapp webhook structure
@@ -167,6 +151,7 @@ async def handle_webhook(
 
     if not messages:
         # not a message event (could be status update, etc.)
+        logger.info("webhook no messages")
         return JSONResponse(content={"status": "ok"})
 
     # process each message
@@ -177,7 +162,7 @@ async def handle_webhook(
             message_type = message.get("type")
 
             if message_type != "text":
-                logger.info(f"ignoring non-text message type: {message_type}")
+                logger.info(f"skipping non-text: {message_type}")
                 continue
 
             text_body = message.get("text", {}).get("body", "")
@@ -185,7 +170,8 @@ async def handle_webhook(
             if not text_body:
                 continue
 
-            logger.info(f"received message from {from_number}: {text_body[:100]}")
+            msg_preview = text_body[:80] + "..." if len(text_body) > 80 else text_body
+            logger.info(f"from: {from_number} | message: {msg_preview}")
 
             # lookup user by phone number
             # whatsapp sends phone numbers in E.164 format (e.g., "1234567890" or "+1234567890")
@@ -202,39 +188,30 @@ async def handle_webhook(
                 if not user and normalized_phone.startswith("+"):
                     user = get_user_by_phone(from_number)
             except Exception as e:
-                logger.error(f"failed to lookup user by phone: {e}", exc_info=True)
+                logger.error(f"user lookup error: {e}")
                 user = None
 
             user_id = str(user.get("user_id")) if user else None
 
             if not user_id:
-                logger.warning(
-                    f"user not found for phone: {from_number} (tried: {normalized_phone})"
-                )
+                logger.warning(f"user not found: {from_number}")
                 # send error message to user
                 error_response = "sorry, your phone number is not registered. please contact support to register your account."
                 try:
                     send_whatsapp_message(from_number, error_response)
                 except Exception as e:
-                    logger.error(f"failed to send error message: {e}")
+                    logger.error(f"send error: {e}")
                 continue  # skip processing this message
 
-            # set user context variables for thread-safe access
-            current_user_id.set(user_id)
+            logger.info(f"user_id: {user_id[:8]}... | processing message")
 
-            # set demographics if available
+            # get user demographics
             demographics = user.get("demographics", {}) if user else {}
             age = demographics.get("age")
             gender = demographics.get("gender")
             timezone = user.get("timezone", "UTC") if user else "UTC"
-            if age is not None:
-                current_user_age.set(age)
-            if gender is not None:
-                current_user_gender.set(gender)
-            if timezone is not None:
-                current_user_timezone.set(timezone)
 
-            # process message through handler
+            # process message through handler (context vars set in execution_node)
             handler = _get_handler()
             response, sources = handler.respond(
                 text_body,
@@ -242,7 +219,6 @@ async def handle_webhook(
                 user_age=age,
                 user_gender=gender,
                 user_timezone=timezone,
-                channel_name="whatsapp",
             )
 
             # format sources as plain text for whatsapp (no markdown support)
@@ -255,18 +231,21 @@ async def handle_webhook(
                     sources_text += f"{i}. {source.get('title', 'Unknown')}{content_type_label} - {similarity_pct}% match\n"
                 response = response + sources_text
 
-            logger.info(f"sending response to {from_number}: {response[:100]}")
+            resp_preview = response[:80] + "..." if len(response) > 80 else response
+            logger.info(f"sending response: {resp_preview}")
 
             # send response via whatsapp api
             try:
                 send_whatsapp_message(from_number, response)
+                logger.info("message sent successfully")
             except Exception as e:
-                logger.error(f"failed to send whatsapp message: {e}", exc_info=True)
+                logger.error(f"send error: {e}")
 
         except Exception as e:
-            logger.error(f"error processing message: {e}", exc_info=True)
+            logger.error(f"processing error: {e}")
             continue
 
+    logger.info("webhook processed successfully")
     return JSONResponse(content={"status": "ok"})
 
 
@@ -307,7 +286,7 @@ def send_whatsapp_message(phone_number: str, message: str) -> Dict[str, Any]:
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
 
     if not access_token or not phone_number_id:
-        logger.error("whatsapp access token or phone number id not configured")
+        logger.error("whatsapp credentials not configured")
         raise ValueError("whatsapp credentials not configured")
 
     url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
@@ -332,10 +311,10 @@ def send_whatsapp_message(phone_number: str, message: str) -> Dict[str, Any]:
         error_detail = ""
         try:
             error_detail = response.json()
-            logger.error(f"failed to send whatsapp message: {e} - {error_detail}")
+            logger.error(f"whatsapp api error: {e} - {error_detail}")
         except Exception:
-            logger.error(f"failed to send whatsapp message: {e} - {response.text}")
+            logger.error(f"whatsapp api error: {e} - {response.text}")
         raise
     except Exception as e:
-        logger.error(f"failed to send whatsapp message: {e}")
+        logger.error(f"whatsapp api error: {e}")
         raise

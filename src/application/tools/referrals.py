@@ -5,12 +5,13 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+import logging
+
 from src.application.services.appointments import schedule_appointment
 from src.shared.context import current_user_id
-from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import ReferralOutput
 
-logger = get_tool_logger("referrals")
+logger = logging.getLogger(__name__)
 
 
 class ReferralInput(BaseModel):
@@ -53,16 +54,6 @@ def referrals_and_scheduling(
     returns:
         dict with appointment confirmation details
     """
-    log_tool_call(
-        logger,
-        "referrals_and_scheduling",
-        specialty=specialty,
-        provider=provider,
-        patient_id=patient_id,
-        preferred_date=preferred_date,
-        preferred_time=preferred_time,
-        reason=reason,
-    )
 
     user_id = current_user_id.get()
     if not user_id:
@@ -73,7 +64,7 @@ def referrals_and_scheduling(
         }
 
     # schedule appointment using service layer
-    appointment_data = schedule_appointment(
+    appointment = schedule_appointment(
         user_id=user_id,
         specialty=specialty,
         provider_name=provider,
@@ -83,7 +74,16 @@ def referrals_and_scheduling(
     )
 
     # return pydantic model instance
-    return ReferralOutput(**appointment_data).model_dump()
+    return ReferralOutput(
+        appointment_id=appointment.appointment_id,
+        provider=appointment.provider,
+        specialty=appointment.specialty,
+        facility=appointment.facility,
+        date=appointment.date,
+        time=appointment.time,
+        status=appointment.status,
+        message=f"appointment scheduled with {appointment.provider}",
+    ).model_dump()
 
 
 referral_tool = StructuredTool.from_function(
