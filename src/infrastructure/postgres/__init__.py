@@ -15,16 +15,19 @@ from src.infrastructure.postgres.repositories import (
     get_user_appointments,
     create_appointment,
     update_appointment_status,
-    cancel_appointment,
     get_user_consents,
     search_providers,
     find_provider_for_appointment,
-    get_documents_by_content_type,
-    get_documents_by_ids,
+    insert_document,
     search_documents_by_embedding,
-    get_source_by_title,
-    get_sources_by_content_type,
+    delete_document,
+    get_document_by_id,
+    get_documents_by_source,
+    get_documents_by_condition,
     insert_source,
+    get_source_by_id,
+    get_sources_by_country,
+    delete_source,
 )
 
 __all__ = [
@@ -44,18 +47,21 @@ __all__ = [
     "get_user_appointments",
     "create_appointment",
     "update_appointment_status",
-    "cancel_appointment",
     # consents
     "get_user_consents",
     # providers
     "search_providers",
     "find_provider_for_appointment",
     # documents
-    "get_documents_by_content_type",
-    "get_documents_by_ids",
+    "insert_document",
     "search_documents_by_embedding",
+    "delete_document",
+    "get_document_by_id",
+    "get_documents_by_source",
+    "get_documents_by_condition",
     # sources
-    "get_source_by_title",
-    "get_sources_by_content_type",
     "insert_source",
+    "get_source_by_id",
+    "get_sources_by_country",
+    "delete_source",
 ]

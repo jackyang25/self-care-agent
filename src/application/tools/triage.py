@@ -1,106 +1,16 @@
 """triage and risk flagging tool."""
 
-import os
-import subprocess
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.postgres.repositories.users import (
-    get_user_demographics as _get_user_demographics,
-)
-from src.shared.context import current_user_id, current_user_age, current_user_gender
+from src.application.services.triage import assess_triage
+from src.application.services.users import get_user_demographics
 from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import TriageOutput
 
 logger = get_tool_logger("triage")
-
-
-def get_user_demographics():
-    """get age and gender from current user's context (set at login)."""
-    age = current_user_age.get()
-    gender = current_user_gender.get()
-
-    if age is not None and gender is not None:
-        logger.debug(f"using cached user demographics: age={age}, gender={gender}")
-        return age, gender
-
-    # fallback: fetch from database if not in context (shouldn't happen normally)
-    user_id = current_user_id.get()
-    if not user_id:
-        logger.warning("no user_id in context, cannot fetch demographics")
-        return None, None
-
-    logger.info("demographics not in context, fetching from database")
-    try:
-        age, gender = _get_user_demographics(user_id)
-        if age is not None or gender is not None:
-            logger.info(
-                f"fetched user demographics from database: age={age}, gender={gender}"
-            )
-        return age, gender
-    except Exception as e:
-        logger.error(f"error fetching user demographics: {e}")
-        return None, None
-
-
-def run_verified_triage(
-    age,
-    gender,
-    pregnant,
-    breathing,
-    conscious,
-    walking,
-    severe_symptom,
-    moderate_symptom,
-):
-    """call the formally verified triage executable.
-
-    returns: tuple of (category, exit_code) where category is "red", "yellow", or "green"
-    """
-    # get path to verified triage executable
-    application_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    executable_path = os.path.join(application_dir, "verifiers", "triage-verifier")
-
-    if not os.path.exists(executable_path):
-        logger.error(f"verified triage executable not found at {executable_path}")
-        return None, None
-
-    try:
-        result = subprocess.run(
-            [
-                executable_path,
-                str(age),
-                gender,
-                str(pregnant),
-                str(breathing),
-                str(conscious),
-                str(walking),
-                str(severe_symptom),
-                str(moderate_symptom),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-
-        # map exit codes to categories
-        categories = {0: "red", 1: "yellow", 2: "green"}
-        category = categories.get(result.returncode)
-
-        logger.info(
-            f"verified triage result: {category} (exit code: {result.returncode})"
-        )
-        logger.debug(f"executable output: {result.stdout.strip()}")
-
-        return category, result.returncode
-    except subprocess.TimeoutExpired:
-        logger.error("verified triage executable timed out")
-        return None, None
-    except Exception as e:
-        logger.error(f"error running verified triage: {e}")
-        return None, None
 
 
 class TriageInput(BaseModel):
@@ -190,77 +100,22 @@ def triage_and_risk_flagging(
         pregnant=pregnant,
     )
 
-    risk_level = None
-    verification_method = "llm"  # track which method was used
+    # get user demographics for verified triage (if needed)
+    age, gender = get_user_demographics()
 
-    # check if we have enough data for verified triage
-    vitals_available = all(
-        v is not None
-        for v in [breathing, conscious, walking, severe_symptom, moderate_symptom]
+    # assess triage using service layer
+    risk_level, verification_method = assess_triage(
+        symptoms=symptoms,
+        urgency=urgency,
+        age=age,
+        gender=gender,
+        breathing=breathing,
+        conscious=conscious,
+        walking=walking,
+        severe_symptom=severe_symptom,
+        moderate_symptom=moderate_symptom,
+        pregnant=pregnant,
     )
-
-    if vitals_available:
-        logger.info("all vitals gathered - attempting verified triage")
-        # fetch user demographics for verified triage
-        age, gender = get_user_demographics()
-
-        if age is not None and gender is not None:
-            # default pregnant to 0 if not provided
-            pregnant_value = pregnant if pregnant is not None else 0
-
-            # run formally verified triage
-            verified_category, exit_code = run_verified_triage(
-                age,
-                gender,
-                pregnant_value,
-                breathing,
-                conscious,
-                walking,
-                severe_symptom,
-                moderate_symptom,
-            )
-
-            if verified_category:
-                risk_level = verified_category
-                verification_method = "verified"
-                logger.info(f"using verified triage result: {risk_level}")
-            else:
-                logger.warning(
-                    "verified triage failed, falling back to agent assessment"
-                )
-        else:
-            logger.warning(
-                "user demographics not available, cannot use verified triage"
-            )
-    else:
-        # log which vitals are missing
-        missing_vitals = []
-        if breathing is None:
-            missing_vitals.append("breathing")
-        if conscious is None:
-            missing_vitals.append("conscious")
-        if walking is None:
-            missing_vitals.append("walking")
-        if severe_symptom is None:
-            missing_vitals.append("severe_symptom")
-        if moderate_symptom is None:
-            missing_vitals.append("moderate_symptom")
-
-        logger.info(
-            f"not all vitals gathered (missing: {', '.join(missing_vitals)}) - using llm-based triage"
-        )
-
-    # fallback to agent-provided urgency if verified triage not used
-    if risk_level is None:
-        if urgency:
-            risk_level = urgency.strip().lower()
-            logger.info(f"using agent-provided urgency: {risk_level}")
-        else:
-            # no urgency or vitals provided - mark as unknown
-            logger.warning(
-                f"insufficient information for triage - no urgency provided and vitals incomplete (missing: {', '.join(missing_vitals)})"
-            )
-            risk_level = "unknown"
 
     # determine recommendation based on risk level (who iitt)
     if risk_level == "red":
@@ -277,6 +132,12 @@ def triage_and_risk_flagging(
             "(1) urgency assessment based on symptom analysis, or "
             "(2) complete vitals for verified triage"
         )
+
+    # check if vitals were provided (for output model)
+    vitals_available = all(
+        v is not None
+        for v in [breathing, conscious, walking, severe_symptom, moderate_symptom]
+    )
 
     # return pydantic model instance
     vitals_dict = (

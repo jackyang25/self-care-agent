@@ -1,16 +1,11 @@
 """referrals and scheduling tool."""
 
-import uuid
-from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.infrastructure.postgres.repositories.providers import (
-    find_provider_for_appointment,
-)
-from src.infrastructure.postgres.repositories.appointments import create_appointment
+from src.application.services.appointments import schedule_appointment
 from src.shared.context import current_user_id
 from src.shared.logger import get_tool_logger, log_tool_call
 from src.shared.schemas.tools import ReferralOutput
@@ -77,79 +72,18 @@ def referrals_and_scheduling(
             "message": "no user logged in. please log in to schedule appointments.",
         }
 
-    # find suitable provider
-    provider_data = find_provider_for_appointment(
+    # schedule appointment using service layer
+    appointment_data = schedule_appointment(
+        user_id=user_id,
         specialty=specialty,
         provider_name=provider,
+        preferred_date=preferred_date,
+        preferred_time=preferred_time,
+        reason=reason,
     )
 
-    if provider_data:
-        provider_id = provider_data["provider_id"]
-        provider_name = provider_data["name"]
-        provider_specialty = provider_data["specialty"]
-        facility = provider_data["facility"]
-    else:
-        # ultimate fallback if no providers in database
-        provider_id = None
-        provider_name = provider or "dr. smith"
-        provider_specialty = specialty or "general_practice"
-        facility = "default clinic"
-
-    # generate appointment id
-    appointment_uuid = uuid.uuid4()
-    appointment_id = f"APT-{appointment_uuid.hex[:8].upper()}"
-
-    # use user-provided date/time or simple demo defaults
-    date = preferred_date or (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-    time_display = preferred_time or "10:00 AM"
-
-    # convert time to database format
-    time_db = "10:00:00"
-    if time_display and ":" in time_display:
-        try:
-            if "AM" in time_display.upper() or "PM" in time_display.upper():
-                time_obj = datetime.strptime(time_display.strip().upper(), "%I:%M %p")
-                time_db = time_obj.strftime("%H:%M:%S")
-            else:
-                time_db = (
-                    time_display
-                    if time_display.count(":") == 2
-                    else f"{time_display}:00"
-                )
-        except ValueError:
-            time_db = "10:00:00"
-
-    # store appointment in database
-    success = create_appointment(
-        appointment_id=str(appointment_uuid),
-        user_id=str(user_id),
-        provider_id=str(provider_id) if provider_id else None,
-        specialty=provider_specialty,
-        appointment_date=date,
-        appointment_time=time_db,
-        status="scheduled",
-        reason=reason,
-        sync_status="pending",
-    )
-
-    if success:
-        logger.info(
-            f"successfully stored appointment {appointment_id} for user {user_id}"
-        )
-    else:
-        logger.error("failed to store appointment in database")
-        # continue anyway to return appointment info to user
-
-    # return pydantic model instance (use user-friendly time format)
-    return ReferralOutput(
-        appointment_id=appointment_id,
-        provider=provider_name,
-        specialty=provider_specialty,
-        facility=facility,
-        date=date,
-        time=time_display,  # use parsed display format
-        reason=reason,
-    ).model_dump()
+    # return pydantic model instance
+    return ReferralOutput(**appointment_data).model_dump()
 
 
 referral_tool = StructuredTool.from_function(
