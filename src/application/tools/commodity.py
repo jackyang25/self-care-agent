@@ -27,7 +27,17 @@ def commodity_orders_and_fulfillment(
     patient_id: Optional[str] = None,
     priority: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """process commodity orders and fulfillment. use this for ordering medical supplies, equipment, or other commodities."""
+    """process commodity orders and fulfillment.
+    
+    args:
+        items: list of items to order
+        quantity: quantities for each item
+        patient_id: patient identifier
+        priority: order priority (normal or urgent)
+        
+    returns:
+        dict with order confirmation details
+    """
     log_tool_call(
         logger,
         "commodity_orders_and_fulfillment",

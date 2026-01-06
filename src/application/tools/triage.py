@@ -156,19 +156,22 @@ def triage_and_risk_flagging(
     moderate_symptom: Optional[int] = None,
     pregnant: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """assess patient triage and risk level.
-
-    this tool validates and formats triage assessments. you should analyze the symptoms
-    first and provide the urgency parameter based on your analysis. consider:
-    - symptom severity (mild, moderate, severe)
-    - duration and progression
-    - red flag symptoms (chest pain, difficulty breathing, etc.)
-    - patient safety concerns
-
-    the tool will validate your urgency assessment and provide structured recommendations.
-
-    when vitals are provided (breathing, conscious, walking, etc.), the tool will use
-    formally verified triage classification for enhanced safety and correctness.
+    """assess patient triage and assign risk category.
+    
+    args:
+        symptoms: patient symptoms or complaints
+        urgency: urgency level ('red', 'yellow', or 'green')
+        patient_id: patient identifier
+        notes: additional clinical notes
+        breathing: 1=normal, 0=difficulty (for verified triage)
+        conscious: 1=alert, 0=altered (for verified triage)
+        walking: 1=can walk, 0=cannot (for verified triage)
+        severe_symptom: 1=severe, 0=not (for verified triage)
+        moderate_symptom: 1=moderate, 0=not (for verified triage)
+        pregnant: 1=yes, 0=no (for verified triage)
+        
+    returns:
+        dict with risk level and recommendations
     """
     log_tool_call(
         logger,

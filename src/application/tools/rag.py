@@ -43,28 +43,17 @@ def rag_retrieval(
     conditions: Optional[List[str]] = None,
     limit: Optional[int] = 5,
 ) -> Dict[str, Any]:
-    """search the knowledge base for relevant healthcare information.
-
-    use this tool when:
-    - user asks questions about symptoms, conditions, or treatments
-    - you need to provide evidence-based information from healthcare protocols or guidelines
-    - user asks "what should i know about X?" or "tell me about Y"
-    - you need to augment your response with authoritative healthcare knowledge
-
-    the tool searches a vector database of healthcare documents and returns the most
-    relevant content based on semantic similarity. results are automatically filtered
-    to prioritize the user's country-specific guidelines (e.g., SA clinical protocols
-    for South African users) while also including global guidelines.
-
-    content_types available:
-    - symptom: entry points for symptom-based triage
-    - condition: chronic condition information
-    - algorithm: clinical decision trees/flowcharts
-    - protocol: step-by-step clinical protocols
-    - guideline: general management guidance
-    - medication: drug info, dosing, prescriber levels
-    - reference: helplines, tables, quick reference
-    - emergency: red flags, urgent care criteria
+    """search healthcare knowledge base using semantic search.
+    
+    args:
+        query: search query for relevant documents
+        content_type: filter by single content type
+        content_types: filter by multiple content types
+        conditions: filter by medical conditions
+        limit: max documents to retrieve (default: 5)
+        
+    returns:
+        dict with query results and formatted documents
     """
     # get user's country context for filtering
     country_context_id = current_user_country.get()

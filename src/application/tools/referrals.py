@@ -43,7 +43,19 @@ def referrals_and_scheduling(
     preferred_time: Optional[str] = None,
     reason: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """process referrals and schedule appointments. use this for creating referrals to specialists, scheduling appointments, or managing patient appointments."""
+    """process referrals and schedule appointments.
+    
+    args:
+        specialty: medical specialty or department
+        provider: preferred provider name
+        patient_id: patient identifier
+        preferred_date: preferred appointment date
+        preferred_time: preferred appointment time
+        reason: reason for referral or appointment
+        
+    returns:
+        dict with appointment confirmation details
+    """
     log_tool_call(
         logger,
         "referrals_and_scheduling",
@@ -123,7 +135,7 @@ def referrals_and_scheduling(
             f"successfully stored appointment {appointment_id} for user {user_id}"
         )
     else:
-        logger.error(f"failed to store appointment in database")
+        logger.error("failed to store appointment in database")
         # continue anyway to return appointment info to user
 
     # return pydantic model instance (use user-friendly time format)

@@ -56,18 +56,15 @@ def database_query(
     limit: Optional[int] = 10,
     specialty: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """retrieve user data from the database.
-
-    use this tool to:
-    - get current user's profile information
-    - get current user's interaction history
-    - get current user's appointments
-    - get available healthcare providers
-    - get current user's complete history (profile + interactions + consents)
-
-    note: this tool can only access data for the currently logged-in user. if no user is
-    logged in, the tool will return an error. the tool automatically uses the current
-    user's id from session context.
+    """retrieve current user's data from database.
+    
+    args:
+        query_type: type of query (get_user_by_id, get_user_history, etc.)
+        limit: max results to return (default: 10)
+        specialty: filter providers by specialty
+        
+    returns:
+        dict with query results and user data
     """
     # get current user from context
     user_id = current_user_id.get()

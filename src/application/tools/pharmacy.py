@@ -29,7 +29,17 @@ def pharmacy_orders_and_fulfillment(
     patient_id: Optional[str] = None,
     pharmacy: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """process pharmacy orders and prescription fulfillment. use this for ordering medications, prescriptions, or pharmacy services."""
+    """process pharmacy orders and prescription fulfillment.
+    
+    args:
+        medication: medication name or prescription
+        dosage: dosage instructions
+        patient_id: patient identifier
+        pharmacy: preferred pharmacy location
+        
+    returns:
+        dict with prescription details and pharmacy info
+    """
     log_tool_call(
         logger,
         "pharmacy_orders_and_fulfillment",
