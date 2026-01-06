@@ -4,7 +4,7 @@ Comprehensive test queries for validating agent capabilities.
 
 ---
 
-## <span style="color: #28a745">Low Acuity - Self-Care Management</span>
+## Low Acuity - Self-Care Management
 
 ### Test 1: Minor Symptom
 **Query:**
@@ -78,7 +78,7 @@ Tests non-urgent wellness questions. Should provide educational information with
 
 ---
 
-## <span style="color: #ffc107">Moderate Acuity - Clinical Evaluation Needed</span>
+## Moderate Acuity - Clinical Evaluation Needed
 
 ### Test 4: Persistent Fever
 **Query:**
@@ -129,7 +129,7 @@ Validates detection of progressive symptoms that warrant professional assessment
 
 ---
 
-## <span style="color: #dc3545">High Acuity - Emergency Response</span>
+## High Acuity - Emergency Response
 
 ### Test 6: Chest Pain with Breathing Difficulty
 **Query:**
@@ -203,7 +203,7 @@ Tests context awareness (gender, pregnancy status) and appropriate high-risk esc
 
 ---
 
-## <span style="color: #6f42c1">Verified Triage - Structured Assessment</span>
+## Verified Triage - Structured Assessment
 
 ### Test 9: Chest Pain with Vitals
 **Query:**
@@ -240,7 +240,7 @@ Tests structured triage protocol. Agent should gather vitals for serious symptom
 
 ---
 
-## <span style="color: #17a2b8">RAG Retrieval - Clinical Knowledge</span>
+## RAG Retrieval - Clinical Knowledge
 
 ### Test 10: Clinical Guidelines
 **Query:**
@@ -290,7 +290,7 @@ Tests retrieval of complex clinical information for chronic disease management.
 
 ---
 
-## <span style="color: #20c997">Appointment Booking</span>
+## Appointment Booking
 
 ### Test 12: Appointment Request
 **Query:**
@@ -344,7 +344,7 @@ Validates specialty-based provider search and appointment scheduling capabilitie
 
 ---
 
-## <span style="color: #fd7e14">Pharmacy and Commodities</span>
+## Pharmacy and Commodities
 
 ### Test 14: OTC Medication
 **Query:**
@@ -394,7 +394,7 @@ Validates commodity ordering for medical devices supporting self-monitoring.
 
 ---
 
-## <span style="color: #6610f2">Multi-Turn Conversations</span>
+## Multi-Turn Conversations
 
 ### Test 16: Progressive Symptoms
 **Initial Query:**
@@ -451,7 +451,7 @@ Tests metacognition: agent recognizing insufficient information before taking ac
 
 ---
 
-## <span style="color: #e83e8c">User Context Personalization</span>
+## User Context Personalization
 
 ### Test 18: Elderly Patient
 **Query:**
@@ -525,7 +525,7 @@ Tests timezone context integration for scheduling operations.
 
 ---
 
-## <span style="color: #343a40">Edge Cases and Error Handling</span>
+## Edge Cases and Error Handling
 
 ### Test 21: Gibberish Input
 **Query:**
@@ -656,7 +656,7 @@ Tests metacognition: agent understanding its own capabilities and limitations.
 
 ---
 
-## <span style="color: #28a745">Quick Demo Set</span>
+## Quick Demo Set
 
 For rapid demonstration, run these 5 queries in sequence:
 
@@ -677,7 +677,7 @@ For rapid demonstration, run these 5 queries in sequence:
 
 ---
 
-## <span style="color: #007bff">Testing Guidelines</span>
+## Testing Guidelines
 
 **Coverage:**
 - Test all triage levels (GREEN, YELLOW, RED)
