@@ -1,13 +1,16 @@
 """source model for RAG document provenance."""
 
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from uuid import UUID
-from sqlalchemy import String, Text, Date, TIMESTAMP
+from sqlalchemy import Text, Date, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .document import Document
 
 
 class Source(Base):

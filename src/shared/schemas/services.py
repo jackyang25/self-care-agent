@@ -14,19 +14,6 @@ class TriageServiceOutput(BaseModel):
     verification_method: str = Field(..., description="triage method: verified or llm")
 
 
-class AppointmentServiceOutput(BaseModel):
-    """output from appointment scheduling service."""
-    
-    appointment_id: str
-    provider: str
-    specialty: str
-    facility: str
-    date: str
-    time: str
-    status: str
-    confirmation_code: Optional[str] = None
-
-
 class DocumentSearchResult(BaseModel):
     """single document from RAG search."""
     
@@ -40,104 +27,41 @@ class DocumentSearchResult(BaseModel):
     conditions: Optional[List[str]] = None
 
 
-class InteractionServiceOutput(BaseModel):
-    """output from interaction save service."""
+class CommodityServiceOutput(BaseModel):
+    """output from commodity order service."""
     
-    interaction_id: str
-    success: bool
+    order_id: str
+    estimated_delivery: str
+    items: Optional[str] = None
+    quantity: Optional[str] = None
+    patient_id: Optional[str] = None
+    priority: str
 
 
-class SourceServiceOutput(BaseModel):
-    """output from source storage service."""
+class PharmacyServiceOutput(BaseModel):
+    """output from pharmacy order service."""
     
-    source_id: str
-    success: bool
+    prescription_id: str
+    pharmacy: str
+    ready_date: str
+    medication: Optional[str] = None
+    dosage: Optional[str] = None
+    patient_id: Optional[str] = None
 
 
-class DocumentServiceOutput(BaseModel):
-    """output from document storage service."""
+class ProviderServiceOutput(BaseModel):
+    """output from provider search/lookup service."""
     
-    document_id: str
-    success: bool
+    providers: List[dict]  # list for search, single item list for get_by_id
+    count: int
 
 
-# user service models
-class UserProfile(BaseModel):
-    """user profile data."""
+class ReferralServiceOutput(BaseModel):
+    """output from provider referral service."""
     
-    user_id: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    country_context_id: Optional[str] = None
-    created_at: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
-
-
-class InteractionRecord(BaseModel):
-    """single interaction record."""
-    
-    interaction_id: str
-    user_id: str
-    channel: Optional[str] = None
-    user_input: Optional[str] = None
-    risk_level: Optional[str] = None
-    tools_called: Optional[List[str]] = None
-    created_at: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
-
-
-class AppointmentRecord(BaseModel):
-    """single appointment record."""
-    
-    appointment_id: str
-    user_id: str
-    provider_id: Optional[str] = None
-    specialty: Optional[str] = None
-    appointment_date: Optional[str] = None
-    appointment_time: Optional[str] = None
-    status: Optional[str] = None
-    created_at: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
-
-
-class ConsentRecord(BaseModel):
-    """single consent record."""
-    
-    consent_id: str
-    user_id: str
-    consent_type: Optional[str] = None
-    status: Optional[str] = None
-    created_at: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
-
-
-class ProviderRecord(BaseModel):
-    """healthcare provider record."""
-    
-    provider_id: str
-    name: str
-    specialty: Optional[str] = None
-    facility: Optional[str] = None
-    country_context_id: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
-
-
-class UserCompleteHistory(BaseModel):
-    """complete user history including profile, interactions, and consents."""
-    
-    user: UserProfile
-    interactions: List[InteractionRecord]
-    consents: List[ConsentRecord]
+    provider: str
+    specialty: str
+    facility: str
+    date: str
+    time: str
 

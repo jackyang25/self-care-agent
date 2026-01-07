@@ -1,10 +1,10 @@
 """pharmacy orders and fulfillment tool."""
 
-from datetime import datetime, timedelta
 from typing import Optional
 
 from langchain_core.tools import tool
 
+from src.application.services.pharmacy import place_pharmacy_order
 from src.shared.schemas.tools import PharmacyInput, PharmacyOutput
 
 
@@ -23,17 +23,35 @@ use when: user requests a prescription refill or pharmacy-managed medication; us
 
 do not use for: ordering general self-test kits or non-pharmacy commodities; triage, symptom assessment, or risk evaluation; scheduling referrals, labs, or teleconsultations."""
 
-    # mock data - production would integrate with pharmacy management systems
-    prescription_id = "RX-67890"
-    pharmacy_name = pharmacy or "Main Pharmacy"
-    ready_date = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-
-    return PharmacyOutput(
-        message=f"prescription order placed at {pharmacy_name}",
-        prescription_id=prescription_id,
-        pharmacy=pharmacy_name,
-        ready_date=ready_date,
-        medication=medication,
-        dosage=dosage,
-        patient_id=patient_id,
-    )
+    try:
+        # call service layer
+        result = place_pharmacy_order(
+            medication=medication,
+            dosage=dosage,
+            patient_id=patient_id,
+            pharmacy=pharmacy,
+        )
+        
+        # transform service output to tool output (add presentation layer)
+        return PharmacyOutput(
+            status="success",
+            message=f"prescription order placed at {result.pharmacy}",
+            prescription_id=result.prescription_id,
+            pharmacy=result.pharmacy,
+            ready_date=result.ready_date,
+            medication=result.medication,
+            dosage=result.dosage,
+            patient_id=result.patient_id,
+        )
+    
+    except ValueError as e:
+        return PharmacyOutput(
+            status="error",
+            message=str(e),
+        )
+    
+    except Exception as e:
+        return PharmacyOutput(
+            status="error",
+            message=f"pharmacy order failed: {str(e)}",
+        )

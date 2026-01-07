@@ -4,7 +4,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
-from src.infrastructure.postgres.repositories.providers import find_provider_for_appointment
+from src.application.services.referrals import recommend_provider
 from src.shared.schemas.tools import ReferralInput, ReferralOutput
 
 
@@ -31,25 +31,37 @@ use when: user agrees to or requests a referral to clinical care; user needs inf
 
 do not use for: ordering commodities or medications; pharmacy refills or retail logistics; symptom triage or risk-level determination."""
 
-    # find appropriate provider
-    provider_info = find_provider_for_appointment(
-        specialty=specialty,
-        provider_name=provider,
-    )
-
-    if not provider_info:
+    try:
+        # call service layer
+        result = recommend_provider(
+            specialty=specialty,
+            provider=provider,
+            patient_id=patient_id,
+            preferred_date=preferred_date,
+            preferred_time=preferred_time,
+            reason=reason,
+        )
+        
+        # transform service output to tool output (add presentation layer)
+        return ReferralOutput(
+            status="recommended",
+            message=f"recommended provider: {result.provider} at {result.facility}",
+            provider=result.provider,
+            specialty=result.specialty,
+            facility=result.facility,
+            date=result.date,
+            time=result.time,
+            reason=reason,
+        )
+    
+    except ValueError as e:
         return ReferralOutput(
             status="error",
-            message=f"no providers available for specialty: {specialty or 'general_practice'}",
+            message=str(e),
         )
-
-    # return provider recommendation
-    return ReferralOutput(
-        provider=provider_info.get("name"),
-        specialty=provider_info.get("specialty"),
-        facility=provider_info.get("facility"),
-        date=preferred_date or "contact facility to schedule",
-        time=preferred_time or "contact facility for availability",
-        status="recommended",
-        message=f"recommended provider: {provider_info.get('name')} at {provider_info.get('facility')}",
-    )
+    
+    except Exception as e:
+        return ReferralOutput(
+            status="error",
+            message=f"referral failed: {str(e)}",
+        )

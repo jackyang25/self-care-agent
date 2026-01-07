@@ -1,7 +1,7 @@
 """document model for RAG."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from uuid import UUID
 from sqlalchemy import ForeignKey, Text, TIMESTAMP, ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
@@ -9,6 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .source import Source
 
 
 class Document(Base):
