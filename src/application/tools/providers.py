@@ -4,7 +4,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.providers import search_providers, get_provider
-from src.shared.schemas.tools import SearchProvidersInput, GetProviderInput, ProviderOutput
+from src.application.tools.schemas.providers import SearchProvidersInput, GetProviderInput, ProviderOutput
 
 
 @tool(args_schema=SearchProvidersInput)

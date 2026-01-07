@@ -5,7 +5,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.referrals import recommend_provider
-from src.shared.schemas.tools import ReferralInput, ReferralOutput
+from src.application.tools.schemas.referrals import ReferralInput, ReferralOutput
 
 
 @tool(args_schema=ReferralInput)

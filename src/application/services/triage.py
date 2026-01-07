@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 import logging
 
-from src.shared.schemas.services import TriageServiceOutput
+from src.application.services.schemas.triage import TriageServiceOutput
 
 logger = logging.getLogger(__name__)
 

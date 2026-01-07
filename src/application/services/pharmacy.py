@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from src.shared.schemas.services import PharmacyServiceOutput
+from src.application.services.schemas.pharmacy import PharmacyServiceOutput
 
 
 def place_pharmacy_order(

@@ -6,7 +6,7 @@ from src.infrastructure.postgres.repositories.providers import (
     search_providers as _search_providers,
     get_provider_by_id as _get_provider_by_id,
 )
-from src.shared.schemas.services import ProviderServiceOutput
+from src.application.services.schemas.providers import ProviderServiceOutput
 
 
 def search_providers(

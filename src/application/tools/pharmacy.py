@@ -5,7 +5,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.pharmacy import place_pharmacy_order
-from src.shared.schemas.tools import PharmacyInput, PharmacyOutput
+from src.application.tools.schemas.pharmacy import PharmacyInput, PharmacyOutput
 
 
 @tool(args_schema=PharmacyInput)

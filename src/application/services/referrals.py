@@ -3,7 +3,7 @@
 from typing import Optional
 
 from src.infrastructure.postgres.repositories.providers import find_provider_for_appointment
-from src.shared.schemas.services import ReferralServiceOutput
+from src.application.services.schemas.referrals import ReferralServiceOutput
 
 
 def recommend_provider(

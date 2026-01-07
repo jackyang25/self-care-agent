@@ -11,7 +11,7 @@ from src.infrastructure.postgres.repositories.documents import (
     delete_document as _delete_document,
 )
 from src.infrastructure.postgres.repositories.sources import insert_source
-from src.shared.schemas.services import DocumentSearchResult
+from src.application.services.schemas.rag import DocumentSearchResult
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 

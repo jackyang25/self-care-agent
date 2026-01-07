@@ -5,7 +5,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.triage import assess_triage
-from src.shared.schemas.tools import TriageInput, TriageOutput
+from src.application.tools.schemas.triage import TriageInput, TriageOutput
 
 
 @tool(args_schema=TriageInput)

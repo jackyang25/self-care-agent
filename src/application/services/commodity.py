@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from src.shared.schemas.services import CommodityServiceOutput
+from src.application.services.schemas.commodity import CommodityServiceOutput
 
 
 def place_commodity_order(

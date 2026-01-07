@@ -5,7 +5,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.commodity import place_commodity_order
-from src.shared.schemas.tools import CommodityInput, CommodityOutput
+from src.application.tools.schemas.commodity import CommodityInput, CommodityOutput
 
 
 @tool(args_schema=CommodityInput)

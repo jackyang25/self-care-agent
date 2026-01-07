@@ -5,7 +5,7 @@ from typing import List, Optional
 from langchain_core.tools import tool
 
 from src.application.services.rag import search_documents
-from src.shared.schemas.tools import RAGInput, RAGOutput
+from src.application.tools.schemas.rag import RAGInput, RAGOutput
 
 
 @tool(args_schema=RAGInput)
