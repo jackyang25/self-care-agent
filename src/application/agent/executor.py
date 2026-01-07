@@ -1,25 +1,16 @@
 """agent executor for message processing."""
 
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, BaseMessage
 
 import logging
 import src.shared.logger  # noqa - initialize logging config
 
 from src.application.agent.graph import create_agent_graph
 from src.application.agent.prompt import SYSTEM_PROMPT
-from src.application.services.interactions import (
-    extract_rag_sources,
-    extract_tool_info_from_messages,
-    save_interaction,
-)
-from src.infrastructure.redis import (
-    get_conversation_history,
-    save_conversation_history,
-)
 from src.shared.config import LLM_MODEL, TEMPERATURE
-from src.shared.context import UserContext
+from src.shared.schemas.context import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -41,86 +32,149 @@ def get_agent() -> Any:
     return _agent_instance
 
 
+def build_patient_context_section(context: RequestContext) -> str:
+    """build patient context section for system prompt.
+    
+    args:
+        context: request context with age, gender, etc.
+        
+    returns:
+        formatted patient context string
+    """
+    if not context.age and not context.gender:
+        return ""
+    
+    parts = []
+    if context.age:
+        parts.append(f"Age: {context.age}")
+    if context.gender:
+        parts.append(f"Gender: {context.gender}")
+    
+    patient_info = ", ".join(parts)
+    return f"\n\nPATIENT CONTEXT:\n{patient_info}\n"
+
+
+def convert_message_dict_to_langchain(msg: Dict[str, str]) -> BaseMessage:
+    """convert message dict to LangChain message object.
+    
+    args:
+        msg: dict with 'role' and 'content' keys
+        
+    returns:
+        LangChain message object
+    """
+    role = msg.get("role", "user")
+    content = msg.get("content", "")
+    
+    if role == "user":
+        return HumanMessage(content=content)
+    elif role == "assistant":
+        return AIMessage(content=content)
+    else:
+        # default to human message
+        return HumanMessage(content=content)
+
+
+def extract_rag_sources(messages: list) -> list[dict[str, str]]:
+    """extract RAG sources from tool messages."""
+    sources = []
+    for msg in messages:
+        if isinstance(msg, ToolMessage) and "rag_knowledge_base" in msg.name:
+            # extract source info from tool response
+            if isinstance(msg.content, str) and "source:" in msg.content.lower():
+                # simple extraction - can be enhanced
+                sources.append({"text": msg.content[:200]})
+    return sources
+
+
+def extract_tool_info_from_messages(messages: list) -> dict:
+    """extract tool call information from messages."""
+    tools_called = []
+    triage_result = None
+    protocol_invoked = None
+    risk_level = None
+    
+    for msg in messages:
+        if isinstance(msg, AIMessage) and msg.tool_calls:
+            for tool_call in msg.tool_calls:
+                tool_name = tool_call.get("name", "unknown")
+                tools_called.append(tool_name)
+                
+                # extract triage info if present
+                if tool_name == "clinical_triage":
+                    protocol_invoked = "triage"
+                    # would extract from tool response if available
+    
+    return {
+        "tools_called": tools_called if tools_called else None,
+        "protocol_invoked": protocol_invoked,
+        "protocol_version": None,
+        "triage_result": triage_result,
+        "risk_level": risk_level,
+        "recommendations": None,
+    }
+
+
 def process_message(
     agent: Any,
     user_input: str,
-    user_id: Optional[str] = None,
-    user_age: Optional[int] = None,
-    user_gender: Optional[str] = None,
-    user_timezone: Optional[str] = None,
-    user_country: Optional[str] = None,
-) -> tuple[str, list[dict[str, str]]]:
-    """process user message through agent.
+    context: Optional[RequestContext] = None,
+    messages: Optional[List[Dict[str, str]]] = None,
+    session_id: Optional[str] = None,
+) -> tuple[str, list[dict[str, str]], list[str]]:
+    """process user message through agent with optional conversation history.
 
     args:
         agent: compiled langgraph agent
         user_input: user message text
-        user_id: user uuid
-        user_age: user age for triage/context
-        user_gender: user gender for triage/context
-        user_timezone: user timezone (default: UTC)
-        user_country: user country context (e.g., "za", "ke")
+        context: request context (age, gender, country, timezone)
+        messages: previous conversation messages from frontend (optional)
+                  format: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+        session_id: optional session identifier for logging
 
     returns:
         tuple of (response text, rag sources, tools called)
     """
-    # create user context
-    user_context = UserContext(
-        user_id=user_id,
-        age=user_age,
-        gender=user_gender,
-        timezone=user_timezone or "UTC",
-        country=user_country,
-    )
+    # use default context if none provided
+    if context is None:
+        context = RequestContext()
 
     # build system prompt with patient context
-    patient_context = user_context.build_patient_context_section()
+    patient_context = build_patient_context_section(context)
     system_prompt = SYSTEM_PROMPT + patient_context
 
-    # load conversation history and add current message
-    messages = get_conversation_history(user_id) if user_id else []
-    messages.append(HumanMessage(content=user_input))
+    # convert previous messages from frontend (if provided)
+    langchain_messages = []
+    if messages:
+        for msg in messages:
+            langchain_messages.append(convert_message_dict_to_langchain(msg))
+    
+    # add current user message
+    langchain_messages.append(HumanMessage(content=user_input))
 
     # log workflow start
     query_preview = user_input[:100] + "..." if len(user_input) > 100 else user_input
-    user_info = f" | user={user_id[:8]}" if user_id else ""
-    logger.info(f"workflow start | query=\"{query_preview}\"{user_info}")
+    session_info = f" | session={session_id[:8]}" if session_id else ""
+    history_info = f" | history={len(messages)} msgs" if messages else ""
+    logger.info(f"workflow start | query=\"{query_preview}\"{session_info}{history_info}")
 
     # invoke agent
     state = {
-        "messages": messages,
-        "user_context": user_context,
+        "messages": langchain_messages,
+        "config_context": context.model_dump(),
         "system_prompt": system_prompt,
     }
     result = agent.invoke(state)
     result_messages = result["messages"]
 
-    # save conversation history
-    if user_id:
-        save_conversation_history(user_id, result_messages)
-
     # extract data from results
     rag_sources = extract_rag_sources(result_messages)
     tool_data = extract_tool_info_from_messages(result_messages)
 
-    # save interaction
-    interaction_result = save_interaction(
-        user_input=user_input,
-        channel="streamlit",
-        protocol_invoked=tool_data.get("protocol_invoked"),
-        protocol_version=tool_data.get("protocol_version"),
-        triage_result=tool_data.get("triage_result"),
-        risk_level=tool_data.get("risk_level"),
-        recommendations=tool_data.get("recommendations"),
-        tools_called=tool_data.get("tools_called"),
-        user_id=user_id,
-    )
-
     # log completion
     tools = tool_data.get("tools_called")
     tools_str = f" | tools={', '.join(tools)}" if tools else ""
-    id_str = f" | id={interaction_result.interaction_id[:8]}" if interaction_result.interaction_id else ""
-    logger.info(f"workflow complete{tools_str}{id_str}")
+    logger.info(f"workflow complete{tools_str}")
 
     # return response with sources and tools
     tools_called = tool_data.get("tools_called") or []

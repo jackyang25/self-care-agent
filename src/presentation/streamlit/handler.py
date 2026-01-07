@@ -21,9 +21,9 @@ class StreamlitHandler(BaseChannelHandler):
     # streamlit session_state still used for UI display only
     # no need to override get_conversation_history()
 
-    def get_user_id(self) -> Optional[str]:
-        """get current user id from streamlit session state."""
-        return st.session_state.get("user_id")
+    def get_session_id(self) -> Optional[str]:
+        """get current session id from streamlit session state."""
+        return st.session_state.get("session_id")
     
     def _render_user_config(self) -> None:
         """render user configuration interface."""

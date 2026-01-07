@@ -11,16 +11,11 @@ services:
       - POSTGRES_DB=selfcare
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
       - PYTHONPATH=/app
     volumes:
       - .:/app
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
     command: ["streamlit", "run", "src/presentation/streamlit/server.py", "--server.port=8501", "--server.address=0.0.0.0"]
@@ -37,9 +32,6 @@ services:
       - POSTGRES_DB=selfcare
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
       - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
@@ -49,8 +41,6 @@ services:
       - .:/app
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
     command: ["python", "src/presentation/whatsapp/server.py"]
@@ -71,32 +61,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-
-  redis-insight:
-    image: redis/redisinsight:latest
-    container_name: redis-insight
-    ports:
-      - "5540:5540"
-    volumes:
-      - redisinsight_data:/data
-    depends_on:
-      - redis
     restart: unless-stopped
 
   pgadmin:
@@ -127,6 +91,4 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
-  redisinsight_data:
   pgadmin_data:

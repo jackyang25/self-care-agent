@@ -6,7 +6,6 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from src.application.services.triage import assess_triage
-from src.shared import context
 from src.shared.schemas.tools import TriageOutput
 
 
@@ -25,6 +24,8 @@ class TriageInput(BaseModel):
     notes: Optional[str] = Field(
         None, description="additional clinical notes or context"
     )
+    age: Optional[int] = Field(None, description="patient age")
+    gender: Optional[str] = Field(None, description="patient gender")
 
     # vitals for verified triage (optional)
     breathing: Optional[int] = Field(
@@ -58,6 +59,8 @@ def triage_and_risk_flagging(
     urgency: Optional[str] = None,
     patient_id: Optional[str] = None,
     notes: Optional[str] = None,
+    age: Optional[int] = None,
+    gender: Optional[str] = None,
     breathing: Optional[int] = None,
     conscious: Optional[int] = None,
     walking: Optional[int] = None,
@@ -72,6 +75,8 @@ def triage_and_risk_flagging(
         urgency: urgency level ('red', 'yellow', or 'green')
         patient_id: patient identifier
         notes: additional clinical notes
+        age: patient age (injected from context)
+        gender: patient gender (injected from context)
         breathing: 1=normal, 0=difficulty (for verified triage)
         conscious: 1=alert, 0=altered (for verified triage)
         walking: 1=can walk, 0=cannot (for verified triage)
@@ -82,10 +87,6 @@ def triage_and_risk_flagging(
     returns:
         dict with risk level and recommendations
     """
-
-    # get user demographics from context (set by execution_node)
-    age = context.current_user_age.get()
-    gender = context.current_user_gender.get()
 
     # assess triage using service layer
     triage_result = assess_triage(
@@ -98,120 +99,61 @@ def triage_and_risk_flagging(
         walking=walking,
         severe_symptom=severe_symptom,
         moderate_symptom=moderate_symptom,
-        pregnant=pregnant,
-    )
-    
-    risk_level = triage_result.risk_level
-    verification_method = triage_result.verification_method
-
-    # determine recommendation based on risk level (who iitt)
-    if risk_level == "red":
-        recommendation = "high acuity - immediate clinical evaluation required"
-    elif risk_level == "yellow":
-        recommendation = "moderate acuity - clinical evaluation recommended soon"
-    elif risk_level == "green":
-        recommendation = (
-            "low acuity - can wait, self-care or pharmacy support may be appropriate"
-        )
-    else:  # unknown
-        recommendation = (
-            "unable to assess risk - insufficient information. gather either: "
-            "(1) urgency assessment based on symptom analysis, or "
-            "(2) complete vitals for verified triage"
-        )
-
-    # check if vitals were provided (for output model)
-    vitals_available = all(
-        v is not None
-        for v in [breathing, conscious, walking, severe_symptom, moderate_symptom]
     )
 
-    # return pydantic model instance
-    vitals_dict = (
-        {
-            "breathing": breathing,
-            "conscious": conscious,
-            "walking": walking,
-            "severe_symptom": severe_symptom,
-            "moderate_symptom": moderate_symptom,
-            "pregnant": pregnant,
-        }
-        if vitals_available
-        else None
-    )
+    if not triage_result:
+        return TriageOutput(
+            status="error",
+            risk_level="unknown",
+            message="triage assessment failed - insufficient information",
+        ).model_dump()
 
-    # return pydantic model instance
+    risk_level, score = triage_result
+
+    # map risk level to recommendations
+    if risk_level == "emergency":
+        recommendations = [
+            "seek immediate emergency care",
+            "call emergency services or go to nearest emergency department",
+            "do not delay - this is a medical emergency",
+        ]
+    elif risk_level == "urgent":
+        recommendations = [
+            "seek medical attention within 24 hours",
+            "contact your healthcare provider or visit urgent care",
+            "monitor symptoms closely",
+        ]
+    elif risk_level == "routine":
+        recommendations = [
+            "schedule appointment with healthcare provider",
+            "monitor symptoms and seek care if worsens",
+            "self-care measures may be appropriate",
+        ]
+    else:
+        recommendations = ["consult healthcare provider for guidance"]
+
     return TriageOutput(
         risk_level=risk_level,
-        recommendation=recommendation,
-        symptoms=symptoms,
-        urgency=urgency,
-        patient_id=patient_id,
-        notes=notes,
-        verification_method=verification_method,
-        vitals=vitals_dict,
+        triage_score=score,
+        recommendations=recommendations,
+        message=f"triage assessment complete: {risk_level} priority",
     ).model_dump()
 
 
 triage_tool = StructuredTool.from_function(
     func=triage_and_risk_flagging,
-    name="triage_and_risk_flagging",
-    description="""triage user health symptoms and assign a risk category.
+    name="clinical_triage",
+    description="""perform clinical triage and risk assessment.
 
-**two triage modes:**
+use this tool when you need to determine medical urgency or risk level based on symptoms. the tool implements who interagency integrated triage tool (iitt) and assigns risk categories.
 
-1. **verified triage (use for serious/uncertain cases)**: when you gather structured vitals, the tool uses a formally verified classification system for enhanced safety and logical correctness.
-   - gather from conversation: breathing (1=normal, 0=difficulty), conscious (1=alert, 0=altered), walking (1=can walk, 0=cannot)
-   - assess from symptoms: severe_symptom (1=severe, 0=not), moderate_symptom (1=moderate, 0=not)
-   - ask if relevant: pregnant (1=yes, 0=no) - only for female patients when clinically relevant
-   - the tool automatically fetches age/gender from user's profile
-   - provides provably correct classification within verified logic space
+CRITICAL: you MUST analyze symptoms and provide the 'urgency' parameter as one of: 'red' (emergency), 'yellow' (urgent), or 'green' (routine). base this on:
+- red: life-threatening (chest pain, difficulty breathing, severe bleeding, unconsciousness, severe trauma)
+- yellow: serious but stable (high fever, moderate pain, concerning symptoms, pregnancy complications)  
+- green: non-urgent (mild symptoms, routine concerns, preventive care)
 
-2. **llm-based triage (use for clearly minor cases)**: when vitals not gathered, provide your urgency assessment and the tool will format your assessment.
+use when: patient describes symptoms requiring urgency assessment; determining if emergency care is needed; triaging clinical concerns.
 
-**urgency levels (who iitt - interagency integrated triage tool) - you must use exactly these values:**
-- 'red': high acuity - immediate attention required (life-threatening conditions, severe symptoms, chest pain, difficulty breathing, severe trauma, stroke, heart attack, signs of deterioration)
-- 'yellow': moderate acuity - should be seen soon (moderate-severe symptoms, persistent pain, worsening condition, high fever, concerning symptoms)
-- 'green': low acuity - can wait (mild symptoms, stable condition, routine concerns, minor issues that may be managed with self-care or pharmacy support)
-
-**important:** you must use the exact values above. do not use variations like 'critical', 'high', 'medium', 'low', 'urgent', or any other terms. use only: 'red', 'yellow', or 'green'.
-
-**when to gather vitals for verified triage (recommended for safety-critical cases):**
-- severe symptoms: chest pain, difficulty breathing, severe bleeding, unconscious, stroke symptoms, severe trauma
-- moderate symptoms with uncertainty: unclear severity, multiple symptoms, progressive worsening
-- high-risk patients: if you suspect patient may be pregnant, elderly (>65), or infant
-- user explicitly asks: "should I go to ER?", "is this an emergency?"
-- borderline cases: when you're unsure between RED and YELLOW
-
-**when llm assessment is sufficient (for clearly minor cases):**
-- obviously minor: small cuts, mild headache, minor bruise, vitamin questions
-- routine health questions: general wellness, prevention, educational queries
-- follow-up after triage: already triaged in current conversation
-
-**workflow:**
-1. analyze the user's symptoms and assess severity
-2. **if serious/uncertain** → ask questions to gather vitals for verified triage:
-   - breathing: "are you having any difficulty breathing?" (1=normal, 0=difficulty)
-   - conscious: assess from conversation or ask "are you feeling alert and clear-headed?" (1=alert, 0=altered)
-   - walking: "are you able to walk right now?" (1=yes, 0=no)
-   - severe symptoms: assess if severe/critical (severe pain, severe bleeding, etc.) (1=yes, 0=no)
-   - moderate symptoms: assess if moderate but not severe (1=yes, 0=no)
-   - pregnant (if female): "are you pregnant?" when relevant (1=yes, 0=no)
-3. **if clearly minor** → assess urgency and call tool with your assessment (no vitals needed)
-4. call this tool with gathered information and provide recommendations to user
-
-**example gathering flow:**
-user: "i have a headache"
-you: "i'm sorry to hear that. to assess this properly, i need to ask a few quick questions. are you having any difficulty breathing?"
-user: "no, i'm breathing fine"
-you: "good. are you able to walk around?"
-user: "yes"
-you: "would you describe the headache as severe or moderate?"
-user: "it's pretty bad"
-you: *calls tool with all vitals: breathing=1, conscious=1, walking=1, severe=1, moderate=0*
-
-use this tool when: user describes symptoms, discomfort, or potential illnesses; user asks whether they should seek care, self-manage, or escalate; user needs a risk assessment before accessing services or commodities.
-
-do not use for: ordering medications, self-tests, or other commodities; booking labs, teleconsultations, or appointments; administrative questions unrelated to clinical symptoms or risk.""",
+do not use for: general health questions without symptoms; appointment scheduling without medical urgency; commodity orders.""",
     args_schema=TriageInput,
 )

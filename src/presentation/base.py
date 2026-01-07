@@ -1,9 +1,10 @@
 """base channel handler class."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List, Dict
 
 from src.application.agent import get_agent, process_message
+from src.shared.schemas.context import RequestContext
 
 
 class BaseChannelHandler(ABC):
@@ -15,29 +16,36 @@ class BaseChannelHandler(ABC):
         return get_agent()
 
     @abstractmethod
-    def get_user_id(self) -> Optional[str]:
-        """get current user id."""
+    def get_session_id(self) -> Optional[str]:
+        """get current session id."""
         pass
 
     def respond(
         self,
         message: str,
-        user_id: Optional[str] = None,
-        user_age: Optional[int] = None,
-        user_gender: Optional[str] = None,
-        user_timezone: Optional[str] = None,
-        user_country: Optional[str] = None,
+        context: Optional[RequestContext] = None,
+        messages: Optional[List[Dict[str, str]]] = None,
+        session_id: Optional[str] = None,
     ) -> tuple[str, list[dict[str, str]], list[str]]:
-        """process user message and return response with sources and tools."""
-        if user_id is None:
-            user_id = self.get_user_id()
+        """process user message and return response with sources and tools.
+        
+        args:
+            message: current user message
+            context: request context (age, gender, country, timezone)
+            messages: previous conversation history from frontend
+                      format: [{"role": "user", "content": "..."}, ...]
+            session_id: optional session identifier
+        
+        returns:
+            tuple of (response text, rag sources, tools called)
+        """
+        if session_id is None:
+            session_id = self.get_session_id()
 
         return process_message(
             agent=self.agent,
             user_input=message,
-            user_id=user_id,
-            user_age=user_age,
-            user_gender=user_gender,
-            user_timezone=user_timezone,
-            user_country=user_country,
+            context=context,
+            messages=messages,
+            session_id=session_id,
         )

@@ -1,9 +1,5 @@
 """services - business operations and domain logic."""
 
-from src.application.services.interactions import (
-    save_interaction,
-    extract_tool_info_from_messages,
-)
 from src.application.services.rag import (
     get_embedding,
     store_source,
@@ -11,16 +7,16 @@ from src.application.services.rag import (
     search_documents,
     delete_document,
 )
+from src.application.services.triage import assess_triage, run_verified_triage
 
 __all__ = [
-    # interactions
-    "save_interaction",
-    "extract_tool_info_from_messages",
     # rag
     "get_embedding",
     "store_source",
     "store_document",
     "search_documents",
     "delete_document",
+    # triage
+    "assess_triage",
+    "run_verified_triage",
 ]
-

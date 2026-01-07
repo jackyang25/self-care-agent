@@ -1,36 +1,35 @@
-"""RAG retrieval tool for knowledge base search."""
+"""RAG retrieval tool for knowledge base access."""
 
-from typing import Optional, List, Dict, Any
+from typing import Dict, Any, List, Optional
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-import logging
-
 from src.application.services.rag import search_documents
-from src.shared.context import current_user_country
 from src.shared.schemas.tools import RAGOutput
-
-logger = logging.getLogger(__name__)
 
 
 class RAGInput(BaseModel):
     """input schema for RAG retrieval."""
 
     query: str = Field(
-        description="search query to find relevant knowledge base documents"
+        description="search query for finding relevant clinical information, guidelines, or protocols"
     )
     content_type: Optional[str] = Field(
         None,
-        description="filter by single content type (e.g., 'protocol', 'guideline', 'symptom', 'emergency')",
+        description="filter by content type (e.g., 'guideline', 'protocol', 'medication_info')",
     )
     content_types: Optional[List[str]] = Field(
         None,
-        description="filter by multiple content types (e.g., ['protocol', 'guideline'])",
+        description="filter by multiple content types (e.g., ['guideline', 'protocol'])",
     )
     conditions: Optional[List[str]] = Field(
         None,
         description="filter by medical conditions (e.g., ['fever', 'malaria', 'tb'])",
+    )
+    country: Optional[str] = Field(
+        None,
+        description="country context for region-specific guidelines (e.g., 'za', 'ke')",
     )
     limit: Optional[int] = Field(
         5, description="maximum number of documents to retrieve (default: 5)"
@@ -42,6 +41,7 @@ def rag_retrieval(
     content_type: Optional[str] = None,
     content_types: Optional[List[str]] = None,
     conditions: Optional[List[str]] = None,
+    country: Optional[str] = None,
     limit: Optional[int] = 5,
 ) -> Dict[str, Any]:
     """search healthcare knowledge base using semantic search.
@@ -51,14 +51,12 @@ def rag_retrieval(
         content_type: filter by single content type
         content_types: filter by multiple content types
         conditions: filter by medical conditions
+        country: country context for filtering (injected from context)
         limit: max documents to retrieve (default: 5)
 
     returns:
         dict with query results and formatted documents
     """
-    # get user's country context for filtering
-    country_context_id = current_user_country.get()
-
 
     try:
         results = search_documents(
@@ -66,90 +64,65 @@ def rag_retrieval(
             limit=limit,
             content_type=content_type,
             content_types=content_types,
-            country_context_id=country_context_id,
+            country_context_id=country,
             conditions=conditions,
-            min_similarity=0.5,  # quality gate - filters very low similarity results
-            include_global=True,  # always include global docs alongside country-specific
         )
 
         if not results:
             return RAGOutput(
-                status="success",
-                query=query,
-                results_count=0,
+                status="no_results",
+                message="no relevant documents found",
                 documents=[],
             ).model_dump()
 
-        # format results for agent consumption
-        formatted_results = []
-        for result in results:
-            doc = {
-                "title": result.title,
-                "content": result.content,
-                "content_type": result.content_type,
-                "similarity": round(result.similarity, 3),
-            }
-            # include source info if available
-            if result.source_name:
-                doc["source"] = result.source_name
-                if result.source_version:
-                    doc["source"] += f" ({result.source_version})"
-            # include country context if specific to a country
-            if result.country_context_id:
-                doc["country"] = result.country_context_id
-            # include conditions if tagged
-            if result.conditions:
-                doc["conditions"] = result.conditions
-            formatted_results.append(doc)
+        # format results for LLM consumption
+        formatted_docs = []
+        for doc in results:
+            formatted_docs.append(
+                {
+                    "title": doc.title,
+                    "content": doc.content[:500],
+                    "source": doc.source_name or "unknown",
+                    "similarity": f"{doc.similarity:.2f}",
+                }
+            )
 
-        # return pydantic model instance
         return RAGOutput(
-            query=query,
-            results_count=len(formatted_results),
-            documents=formatted_results,
+            message=f"found {len(results)} relevant document(s)",
+            documents=formatted_docs,
+            count=len(results),
         ).model_dump()
 
     except Exception as e:
-        logger.error(f"rag retrieval error: {e}", exc_info=True)
         return RAGOutput(
             status="error",
-            query=query,
-            results_count=0,
+            message=f"knowledge base search failed: {str(e)}",
             documents=[],
         ).model_dump()
 
 
 rag_tool = StructuredTool.from_function(
     func=rag_retrieval,
-    name="rag_retrieval",
-    description="""search the healthcare knowledge base for relevant information using semantic search.
+    name="rag_knowledge_base",
+    description="""search clinical knowledge base for evidence-based information.
 
-use this tool when:
-- user asks questions about symptoms, medical conditions, treatments, or healthcare protocols
-- you need evidence-based information to answer health-related questions
-- user asks "what should i know about X?" or requests information about a health topic
-- you need to provide authoritative healthcare knowledge beyond general knowledge
+use this tool when you need:
+- clinical guidelines for specific conditions
+- treatment protocols and recommendations  
+- medication information and dosing
+- evidence-based medical knowledge
+- region-specific healthcare guidance
 
-the tool performs semantic search across a vector database of healthcare documents including
-protocols, guidelines, treatment recommendations, and medical knowledge. it automatically
-prioritizes country-specific clinical guidelines for the user's region while also including
-global guidelines.
+the knowledge base contains:
+- WHO clinical guidelines
+- national healthcare protocols
+- medical reference materials
+- treatment algorithms
 
-available content_types for filtering:
-- symptom: symptom-based triage entry points
-- condition: chronic condition information
-- algorithm: clinical decision trees
-- protocol: step-by-step clinical protocols
-- guideline: general management guidance
-- medication: drug info and dosing
-- reference: helplines and quick reference
-- emergency: red flags and urgent care criteria
+provide a clear, specific search query. optionally filter by content_type, conditions, or country for more targeted results.
 
-examples:
-- user: "what are the symptoms of diabetes?" → use rag_retrieval with query about diabetes symptoms
-- user: "how should i treat a fever?" → use rag_retrieval with query about fever treatment, content_types=["guideline", "protocol"]
-- user asking about emergency signs → use rag_retrieval with content_types=["emergency"]
+use when: you need clinical evidence or guidelines; patient asks about treatments or protocols; you need to verify medical information.
 
-do not use for: user-specific data (use database_query instead), ordering medications, or scheduling appointments.""",
+do not use for: patient-specific data; scheduling appointments; ordering commodities.""",
     args_schema=RAGInput,
 )

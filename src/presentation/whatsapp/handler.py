@@ -27,10 +27,10 @@ class WhatsAppHandler(BaseChannelHandler):
     # conversation history managed automatically by redis
     # no need to override get_conversation_history()
 
-    def get_user_id(self) -> Optional[str]:
-        """get current user id.
+    def get_session_id(self) -> Optional[str]:
+        """get current session id.
         
-        whatsapp handler always passes user_id explicitly to respond(),
+        whatsapp handler always passes session_id explicitly to respond(),
         so this method is not used.
         """
         return None

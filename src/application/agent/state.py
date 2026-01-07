@@ -1,17 +1,16 @@
-"""langgraph state definition for agent."""
+"""agent state definition for langgraph."""
 
-from typing import Annotated, Optional, TypedDict
+from typing import TypedDict, Annotated, Sequence
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
-from src.shared.context import UserContext
 
-
-class AgentState(TypedDict, total=False):
-    """state for the agent.
+class AgentState(TypedDict):
+    """state for healthcare agent workflow.
     
-    all user-specific data flows through user_context for explicit state management.
+    tracks conversation messages, config context, and system prompt.
     """
-
-    messages: Annotated[list, lambda x, y: x + y]
-    system_prompt: Optional[str]
-    user_context: Optional[UserContext]
-
+    
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    config_context: dict  # age, gender, timezone, country from config
+    system_prompt: str

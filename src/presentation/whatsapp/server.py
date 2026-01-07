@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 import uvicorn
 from src.presentation.whatsapp.handler import app
 from src.infrastructure.postgres.connection import _get_connection_pool
-from src.infrastructure.redis.connection import _get_redis_pool
 
 load_dotenv()
 
@@ -13,7 +12,6 @@ load_dotenv()
 def initialize_connections():
     """initialize database connections at startup."""
     _get_connection_pool()  # initialize postgres
-    _get_redis_pool()  # initialize redis
 
 
 def main():
@@ -29,4 +27,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
