@@ -1,0 +1,56 @@
+#!/bin/bash
+# Database seeding script - initializes database with seed data
+# Usage: ./scripts/seed_database.sh
+
+set -e  # Exit on any error
+
+echo "=============================================="
+echo "  Initializing Database - GH AI Self-Care"
+echo "=============================================="
+echo ""
+
+# Check if database is running
+echo "Checking database connection..."
+if ! psql -h localhost -U postgres -d selfcare -c "SELECT 1" > /dev/null 2>&1; then
+    echo "ERROR: Cannot connect to database. Is PostgreSQL running?"
+    echo "   Try: docker-compose up -d"
+    exit 1
+fi
+echo "Database connected"
+echo ""
+
+# Check if OpenAI API key is set (needed for embeddings)
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "WARNING: OPENAI_API_KEY not set. Embeddings will fail."
+    echo "   Set it in .env or export OPENAI_API_KEY=your_key"
+    read -p "   Continue anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Step 1: Seed providers
+echo "Step 1: Seeding providers..."
+psql -h localhost -U postgres -d selfcare -f init-db/01_providers.sql
+echo ""
+
+# Step 2: Seed sources
+echo "Step 2: Seeding sources..."
+psql -h localhost -U postgres -d selfcare -f init-db/02_sources.sql
+echo ""
+
+# Step 3: Seed documents (without embeddings)
+echo "Step 3: Seeding documents (without embeddings)..."
+psql -h localhost -U postgres -d selfcare -f init-db/03_documents.sql
+echo ""
+
+# Step 4: Generate embeddings
+echo "Step 4: Generating embeddings via OpenAI..."
+python3 scripts/generate_embeddings.py
+echo ""
+
+echo "=============================================="
+echo "  Database Initialized!"
+echo "=============================================="
+

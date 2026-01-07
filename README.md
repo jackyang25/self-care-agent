@@ -146,7 +146,7 @@ Validates the **technical feasibility** of core architecture patterns.
 ### Installation
 
    ```bash
-make setup  # First-time setup (starts containers, creates tables, seeds data)
+make setup  # First-time setup (starts containers, creates tables, initializes data)
 # Open http://localhost:8501
 # Configure demo user in the sidebar (no login required)
 ```
@@ -257,20 +257,22 @@ User Input (Streamlit/WhatsApp)
 │   │   └── triage-verification.md # Verified triage with Lean
 │   ├── reference/                 # Technical specifications
 │   │   ├── database.md            # Database schema
-│   │   ├── seeds.md               # Seed data structure
 │   │   └── tools.md               # Tool documentation
 │   └── guides/                    # How-to & integration
 │       ├── testing.md             # Testing guide
 │       └── whatsapp.md            # WhatsApp integration
 ├── bin/
 │   └── triage-verifier            # Lean-compiled triage binary
-├── seeds/
-│   └── demo.json                  # All demo data (users, providers, appointments, RAG documents)
-├── scripts/                        # Database management
-│   ├── db/
-│   │   ├── create_tables.py       # Create all tables (app + RAG)
-│   │   ├── seed.py                # Seed all data (app + RAG)
-│   │   └── test.py                # Test database connection
+├── init-db/
+│   ├── 01_providers.sql           # Provider seed data
+│   ├── 02_sources.sql             # Document source seed data
+│   ├── 03_documents.sql           # RAG documents (without embeddings)
+│   └── README.md                  # Database initialization guide
+├── scripts/                        # Database & utilities
+│   ├── generate_embeddings.py     # Generate embeddings for documents
+│   ├── seed_database.sh           # Initialize database with seed data
+│   ├── start_ngrok.sh             # Start ngrok tunnel for webhooks
+│   └── test_triage_verifier.py    # Test triage verification
 │   ├── dev/
 │   │   └── start_ngrok.sh
 │   └── tools/
