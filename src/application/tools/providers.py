@@ -1,4 +1,4 @@
-"""database query tools for providers."""
+"""provider search and lookup tools."""
 
 from typing import Optional
 from langchain_core.tools import tool
@@ -7,14 +7,14 @@ from src.infrastructure.postgres.repositories.providers import (
     search_providers,
     get_provider_by_id,
 )
-from src.shared.schemas.tools import SearchProvidersInput, GetProviderInput, DatabaseOutput
+from src.shared.schemas.tools import SearchProvidersInput, GetProviderInput, ProviderOutput
 
 
 @tool(args_schema=SearchProvidersInput)
 def search_providers_tool(
     specialty: Optional[str] = None,
     limit: Optional[int] = 10,
-) -> DatabaseOutput:
+) -> ProviderOutput:
     """search for healthcare providers in the database.
 
 use this tool when you need to find healthcare providers, optionally filtered by specialty.
@@ -26,25 +26,25 @@ do not use for: looking up a specific provider by id (use get_provider_tool); ge
     try:
         providers = search_providers(specialty=specialty, limit=limit)
         if providers:
-            return DatabaseOutput(
+            return ProviderOutput(
                 message=f"found {len(providers)} provider(s)",
                 data=providers,
             )
         else:
-            return DatabaseOutput(
+            return ProviderOutput(
                 message="no providers found matching criteria",
                 data=[],
             )
 
     except Exception as e:
-        return DatabaseOutput(
+        return ProviderOutput(
             status="error",
             message=f"provider search failed: {str(e)}",
         )
 
 
 @tool(args_schema=GetProviderInput)
-def get_provider_tool(provider_id: str) -> DatabaseOutput:
+def get_provider_tool(provider_id: str) -> ProviderOutput:
     """get details for a specific healthcare provider by id.
 
 use this tool when you need detailed information about a specific provider.
@@ -56,18 +56,18 @@ do not use for: searching for providers (use search_providers_tool); general hea
     try:
         provider = get_provider_by_id(provider_id)
         if provider:
-            return DatabaseOutput(
+            return ProviderOutput(
                 message="provider found",
                 data=provider,
             )
         else:
-            return DatabaseOutput(
+            return ProviderOutput(
                 status="error",
                 message=f"provider not found: {provider_id}",
             )
 
     except Exception as e:
-        return DatabaseOutput(
+        return ProviderOutput(
             status="error",
             message=f"provider lookup failed: {str(e)}",
         )
