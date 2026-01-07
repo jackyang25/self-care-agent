@@ -329,7 +329,7 @@ def launch_app(handler) -> None:
             st.markdown("---")
             
             # informational note about production data sourcing
-            st.caption("Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs). This demo allows manual configuration for testing.")
+            st.caption("Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields.")
         
         # action buttons below the container
         col1, col2 = st.columns(2)
