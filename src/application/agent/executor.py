@@ -117,20 +117,18 @@ def extract_tool_info_from_messages(messages: list) -> dict:
 
 def process_message(
     agent: Any,
-    user_input: str,
+    user_message: str,
     context: Optional[RequestContext] = None,
-    messages: Optional[List[Dict[str, str]]] = None,
-    session_id: Optional[str] = None,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
 ) -> tuple[str, list[dict[str, str]], list[str]]:
     """process user message through agent with optional conversation history.
 
     args:
         agent: compiled langgraph agent
-        user_input: user message text
-        context: request context (age, gender, country, timezone)
-        messages: previous conversation messages from frontend (optional)
-                  format: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
-        session_id: optional session identifier for logging
+        user_message: current user message
+        context: request context (socio-technical + IPS fields for agent reasoning)
+        conversation_history: previous conversation messages from frontend (optional)
+                             format: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
     returns:
         tuple of (response text, rag sources, tools called)
@@ -145,18 +143,17 @@ def process_message(
 
     # convert previous messages from frontend (if provided)
     langchain_messages = []
-    if messages:
-        for msg in messages:
+    if conversation_history:
+        for msg in conversation_history:
             langchain_messages.append(convert_message_dict_to_langchain(msg))
     
     # add current user message
-    langchain_messages.append(HumanMessage(content=user_input))
+    langchain_messages.append(HumanMessage(content=user_message))
 
     # log workflow start
-    query_preview = user_input[:100] + "..." if len(user_input) > 100 else user_input
-    session_info = f" | session={session_id[:8]}" if session_id else ""
-    history_info = f" | history={len(messages)} msgs" if messages else ""
-    logger.info(f"workflow start | query=\"{query_preview}\"{session_info}{history_info}")
+    message_preview = user_message[:100] + "..." if len(user_message) > 100 else user_message
+    history_info = f" | history={len(conversation_history)} msgs" if conversation_history else ""
+    logger.info(f"workflow start | message=\"{message_preview}\"{history_info}")
 
     # invoke agent
     state = {

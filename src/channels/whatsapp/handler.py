@@ -108,7 +108,10 @@ async def handle_webhook(
                 continue
 
             # process message through agent
-            response, sources, _ = handler.respond(text_body, user_id=from_number)
+            response, sources, _ = handler.respond(
+                user_message=text_body,
+                whatsapp_id=from_number
+            )
 
             # append sources if available
             if sources:

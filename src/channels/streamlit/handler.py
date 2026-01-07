@@ -41,9 +41,12 @@ class StreamlitHandler(BaseChannelHandler):
             refill_date = st.session_state.get("refill_due_date")
             refill_date_str = refill_date.isoformat() if refill_date else None
             
+            # get conversation history (exclude the current message we're responding to)
+            history = st.session_state.messages[:-1] if len(st.session_state.messages) > 1 else None
+            
             response, sources, tools = self.respond(
-                prompt,
-                user_id=st.session_state.get("whatsapp_id"),
+                user_message=prompt,
+                conversation_history=history,
                 # socio-technical context
                 whatsapp_id=st.session_state.get("whatsapp_id"),
                 patient_id=st.session_state.get("emr_patient_id"),
