@@ -5,7 +5,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.presentation.streamlit.handler import StreamlitHandler
+from src.channels.streamlit.handler import StreamlitHandler
 from src.infrastructure.postgres.connection import _get_connection_pool
 
 load_dotenv()

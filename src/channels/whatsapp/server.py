@@ -3,7 +3,7 @@
 import os
 from dotenv import load_dotenv
 import uvicorn
-from src.presentation.whatsapp.handler import app
+from src.channels.whatsapp.handler import app
 from src.infrastructure.postgres.connection import _get_connection_pool
 
 load_dotenv()

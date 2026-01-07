@@ -1,6 +1,7 @@
 """database query tool for providers."""
 
 from typing import Dict, Any, Optional
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from src.infrastructure.postgres.repositories.providers import (
@@ -89,3 +90,21 @@ def database_query(
         return DatabaseOutput(
             status="error", message=f"database query failed: {str(e)}"
         ).model_dump()
+
+
+database_tool = StructuredTool.from_function(
+    func=database_query,
+    name="database_query",
+    description="""query healthcare providers from the database.
+
+use this tool when you need to search for healthcare providers or get specific provider information.
+
+query types:
+- 'search_providers': search for providers, optionally filter by specialty
+- 'get_provider': get details for a specific provider by id
+
+use when: user needs to find healthcare providers; user asks about provider specialties; user needs specific provider details.
+
+do not use for: general health questions; symptom assessment; appointment booking.""",
+    args_schema=DatabaseQueryInput,
+)

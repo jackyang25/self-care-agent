@@ -1,8 +1,6 @@
 """postgres persistence layer - connection and repositories."""
 
 from src.infrastructure.postgres.connection import (
-    get_db,
-    get_db_cursor,
     get_db_session,
     test_connection,
 )
@@ -24,8 +22,6 @@ from src.infrastructure.postgres.repositories import (
 
 __all__ = [
     # connection
-    "get_db",
-    "get_db_cursor",
     "get_db_session",
     "test_connection",
     # providers
