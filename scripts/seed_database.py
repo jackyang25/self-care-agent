@@ -27,14 +27,22 @@ def seed_all(
     fixture_file: str = "demo.json",
     clear_existing: bool = False,
     table: Optional[str] = None,
+    include_users: bool = False,
 ):
-    """seed database from seed file (app data + RAG documents)."""
+    """seed database from seed file (app data + RAG documents).
+    
+    args:
+        fixture_file: seed file name (default: demo.json)
+        clear_existing: clear existing data before seeding
+        table: seed only specific table
+        include_users: include user records (default: False, skip for demo mode)
+    """
     print(f"Loading seed file: {fixture_file}")
     data = load_fixture_file(fixture_file)
 
     with get_db_cursor() as cur:
-        # seed users
-        if (table is None or table == "users") and data.get("users"):
+        # seed users (skip by default for demo mode)
+        if (table == "users" or (table is None and include_users)) and data.get("users"):
             if clear_existing:
                 cur.execute("TRUNCATE TABLE users CASCADE")
 
@@ -65,9 +73,11 @@ def seed_all(
                     ),
                 )
             print(f"  ✓ Seeded {len(data['users'])} user(s)")
+        elif not include_users and table is None:
+            print("  ⊘ Skipped users (demo mode - use --include-users to seed users)")
 
-        # seed interactions
-        if (table is None or table == "interactions") and data.get("interactions"):
+        # seed interactions (skip by default unless users are included)
+        if (table == "interactions" or (table is None and include_users)) and data.get("interactions"):
             if clear_existing:
                 cur.execute("TRUNCATE TABLE interactions CASCADE")
 
@@ -112,9 +122,11 @@ def seed_all(
                     ),
                 )
             print(f"  ✓ Seeded {len(data['interactions'])} interaction(s)")
+        elif not include_users and table is None:
+            print("  ⊘ Skipped interactions (demo mode - requires users)")
 
-        # seed consents
-        if (table is None or table == "consents") and data.get("consents"):
+        # seed consents (skip by default unless users are included)
+        if (table == "consents" or (table is None and include_users)) and data.get("consents"):
             if clear_existing:
                 cur.execute("TRUNCATE TABLE consents CASCADE")
 
@@ -153,6 +165,8 @@ def seed_all(
                     ),
                 )
             print(f"  ✓ Seeded {len(data['consents'])} consent(s)")
+        elif not include_users and table is None:
+            print("  ⊘ Skipped consents (demo mode - requires users)")
 
         # seed providers
         if (table is None or table == "providers") and data.get("providers"):
@@ -313,6 +327,11 @@ if __name__ == "__main__":
         choices=["users", "interactions", "consents", "providers", "appointments"],
         help="seed only a specific table",
     )
+    parser.add_argument(
+        "--include-users",
+        action="store_true",
+        help="include user records (default: skip for demo mode)",
+    )
 
     args = parser.parse_args()
-    seed_all(args.file, args.clear, args.table)
+    seed_all(args.file, args.clear, args.table, args.include_users)

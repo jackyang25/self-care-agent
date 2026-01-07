@@ -1,7 +1,8 @@
 """streamlit channel handler."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
+import uuid
 
 import streamlit as st
 from PIL import Image
@@ -9,10 +10,6 @@ from PIL import Image
 import logging
 
 from src.presentation.base import BaseChannelHandler
-from src.infrastructure.postgres.repositories.users import (
-    get_user_by_email,
-    get_user_by_phone,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -27,151 +24,152 @@ class StreamlitHandler(BaseChannelHandler):
     def get_user_id(self) -> Optional[str]:
         """get current user id from streamlit session state."""
         return st.session_state.get("user_id")
-
-    def _identify_user(self, identifier: str) -> tuple[bool, str]:
-        """identify user by phone or email. returns (success, message)."""
-        try:
-            # try phone first (e164 format)
-            if (
-                identifier.startswith("+")
-                or identifier.replace("-", "").replace(" ", "").isdigit()
-            ):
-                user = get_user_by_phone(identifier)
-            else:
-                # assume email
-                user = get_user_by_email(identifier)
-        except Exception as e:
-            logger.error(f"failed to lookup user: {e}", exc_info=True)
-            return False, "error looking up user. please try again."
-
-        if user:
-            # extract user data from structured dict
-            user_id = str(user.get("user_id"))
-            email = user.get("email")
-            phone = user.get("phone_e164")
-            timezone = user.get("timezone", "UTC")
-            country = user.get("country_context_id")
-            demographics = user.get("demographics", {})
-            age = demographics.get("age")
-            gender = demographics.get("gender")
-
-            # set session state
-            st.session_state.user_id = user_id
-            st.session_state.user_age = age
-            st.session_state.user_gender = gender
-            st.session_state.user_timezone = timezone
-            st.session_state.user_country = country
-            st.session_state.user_identified = True
-
-            # determine display name (prefer email, fallback to phone, then user id)
-            display_name = email or phone or f"user {user_id[:8]}"
-            st.session_state.user_display = display_name
-
-            return True, f"welcome, {display_name}!"
-
-        return False, "user not found. please check your phone number or email."
-
-    def launch(self) -> None:
-        """launch the streamlit interface."""
-        # load gates foundation logo
-        logo_path = Path("src/assets/gates_logo.png")
-        page_icon = None
-        if logo_path.exists():
+    
+    def _render_user_config(self) -> None:
+        """render user configuration interface."""
+        # row 1: basic info and demographics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            if "user_name" not in st.session_state:
+                st.session_state.user_name = "Jack"
+            name_options = ["Jack", "Sarah", "Aisha", "Thabo", "Maria", "John", "Emma", "Kwame", "Fatima", "David"]
             try:
-                page_icon = Image.open(str(logo_path))
-            except Exception:
-                pass
-
-        st.set_page_config(
-            page_title="Self-Care Agent",
-            page_icon=page_icon,
-            layout="centered",
-        )
-
-        # user identification (mock authentication)
-        if (
-            "user_identified" not in st.session_state
-            or not st.session_state.user_identified
-        ):
-            # centered login form
-            col1, col2, col3 = st.columns([1, 2, 1])
-
-            with col2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.title("Welcome")
-                st.markdown("Please sign in to continue")
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                identifier = st.text_input(
-                    "Email or Phone Number",
-                    placeholder="user@example.com or +1234567890",
-                    key="user_identifier_input",
-                    label_visibility="visible",
-                )
-
-                col_btn1, col_btn2 = st.columns([1, 1])
-                with col_btn1:
-                    if st.button(
-                        "Sign In",
-                        type="primary",
-                        use_container_width=True,
-                        key="identify_user_btn",
-                    ):
-                        if identifier:
-                            with st.spinner("Signing in..."):
-                                success, message = self._identify_user(identifier)
-                                if success:
-                                    st.success(message)
-                                    st.rerun()
-                                else:
-                                    st.error(message)
-                        else:
-                            st.warning("Please enter your email or phone number")
-
-                with col_btn2:
-                    if st.button(
-                        "Demo Mode", use_container_width=True, key="test_user_btn"
-                    ):
-                        with st.spinner("Signing in..."):
-                            success, message = self._identify_user(
-                                "jack.yang@gatesfoundation.org"
-                            )
-                            if success:
-                                st.success(message)
-                                st.rerun()
-                            else:
-                                st.error(message)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.caption("Prototype v0")
-
-            return  # don't show chat until user is identified
-
-        # main interface (after login)
-        st.title("Self-Care Agent")
-
-        # sidebar user info and actions
-        with st.sidebar:
-            st.markdown("### Account")
-            if "user_id" in st.session_state:
-                # get user info for display
-                user_display = st.session_state.get("user_display", "User")
-                st.markdown(f"**{user_display}**")
-                st.caption(f"ID: {st.session_state.user_id[:8]}...")
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            if st.button("Switch User", use_container_width=True):
-                st.session_state.user_identified = False
-                st.session_state.user_id = None
-                st.session_state.user_display = None
-                st.session_state.messages = []
+                name_index = name_options.index(st.session_state.user_name)
+            except ValueError:
+                name_index = 0
+            st.session_state.user_name = st.selectbox(
+                "Name",
+                options=name_options,
+                index=name_index,
+                key="input_user_name",
+            )
+        
+        with col2:
+            st.session_state.user_age = st.selectbox(
+                "Age",
+                options=list(range(1, 121)),
+                index=st.session_state.user_age - 1,
+                key="input_user_age",
+            )
+        
+        with col3:
+            gender_display = {"male": "Male", "female": "Female", "other": "Other"}
+            st.session_state.user_gender = st.selectbox(
+                "Gender",
+                options=["male", "female", "other"],
+                format_func=lambda x: gender_display[x],
+                index=["male", "female", "other"].index(st.session_state.user_gender),
+                key="input_user_gender",
+            )
+        
+        with col4:
+            country_display = {"us": "United States", "za": "South Africa", "ke": "Kenya", "ng": "Nigeria"}
+            st.session_state.country_context_id = st.selectbox(
+                "Country",
+                options=["us", "za", "ke", "ng"],
+                format_func=lambda x: country_display[x],
+                index=["us", "za", "ke", "ng"].index(st.session_state.country_context_id),
+                key="input_country_context_id",
+            )
+        
+        with col5:
+            literacy_display = {"standard": "Standard", "simple": "Simple", "icons": "Icons"}
+            st.session_state.literacy_mode = st.selectbox(
+                "Literacy",
+                options=["standard", "simple", "icons"],
+                format_func=lambda x: literacy_display[x],
+                index=["standard", "simple", "icons"].index(st.session_state.literacy_mode),
+                key="input_literacy_mode",
+            )
+        
+        # row 2: language, contact and channel
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            language_display = {"en": "English", "es": "Spanish", "fr": "French", "zu": "Zulu", "sw": "Swahili"}
+            language_keys = list(language_display.keys())
+            try:
+                lang_index = language_keys.index(st.session_state.preferred_language)
+            except ValueError:
+                lang_index = 0
+            st.session_state.preferred_language = st.selectbox(
+                "Language",
+                options=language_keys,
+                format_func=lambda x: language_display[x],
+                index=lang_index,
+                key="input_preferred_language",
+            )
+        
+        with col2:
+            email_options = [
+                "demo@example.com",
+                "jack@example.com",
+                "sarah@example.com",
+                "aisha@example.com",
+                "test@example.com"
+            ]
+            try:
+                email_index = email_options.index(st.session_state.email)
+            except ValueError:
+                email_index = 0
+            st.session_state.email = st.selectbox(
+                "Email",
+                options=email_options,
+                index=email_index,
+                key="input_email",
+            )
+        
+        with col3:
+            phone_options = [
+                "+12065551234",
+                "+12065552345",
+                "+27115551234",
+                "+254701234567",
+                "+2348051234567"
+            ]
+            try:
+                phone_index = phone_options.index(st.session_state.phone_e164)
+            except ValueError:
+                phone_index = 0
+            st.session_state.phone_e164 = st.selectbox(
+                "Phone",
+                options=phone_options,
+                index=phone_index,
+                key="input_phone_e164",
+            )
+        
+        with col4:
+            st.session_state.hearing_aid = st.checkbox(
+                "Hearing Aid",
+                value=st.session_state.hearing_aid,
+                key="input_hearing_aid",
+            )
+        
+        with col5:
+            st.session_state.visual_aid = st.checkbox(
+                "Visual Aid",
+                value=st.session_state.visual_aid,
+                key="input_visual_aid",
+            )
+        
+        # action buttons
+        st.markdown("---")
+        st.markdown(f"**User ID:** `{st.session_state.user_id}`")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Reset User", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
                 st.rerun()
-
+        with col2:
             if st.button("Clear Chat", use_container_width=True):
                 st.session_state.messages = []
                 st.rerun()
-
+    
+    def _render_chat_interface(self) -> None:
+        """render chat interface."""
         # initialize chat history
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -180,39 +178,15 @@ class StreamlitHandler(BaseChannelHandler):
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-
-        # chat input
-        if prompt := st.chat_input("Type your message here..."):
-            # add user message to chat history
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # get assistant response
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    # ensure context variables are set before processing
-                    user_id = self.get_user_id()
-                    user_age = st.session_state.get("user_age")
-                    user_gender = st.session_state.get("user_gender")
-                    user_timezone = st.session_state.get("user_timezone", "UTC")
-                    user_country = st.session_state.get("user_country")
-
-                    response, sources, tools = self.respond(
-                        prompt,
-                        user_id=user_id,
-                        user_age=user_age,
-                        user_gender=user_gender,
-                        user_timezone=user_timezone,
-                        user_country=user_country,
-                    )
-                    st.markdown(response)
-
-                    # display tools used
+                
+                # display tools and sources for assistant messages
+                if message["role"] == "assistant":
+                    tools = message.get("tools")
+                    sources = message.get("sources")
+                    
                     if tools:
                         st.caption(f"Tools: {', '.join(tools)}")
-
-                    # display sources if available
+                    
                     if sources:
                         with st.expander("Sources", expanded=False):
                             for i, source in enumerate(sources, 1):
@@ -227,8 +201,97 @@ class StreamlitHandler(BaseChannelHandler):
                                     f"{content_type_badge}  "
                                     f"*({similarity_pct}% match)*"
                                 )
+    
+    def _handle_chat_input(self, prompt: str) -> None:
+        """handle user chat input and generate response."""
+        # add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # get assistant response
+        with st.spinner("Thinking..."):
+            # pass demo user config directly (stateless)
+            response, sources, tools = self.respond(
+                prompt,
+                user_id=st.session_state.get("user_id"),
+                user_age=st.session_state.get("user_age"),
+                user_gender=st.session_state.get("user_gender"),
+                user_timezone=st.session_state.get("timezone", "UTC"),
+                user_country=st.session_state.get("country_context_id"),
+            )
+            
+            # store response with metadata
+            response_data = {
+                "role": "assistant",
+                "content": response,
+                "tools": tools,
+                "sources": sources
+            }
+            st.session_state.messages.append(response_data)
+        
+        st.rerun()
+    
+    def _initialize_demo_user(self) -> None:
+        """initialize demo user with default values matching database schema."""
+        if "user_id" not in st.session_state:
+            st.session_state.user_id = str(uuid.uuid4())
+        if "fhir_patient_id" not in st.session_state:
+            st.session_state.fhir_patient_id = "patient-demo-jack"
+        if "primary_channel" not in st.session_state:
+            st.session_state.primary_channel = "streamlit"
+        if "phone_e164" not in st.session_state:
+            st.session_state.phone_e164 = "+12065551234"
+        if "email" not in st.session_state:
+            st.session_state.email = "demo@example.com"
+        if "preferred_language" not in st.session_state:
+            st.session_state.preferred_language = "en"
+        if "literacy_mode" not in st.session_state:
+            st.session_state.literacy_mode = "standard"
+        if "country_context_id" not in st.session_state:
+            st.session_state.country_context_id = "us"
+        if "timezone" not in st.session_state:
+            st.session_state.timezone = "America/New_York"
+        # demographics
+        if "user_age" not in st.session_state:
+            st.session_state.user_age = 24
+        if "user_gender" not in st.session_state:
+            st.session_state.user_gender = "male"
+        # accessibility
+        if "hearing_aid" not in st.session_state:
+            st.session_state.hearing_aid = False
+        if "visual_aid" not in st.session_state:
+            st.session_state.visual_aid = False
 
-                    # add assistant response to chat history (without sources for cleaner history)
-                    st.session_state.messages.append(
-                        {"role": "assistant", "content": response}
-                    )
+    def launch(self) -> None:
+        """launch the streamlit interface."""
+        # load gates foundation logo
+        logo_path = Path("src/assets/gates_logo.png")
+        page_icon = None
+        if logo_path.exists():
+            try:
+                page_icon = Image.open(str(logo_path))
+            except Exception:
+                pass
+
+        st.set_page_config(
+            page_title="AI Self-Care Agent Demo",
+            page_icon=page_icon,
+            layout="centered",
+        )
+
+
+        # initialize demo user
+        self._initialize_demo_user()
+
+        # main interface
+        st.title("AI Self-Care Agent Demo")
+        
+        # configuration in collapsible expander
+        with st.expander("Configure Demo User", expanded=False):
+            self._render_user_config()
+        
+        # chat interface
+        self._render_chat_interface()
+        
+        # chat input (at root level for fixed bottom position)
+        if prompt := st.chat_input("Type your message here..."):
+            self._handle_chat_input(prompt)

@@ -4,41 +4,20 @@ import sys
 from pathlib import Path
 
 # add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.infrastructure.postgres.connection import get_db_cursor
 
 
 def create_tables():
-    """create all database tables (app + RAG)."""
+    """create all database tables (RAG + providers only)."""
     print("creating database tables...")
 
     with get_db_cursor() as cur:
         # enable pgvector extension for RAG
         cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
         print("  ✓ enabled pgvector extension")
-
-        # create users table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id UUID PRIMARY KEY,
-                fhir_patient_id TEXT,
-                primary_channel TEXT,
-                phone_e164 TEXT,
-                email TEXT,
-                preferred_language TEXT,
-                literacy_mode TEXT,
-                country_context_id TEXT NOT NULL,
-                timezone TEXT DEFAULT 'UTC',
-                demographics JSONB,
-                accessibility JSONB,
-                is_deleted BOOLEAN DEFAULT false,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            )
-        """)
-        print("  ✓ created users table")
 
         # create sources table for RAG document provenance
         cur.execute("""
@@ -57,39 +36,6 @@ def create_tables():
         """)
         print("  ✓ created sources table")
 
-        # create interactions table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS interactions (
-                interaction_id UUID PRIMARY KEY,
-                user_id UUID NOT NULL REFERENCES users(user_id),
-                channel TEXT NOT NULL,
-                input JSONB NOT NULL,
-                protocol_invoked TEXT,
-                protocol_version TEXT,
-                triage_result JSONB,
-                risk_level TEXT,
-                recommendations JSONB,
-                follow_up_at TIMESTAMP WITH TIME ZONE,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            )
-        """)
-        print("  ✓ created interactions table")
-
-        # create consents table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS consents (
-                consent_id UUID PRIMARY KEY,
-                user_id UUID NOT NULL REFERENCES users(user_id),
-                scope TEXT NOT NULL,
-                status TEXT NOT NULL,
-                version TEXT,
-                jurisdiction TEXT,
-                evidence JSONB,
-                recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            )
-        """)
-        print("  ✓ created consents table")
-
         # create providers table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS providers (
@@ -107,28 +53,6 @@ def create_tables():
             )
         """)
         print("  ✓ created providers table")
-
-        # create appointments table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS appointments (
-                appointment_id UUID PRIMARY KEY,
-                external_appointment_id TEXT,
-                external_system TEXT,
-                user_id UUID NOT NULL REFERENCES users(user_id),
-                provider_id UUID REFERENCES providers(provider_id),
-                specialty TEXT,
-                appointment_date DATE,
-                appointment_time TIME,
-                status TEXT DEFAULT 'scheduled',
-                reason TEXT,
-                triage_interaction_id UUID REFERENCES interactions(interaction_id),
-                consent_id UUID REFERENCES consents(consent_id),
-                sync_status TEXT DEFAULT 'pending',
-                last_synced_at TIMESTAMP WITH TIME ZONE,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            )
-        """)
-        print("  ✓ created appointments table")
 
         # create documents table for RAG (enhanced schema)
         cur.execute("""

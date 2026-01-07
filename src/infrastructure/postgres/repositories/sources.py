@@ -1,7 +1,9 @@
-"""source data access functions for RAG document provenance."""
+"""source data access functions for RAG document provenance using ORM."""
 
 from typing import List, Optional, Dict, Any
-from src.infrastructure.postgres.connection import get_db_cursor
+from uuid import UUID
+from src.infrastructure.postgres.connection import get_db_session
+from src.infrastructure.postgres.models import Source
 
 
 def insert_source(
@@ -32,36 +34,37 @@ def insert_source(
         True if successful, False otherwise
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO sources (
-                    source_id, name, source_type, country_context_id,
-                    version, url, publisher, effective_date, metadata
+        with get_db_session() as session:
+            # check if source exists
+            source = session.query(Source).filter(
+                Source.source_id == UUID(source_id)
+            ).first()
+            
+            if source:
+                # update existing source
+                source.name = name
+                source.source_type = source_type
+                source.country_context_id = country_context_id
+                source.version = version
+                source.url = url
+                source.publisher = publisher
+                source.effective_date = effective_date
+                source.metadata_ = metadata_json
+            else:
+                # create new source
+                source = Source(
+                    source_id=UUID(source_id),
+                    name=name,
+                    source_type=source_type,
+                    country_context_id=country_context_id,
+                    version=version,
+                    url=url,
+                    publisher=publisher,
+                    effective_date=effective_date,
+                    metadata_=metadata_json,
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
-                ON CONFLICT (source_id) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    source_type = EXCLUDED.source_type,
-                    country_context_id = EXCLUDED.country_context_id,
-                    version = EXCLUDED.version,
-                    url = EXCLUDED.url,
-                    publisher = EXCLUDED.publisher,
-                    effective_date = EXCLUDED.effective_date,
-                    metadata = EXCLUDED.metadata
-                """,
-                (
-                    source_id,
-                    name,
-                    source_type,
-                    country_context_id,
-                    version,
-                    url,
-                    publisher,
-                    effective_date,
-                    metadata_json,
-                ),
-            )
+                session.add(source)
+            
             return True
     except Exception:
         return False
@@ -77,40 +80,11 @@ def get_source_by_id(source_id: str) -> Optional[Dict[str, Any]]:
         source dict or None if not found
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                SELECT 
-                    source_id,
-                    name,
-                    source_type,
-                    country_context_id,
-                    version,
-                    url,
-                    publisher,
-                    effective_date,
-                    metadata,
-                    created_at
-                FROM sources
-                WHERE source_id = %s
-                """,
-                (source_id,),
-            )
-            result = cur.fetchone()
-            if result:
-                return {
-                    "source_id": str(result["source_id"]),
-                    "name": result["name"],
-                    "source_type": result["source_type"],
-                    "country_context_id": result["country_context_id"],
-                    "version": result["version"],
-                    "url": result["url"],
-                    "publisher": result["publisher"],
-                    "effective_date": str(result["effective_date"]) if result["effective_date"] else None,
-                    "metadata": result["metadata"],
-                    "created_at": str(result["created_at"]),
-                }
-            return None
+        with get_db_session() as session:
+            source = session.query(Source).filter(
+                Source.source_id == source_id
+            ).first()
+            return source.to_dict() if source else None
     except Exception:
         return None
 
@@ -125,45 +99,17 @@ def get_sources_by_country(country_context_id: Optional[str] = None) -> List[Dic
         list of source dicts
     """
     try:
-        with get_db_cursor() as cur:
+        with get_db_session() as session:
+            query = session.query(Source)
+            
             if country_context_id:
-                cur.execute(
-                    """
-                    SELECT 
-                        source_id, name, source_type, country_context_id,
-                        version, url, publisher, effective_date, metadata, created_at
-                    FROM sources
-                    WHERE country_context_id = %s OR country_context_id IS NULL
-                    ORDER BY created_at DESC
-                    """,
-                    (country_context_id,),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT 
-                        source_id, name, source_type, country_context_id,
-                        version, url, publisher, effective_date, metadata, created_at
-                    FROM sources
-                    ORDER BY created_at DESC
-                    """
+                query = query.filter(
+                    (Source.country_context_id == country_context_id) |
+                    (Source.country_context_id.is_(None))
                 )
             
-            results = []
-            for row in cur.fetchall():
-                results.append({
-                    "source_id": str(row["source_id"]),
-                    "name": row["name"],
-                    "source_type": row["source_type"],
-                    "country_context_id": row["country_context_id"],
-                    "version": row["version"],
-                    "url": row["url"],
-                    "publisher": row["publisher"],
-                    "effective_date": str(row["effective_date"]) if row["effective_date"] else None,
-                    "metadata": row["metadata"],
-                    "created_at": str(row["created_at"]),
-                })
-            return results
+            sources = query.order_by(Source.created_at.desc()).all()
+            return [source.to_dict() for source in sources]
     except Exception:
         return []
 
@@ -178,9 +124,14 @@ def delete_source(source_id: str) -> bool:
         True if source was deleted, False otherwise
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute("DELETE FROM sources WHERE source_id = %s", (source_id,))
-            return cur.rowcount > 0
+        with get_db_session() as session:
+            source = session.query(Source).filter(
+                Source.source_id == source_id
+            ).first()
+            
+            if source:
+                session.delete(source)
+                return True
+            return False
     except Exception:
         return False
-

@@ -79,10 +79,10 @@ Validates the **technical feasibility** of core architecture patterns.
 *Details: [docs/architecture/rag.md](docs/architecture/rag.md)*
 
 #### 5. Multi-Channel Support
-- **Streamlit UI**: Web-based chat interface with visual source display
-- **WhatsApp webhook**: Full integration with message handling and user lookup
-- **Mock phone login**: E.164 phone number-based user identification
+- **Streamlit UI**: Web-based chat interface with configurable demo user (no database registration)
+- **WhatsApp webhook**: Full integration with message handling and database user lookup
 - **Channel abstraction**: Unified agent accessible via any channel with consistent behavior
+- **Demo vs Production**: Streamlit uses in-memory user profiles; WhatsApp queries database by phone
 
 *Details: [docs/guides/whatsapp.md](docs/guides/whatsapp.md)*
 
@@ -148,10 +148,10 @@ Validates the **technical feasibility** of core architecture patterns.
    ```bash
 make setup  # First-time setup (starts containers, creates tables, seeds data)
 # Open http://localhost:8501
-# Login with: jack.yang@gatesfoundation.org
+# Configure demo user in the sidebar (no login required)
 ```
 
-> **Note:** All services run in Docker containers. No local Python or PostgreSQL setup required. Just be sure to have an IDE! :)
+> **Note:** All services run in Docker containers. No local Python or PostgreSQL setup required. Streamlit runs in **demo mode** with configurable user profiles - no database registration needed.
 
 <details>
 <summary><b>Optional: LangSmith Integration for Observability</b></summary>

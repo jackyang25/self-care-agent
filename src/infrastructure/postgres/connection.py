@@ -7,6 +7,9 @@ from typing import Dict, Any, Iterator
 from psycopg2 import pool, OperationalError
 from psycopg2.extras import RealDictCursor
 from psycopg2.extensions import connection, cursor
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import NullPool
 
 import logging
 
@@ -14,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 # connection pool (created on first use)
 _connection_pool = None
+
+# sqlalchemy engine and session factory
+_engine = None
+_session_factory = None
 
 
 def _get_connection_pool() -> pool.SimpleConnectionPool:
@@ -98,3 +105,57 @@ def test_connection() -> Dict[str, Any]:
             "connected": False,
             "error": str(e),
         }
+
+
+def _get_database_url() -> str:
+    """construct database URL for SQLAlchemy."""
+    host = os.getenv("POSTGRES_HOST", "localhost")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    database = os.getenv("POSTGRES_DB", "selfcare")
+    user = os.getenv("POSTGRES_USER", "postgres")
+    password = os.getenv("POSTGRES_PASSWORD", "postgres")
+    
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+
+
+def _get_engine():
+    """get or create SQLAlchemy engine."""
+    global _engine
+    if _engine is None:
+        database_url = _get_database_url()
+        _engine = create_engine(
+            database_url,
+            poolclass=NullPool,
+            echo=False,
+        )
+        logger.info(f"sqlalchemy engine initialized | url={database_url.split('@')[1]}")
+    return _engine
+
+
+def _get_session_factory():
+    """get or create session factory."""
+    global _session_factory
+    if _session_factory is None:
+        engine = _get_engine()
+        _session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    return _session_factory
+
+
+@contextmanager
+def get_db_session() -> Iterator[Session]:
+    """get database session for ORM operations.
+    
+    Usage:
+        with get_db_session() as session:
+            user = session.query(User).filter_by(email='test@example.com').first()
+    """
+    session_factory = _get_session_factory()
+    session = session_factory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

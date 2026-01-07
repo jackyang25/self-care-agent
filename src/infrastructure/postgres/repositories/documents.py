@@ -1,7 +1,10 @@
-"""document data access functions for RAG."""
+"""document data access functions for RAG using ORM."""
 
 from typing import List, Optional, Dict, Any
-from src.infrastructure.postgres.connection import get_db_cursor
+from uuid import UUID
+from sqlalchemy import or_, and_
+from src.infrastructure.postgres.connection import get_db_session
+from src.infrastructure.postgres.models import Document, Source
 
 
 def insert_document(
@@ -36,41 +39,41 @@ def insert_document(
         True if successful, False otherwise
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO documents (
-                    document_id, source_id, parent_id, title, content, content_type,
-                    section_path, country_context_id, conditions, embedding, metadata
+        with get_db_session() as session:
+            # check if document exists
+            document = session.query(Document).filter(
+                Document.document_id == UUID(document_id)
+            ).first()
+            
+            if document:
+                # update existing document
+                document.source_id = UUID(source_id) if source_id else None
+                document.parent_id = UUID(parent_id) if parent_id else None
+                document.title = title
+                document.content = content
+                document.content_type = content_type
+                document.section_path = section_path
+                document.country_context_id = country_context_id
+                document.conditions = conditions
+                document.embedding = embedding
+                document.metadata_ = metadata_json
+            else:
+                # create new document
+                document = Document(
+                    document_id=UUID(document_id),
+                    source_id=UUID(source_id) if source_id else None,
+                    parent_id=UUID(parent_id) if parent_id else None,
+                    title=title,
+                    content=content,
+                    content_type=content_type,
+                    section_path=section_path,
+                    country_context_id=country_context_id,
+                    conditions=conditions,
+                    embedding=embedding,
+                    metadata_=metadata_json,
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s::jsonb)
-                ON CONFLICT (document_id) DO UPDATE SET
-                    source_id = EXCLUDED.source_id,
-                    parent_id = EXCLUDED.parent_id,
-                    title = EXCLUDED.title,
-                    content = EXCLUDED.content,
-                    content_type = EXCLUDED.content_type,
-                    section_path = EXCLUDED.section_path,
-                    country_context_id = EXCLUDED.country_context_id,
-                    conditions = EXCLUDED.conditions,
-                    embedding = EXCLUDED.embedding,
-                    metadata = EXCLUDED.metadata,
-                    updated_at = now()
-                """,
-                (
-                    document_id,
-                    source_id,
-                    parent_id,
-                    title,
-                    content,
-                    content_type,
-                    section_path,
-                    country_context_id,
-                    conditions,
-                    embedding,
-                    metadata_json,
-                ),
-            )
+                session.add(document)
+            
             return True
     except Exception:
         return False
@@ -100,83 +103,72 @@ def search_documents_by_embedding(
         list of document dicts with similarity scores
     """
     try:
-        with get_db_cursor() as cur:
-            # build dynamic WHERE clause
-            where_clauses = []
-            params = [query_embedding]
-
-            # handle content type filtering
+        with get_db_session() as session:
+            # build query with joins
+            query = (
+                session.query(
+                    Document,
+                    Source,
+                    # calculate cosine similarity
+                    (1 - Document.embedding.cosine_distance(query_embedding)).label("similarity")
+                )
+                .outerjoin(Source, Document.source_id == Source.source_id)
+            )
+            
+            # apply filters
+            filters = []
+            
+            # content type filtering
             if content_types:
-                where_clauses.append("content_type = ANY(%s)")
-                params.append(content_types)
+                filters.append(Document.content_type.in_(content_types))
             elif content_type:
-                where_clauses.append("content_type = %s")
-                params.append(content_type)
-
-            # handle country filtering
+                filters.append(Document.content_type == content_type)
+            
+            # country filtering
             if country_context_id:
                 if include_global:
-                    where_clauses.append("(country_context_id = %s OR country_context_id IS NULL)")
+                    filters.append(
+                        or_(
+                            Document.country_context_id == country_context_id,
+                            Document.country_context_id.is_(None)
+                        )
+                    )
                 else:
-                    where_clauses.append("country_context_id = %s")
-                params.append(country_context_id)
-
-            # handle conditions filtering (matches any condition in the list)
+                    filters.append(Document.country_context_id == country_context_id)
+            
+            # conditions filtering (matches any condition in the list)
             if conditions:
-                where_clauses.append("conditions && %s")
-                params.append(conditions)
-
-            # construct query
-            where_sql = ""
-            if where_clauses:
-                where_sql = "WHERE " + " AND ".join(where_clauses)
-
-            # add embedding for ORDER BY
-            params.append(query_embedding)
-            params.append(limit)
-
-            query = f"""
-                SELECT 
-                    d.document_id,
-                    d.title,
-                    d.content,
-                    d.content_type,
-                    d.section_path,
-                    d.country_context_id,
-                    d.conditions,
-                    d.metadata,
-                    d.source_id,
-                    s.name as source_name,
-                    s.version as source_version,
-                    1 - (d.embedding <=> %s::vector) as similarity
-                FROM documents d
-                LEFT JOIN sources s ON d.source_id = s.source_id
-                {where_sql}
-                ORDER BY d.embedding <=> %s::vector
-                LIMIT %s
-            """
-
-            cur.execute(query, params)
-
-            results = []
-            for row in cur.fetchall():
-                results.append(
-                    {
-                        "document_id": str(row["document_id"]),
-                        "title": row["title"],
-                        "content": row["content"],
-                        "content_type": row["content_type"],
-                        "section_path": row["section_path"],
-                        "country_context_id": row["country_context_id"],
-                        "conditions": row["conditions"],
-                        "metadata": row["metadata"],
-                        "source_id": str(row["source_id"]) if row["source_id"] else None,
-                        "source_name": row["source_name"],
-                        "source_version": row["source_version"],
-                        "similarity": float(row["similarity"]),
-                    }
-                )
-            return results
+                filters.append(Document.conditions.overlap(conditions))
+            
+            if filters:
+                query = query.filter(and_(*filters))
+            
+            # order by similarity and limit
+            results = (
+                query.order_by(Document.embedding.cosine_distance(query_embedding))
+                .limit(limit)
+                .all()
+            )
+            
+            output = []
+            for document, source, similarity in results:
+                doc_dict = {
+                    "document_id": str(document.document_id),
+                    "title": document.title,
+                    "content": document.content,
+                    "content_type": document.content_type,
+                    "section_path": document.section_path,
+                    "country_context_id": document.country_context_id,
+                    "conditions": document.conditions,
+                    "metadata": document.metadata,
+                    "source_id": str(document.source_id) if document.source_id else None,
+                    "source_name": source.name if source else None,
+                    "source_version": source.version if source else None,
+                    "similarity": float(similarity),
+                }
+                output.append(doc_dict)
+            
+            return output
     except Exception:
         return []
 
@@ -191,9 +183,15 @@ def delete_document(document_id: str) -> bool:
         True if document was deleted, False otherwise
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute("DELETE FROM documents WHERE document_id = %s", (document_id,))
-            return cur.rowcount > 0
+        with get_db_session() as session:
+            document = session.query(Document).filter(
+                Document.document_id == document_id
+            ).first()
+            
+            if document:
+                session.delete(document)
+                return True
+            return False
     except Exception:
         return False
 
@@ -208,43 +206,29 @@ def get_document_by_id(document_id: str) -> Optional[Dict[str, Any]]:
         document dict or None if not found
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                SELECT 
-                    d.document_id,
-                    d.title,
-                    d.content,
-                    d.content_type,
-                    d.section_path,
-                    d.country_context_id,
-                    d.conditions,
-                    d.metadata,
-                    d.source_id,
-                    d.parent_id,
-                    s.name as source_name,
-                    s.version as source_version
-                FROM documents d
-                LEFT JOIN sources s ON d.source_id = s.source_id
-                WHERE d.document_id = %s
-                """,
-                (document_id,),
+        with get_db_session() as session:
+            result = (
+                session.query(Document, Source)
+                .outerjoin(Source, Document.source_id == Source.source_id)
+                .filter(Document.document_id == document_id)
+                .first()
             )
-            result = cur.fetchone()
+            
             if result:
+                document, source = result
                 return {
-                    "document_id": str(result["document_id"]),
-                    "title": result["title"],
-                    "content": result["content"],
-                    "content_type": result["content_type"],
-                    "section_path": result["section_path"],
-                    "country_context_id": result["country_context_id"],
-                    "conditions": result["conditions"],
-                    "metadata": result["metadata"],
-                    "source_id": str(result["source_id"]) if result["source_id"] else None,
-                    "parent_id": str(result["parent_id"]) if result["parent_id"] else None,
-                    "source_name": result["source_name"],
-                    "source_version": result["source_version"],
+                    "document_id": str(document.document_id),
+                    "title": document.title,
+                    "content": document.content,
+                    "content_type": document.content_type,
+                    "section_path": document.section_path,
+                    "country_context_id": document.country_context_id,
+                    "conditions": document.conditions,
+                    "metadata": document.metadata,
+                    "source_id": str(document.source_id) if document.source_id else None,
+                    "parent_id": str(document.parent_id) if document.parent_id else None,
+                    "source_name": source.name if source else None,
+                    "source_version": source.version if source else None,
                 }
             return None
     except Exception:
@@ -261,30 +245,26 @@ def get_documents_by_source(source_id: str) -> List[Dict[str, Any]]:
         list of document dicts
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                SELECT 
-                    document_id, title, content_type, section_path,
-                    country_context_id, conditions, metadata
-                FROM documents
-                WHERE source_id = %s
-                ORDER BY section_path, title
-                """,
-                (source_id,),
+        with get_db_session() as session:
+            documents = (
+                session.query(Document)
+                .filter(Document.source_id == source_id)
+                .order_by(Document.section_path, Document.title)
+                .all()
             )
-            results = []
-            for row in cur.fetchall():
-                results.append({
-                    "document_id": str(row["document_id"]),
-                    "title": row["title"],
-                    "content_type": row["content_type"],
-                    "section_path": row["section_path"],
-                    "country_context_id": row["country_context_id"],
-                    "conditions": row["conditions"],
-                    "metadata": row["metadata"],
-                })
-            return results
+            
+            return [
+                {
+                    "document_id": str(doc.document_id),
+                    "title": doc.title,
+                    "content_type": doc.content_type,
+                    "section_path": doc.section_path,
+                    "country_context_id": doc.country_context_id,
+                    "conditions": doc.conditions,
+                    "metadata": doc.metadata,
+                }
+                for doc in documents
+            ]
     except Exception:
         return []
 
@@ -303,44 +283,35 @@ def get_documents_by_condition(
         list of document dicts
     """
     try:
-        with get_db_cursor() as cur:
+        with get_db_session() as session:
+            query = session.query(Document).filter(
+                Document.conditions.contains([condition])
+            )
+            
             if country_context_id:
-                cur.execute(
-                    """
-                    SELECT 
-                        document_id, title, content_type, section_path,
-                        country_context_id, conditions, metadata
-                    FROM documents
-                    WHERE %s = ANY(conditions)
-                    AND (country_context_id = %s OR country_context_id IS NULL)
-                    ORDER BY content_type, title
-                    """,
-                    (condition, country_context_id),
+                query = query.filter(
+                    or_(
+                        Document.country_context_id == country_context_id,
+                        Document.country_context_id.is_(None)
+                    )
                 )
-            else:
-                cur.execute(
-                    """
-                    SELECT 
-                        document_id, title, content_type, section_path,
-                        country_context_id, conditions, metadata
-                    FROM documents
-                    WHERE %s = ANY(conditions)
-                    ORDER BY content_type, title
-                    """,
-                    (condition,),
-                )
-            results = []
-            for row in cur.fetchall():
-                results.append({
-                    "document_id": str(row["document_id"]),
-                    "title": row["title"],
-                    "content_type": row["content_type"],
-                    "section_path": row["section_path"],
-                    "country_context_id": row["country_context_id"],
-                    "conditions": row["conditions"],
-                    "metadata": row["metadata"],
-                })
-            return results
+            
+            documents = query.order_by(
+                Document.content_type,
+                Document.title
+            ).all()
+            
+            return [
+                {
+                    "document_id": str(doc.document_id),
+                    "title": doc.title,
+                    "content_type": doc.content_type,
+                    "section_path": doc.section_path,
+                    "country_context_id": doc.country_context_id,
+                    "conditions": doc.conditions,
+                    "metadata": doc.metadata,
+                }
+                for doc in documents
+            ]
     except Exception:
         return []
-

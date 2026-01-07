@@ -1,7 +1,8 @@
-"""provider data access functions."""
+"""provider data access functions using ORM."""
 
 from typing import Optional, List, Dict, Any
-from src.infrastructure.postgres.connection import get_db_cursor
+from src.infrastructure.postgres.connection import get_db_session
+from src.infrastructure.postgres.models import Provider
 
 
 def search_providers(
@@ -22,39 +23,25 @@ def search_providers(
         list of provider dicts matching criteria
     """
     try:
-        with get_db_cursor() as cur:
-            query = """
-                SELECT 
-                    provider_id,
-                    name,
-                    specialty,
-                    facility,
-                    available_days,
-                    country_context_id,
-                    contact_info
-                FROM providers
-                WHERE is_active = true
-            """
-            params = []
-
+        with get_db_session() as session:
+            query = session.query(Provider).filter(Provider.is_active == True)
+            
             if specialty:
-                query += " AND specialty = %s"
-                params.append(specialty)
-
+                query = query.filter(Provider.specialty == specialty)
+            
             if name:
-                query += " AND name ILIKE %s"
-                params.append(f"%{name}%")
-
+                query = query.filter(Provider.name.ilike(f"%{name}%"))
+            
             if country_context:
-                query += " AND country_context_id = %s"
-                params.append(country_context)
-
-            query += " ORDER BY specialty, name LIMIT %s"
-            params.append(limit)
-
-            cur.execute(query, tuple(params))
-            results = cur.fetchall()
-            return [dict(row) for row in results]
+                query = query.filter(Provider.country_context_id == country_context)
+            
+            providers = (
+                query.order_by(Provider.specialty, Provider.name)
+                .limit(limit)
+                .all()
+            )
+            
+            return [provider.to_dict() for provider in providers]
     except Exception:
         return []
 
@@ -69,24 +56,12 @@ def get_provider_by_id(provider_id: str) -> Optional[Dict[str, Any]]:
         provider dict or None if not found
     """
     try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                SELECT 
-                    provider_id,
-                    name,
-                    specialty,
-                    facility,
-                    available_days,
-                    country_context_id,
-                    contact_info
-                FROM providers
-                WHERE provider_id = %s AND is_active = true
-                """,
-                (provider_id,),
-            )
-            result = cur.fetchone()
-            return dict(result) if result else None
+        with get_db_session() as session:
+            provider = session.query(Provider).filter(
+                Provider.provider_id == provider_id,
+                Provider.is_active == True
+            ).first()
+            return provider.to_dict() if provider else None
     except Exception:
         return None
 
@@ -107,51 +82,48 @@ def find_provider_for_appointment(
         provider dict or None if no providers available
     """
     try:
-        with get_db_cursor() as cur:
+        with get_db_session() as session:
             # try by specialty first
             if specialty:
-                cur.execute(
-                    """
-                    SELECT provider_id, name, specialty, facility
-                    FROM providers
-                    WHERE specialty = %s AND is_active = true
-                    LIMIT 1
-                    """,
-                    (specialty,),
-                )
-                result = cur.fetchone()
-                if result:
-                    return dict(result)
-
+                provider = session.query(Provider).filter(
+                    Provider.specialty == specialty,
+                    Provider.is_active == True
+                ).first()
+                if provider:
+                    return {
+                        "provider_id": str(provider.provider_id),
+                        "name": provider.name,
+                        "specialty": provider.specialty,
+                        "facility": provider.facility,
+                    }
+            
             # try by name
             if provider_name:
-                cur.execute(
-                    """
-                    SELECT provider_id, name, specialty, facility
-                    FROM providers
-                    WHERE name ILIKE %s AND is_active = true
-                    LIMIT 1
-                    """,
-                    (f"%{provider_name}%",),
-                )
-                result = cur.fetchone()
-                if result:
-                    return dict(result)
-
+                provider = session.query(Provider).filter(
+                    Provider.name.ilike(f"%{provider_name}%"),
+                    Provider.is_active == True
+                ).first()
+                if provider:
+                    return {
+                        "provider_id": str(provider.provider_id),
+                        "name": provider.name,
+                        "specialty": provider.specialty,
+                        "facility": provider.facility,
+                    }
+            
             # fallback to general practice
-            cur.execute(
-                """
-                SELECT provider_id, name, specialty, facility
-                FROM providers
-                WHERE specialty = 'general_practice' AND is_active = true
-                LIMIT 1
-                """
-            )
-            result = cur.fetchone()
-            if result:
-                return dict(result)
-
+            provider = session.query(Provider).filter(
+                Provider.specialty == "general_practice",
+                Provider.is_active == True
+            ).first()
+            if provider:
+                return {
+                    "provider_id": str(provider.provider_id),
+                    "name": provider.name,
+                    "specialty": provider.specialty,
+                    "facility": provider.facility,
+                }
+            
             return None
     except Exception:
         return None
-
