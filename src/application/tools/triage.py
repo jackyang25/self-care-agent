@@ -36,29 +36,43 @@ use when: patient describes symptoms requiring urgency assessment; determining i
 
 do not use for: general health questions without symptoms; appointment scheduling without medical urgency; commodity orders."""
 
-    # assess triage using service layer
-    triage_result = assess_triage(
-        symptoms=symptoms,
-        urgency=urgency,
-        age=age,
-        gender=gender,
-        breathing=breathing,
-        conscious=conscious,
-        walking=walking,
-        severe_symptom=severe_symptom,
-        moderate_symptom=moderate_symptom,
-        pregnant=pregnant,
-    )
-
-    if not triage_result or not triage_result.risk_level:
-        return TriageOutput(
-            status="error",
-            message="triage assessment failed - insufficient information",
-            risk_level="unknown",
+    try:
+        # assess triage using service layer
+        triage_result = assess_triage(
+            symptoms=symptoms,
+            urgency=urgency,
+            age=age,
+            gender=gender,
+            breathing=breathing,
+            conscious=conscious,
+            walking=walking,
+            severe_symptom=severe_symptom,
+            moderate_symptom=moderate_symptom,
+            pregnant=pregnant,
         )
 
-    risk_level = triage_result.risk_level
-    verification_method = triage_result.verification_method
+        risk_level = triage_result.risk_level
+        verification_method = triage_result.verification_method
+
+    except ValueError as e:
+        return TriageOutput(
+            status="error",
+            message=f"triage failed: {str(e)}",
+            risk_level="unknown",
+            symptoms=symptoms,
+            patient_id=patient_id,
+            notes=notes,
+        )
+    
+    except Exception as e:
+        return TriageOutput(
+            status="error",
+            message=f"triage system error: {str(e)}",
+            risk_level="unknown",
+            symptoms=symptoms,
+            patient_id=patient_id,
+            notes=notes,
+        )
 
     # map risk level to recommendations (red = emergency, yellow = urgent, green = routine)
     if risk_level == "red":

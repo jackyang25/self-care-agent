@@ -152,8 +152,9 @@ def process_message(
 
     # log workflow start
     message_preview = user_message[:100] + "..." if len(user_message) > 100 else user_message
-    history_info = f" | history={len(conversation_history)} msgs" if conversation_history else ""
-    logger.info(f"workflow start | message=\"{message_preview}\"{history_info}")
+    history_info = f", history={len(conversation_history)} msgs" if conversation_history else ""
+    logger.info("=" * 80)
+    logger.info(f"Workflow started {{message=\"{message_preview}\"{history_info}}}")
 
     # invoke agent
     state = {
@@ -170,8 +171,9 @@ def process_message(
 
     # log completion
     tools = tool_data.get("tools_called")
-    tools_str = f" | tools={', '.join(tools)}" if tools else ""
-    logger.info(f"workflow complete{tools_str}")
+    tools_str = f" {{tools=[{', '.join(tools)}]}}" if tools else ""
+    logger.info(f"Workflow completed{tools_str}")
+    logger.info("=" * 80)
 
     # return response with sources and tools
     tools_called = tool_data.get("tools_called") or []

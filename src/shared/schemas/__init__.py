@@ -1,11 +1,11 @@
 """pydantic schemas for type safety and validation."""
 
 from .context import RequestContext
-from .services import (
+from src.application.services.schemas import (
     TriageServiceOutput,
     DocumentSearchResult,
 )
-from .tools import (
+from src.application.tools.schemas import (
     TriageOutput,
     ReferralOutput,
     RAGOutput,

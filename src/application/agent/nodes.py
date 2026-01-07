@@ -1,5 +1,6 @@
 """node functions for agent graph."""
 
+import logging
 from typing import Callable, Dict, List, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -9,6 +10,8 @@ from langgraph.prebuilt import ToolNode
 from src.application.agent.prompt import SYSTEM_PROMPT
 from src.application.agent.state import AgentState
 from src.application.tools import TOOLS
+
+logger = logging.getLogger(__name__)
 
 
 def create_agent_node(llm_with_tools: ChatOpenAI) -> Callable[[AgentState], Dict[str, List[AIMessage]]]:
@@ -22,10 +25,23 @@ def create_agent_node(llm_with_tools: ChatOpenAI) -> Callable[[AgentState], Dict
     """
     def agent_node(state: AgentState) -> Dict[str, List[AIMessage]]:
         """llm reasoning and planning."""
+        logger.info("Agent invoking LLM for reasoning")
 
         system_prompt = state.get("system_prompt", SYSTEM_PROMPT)
         messages = [{"role": "system", "content": system_prompt}, *state["messages"]]
         response = llm_with_tools.invoke(messages)
+        
+        # log tool calls if present
+        if response.tool_calls:
+            tool_names = [tc.get("name", "unknown") for tc in response.tool_calls]
+            logger.info(f"Agent planned tool execution {{{', '.join(tool_names)}}}")
+            
+            # log arguments for each tool call
+            for tc in response.tool_calls:
+                tool_name = tc.get("name", "unknown")
+                args = tc.get("args", {})
+                arg_keys = list(args.keys()) if args else []
+                logger.info(f"Tool arguments {{tool={tool_name}, params={arg_keys}}}")
 
         return {"messages": [response]}
     
@@ -47,6 +63,7 @@ def create_execution_node(tool_node: ToolNode) -> Callable[[AgentState], Dict[st
         tools receive context directly as parameters.
         no implicit state - all data flows explicitly through tool parameters.
         """
+        logger.info("Tools node executing tool calls")
         
         # get context from state
         config_ctx = state.get("config_context")
@@ -74,6 +91,19 @@ def create_execution_node(tool_node: ToolNode) -> Callable[[AgentState], Dict[st
                                 args["country"] = config_ctx["country"]
         
         result = tool_node.invoke(state)
+        
+        # log tool outputs
+        if result.get("messages"):
+            for msg in result["messages"]:
+                if isinstance(msg, ToolMessage):
+                    tool_name = msg.name if hasattr(msg, "name") else "unknown"
+                    # truncate content for logging
+                    content_preview = str(msg.content)[:100]
+                    if len(str(msg.content)) > 100:
+                        content_preview += "..."
+                    logger.info(f"Tool returned result {{tool={tool_name}, preview={content_preview}}}")
+        
+        logger.info("Tools node completed execution")
         return result
     
     return execution_node
@@ -83,5 +113,7 @@ def router(state: AgentState) -> Literal["tools", "end"]:
     """route to tools or end based on agent response."""
     last_message = state["messages"][-1]
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
+        logger.info("Router directing flow to tools node")
         return "tools"
+    logger.info("Router directing flow to end (workflow complete)")
     return "end"

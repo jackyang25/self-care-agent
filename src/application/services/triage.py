@@ -4,11 +4,7 @@ import os
 import subprocess
 from typing import Optional, Tuple
 
-import logging
-
 from src.application.services.schemas.triage import TriageServiceOutput
-
-logger = logging.getLogger(__name__)
 
 
 def run_verified_triage(
@@ -38,16 +34,20 @@ def run_verified_triage(
         
     returns:
         tuple of (category, exit_code) where:
-        - category: "red", "yellow", or "green" (None if error)
-        - exit_code: 0=red, 1=yellow, 2=green (None if error)
+        - category: "red", "yellow", or "green"
+        - exit_code: 0=red, 1=yellow, 2=green
+        
+    raises:
+        FileNotFoundError: if verified triage executable not found
+        TimeoutError: if executable times out (>5 seconds)
+        RuntimeError: if executable fails to run
     """
     # get path to verified triage executable
     application_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     executable_path = os.path.join(application_dir, "verifiers", "triage-verifier")
     
     if not os.path.exists(executable_path):
-        logger.error(f"verified triage executable not found at {executable_path}")
-        return None, None
+        raise FileNotFoundError(f"verified triage executable not found at {executable_path}")
     
     try:
         result = subprocess.run(
@@ -74,11 +74,9 @@ def run_verified_triage(
         
         return category, result.returncode
     except subprocess.TimeoutExpired:
-        logger.error("verified triage executable timed out")
-        return None, None
+        raise TimeoutError("verified triage executable timed out after 5 seconds")
     except Exception as e:
-        logger.error(f"error running verified triage: {e}")
-        return None, None
+        raise RuntimeError(f"error running verified triage: {e}")
 
 
 def assess_triage(
@@ -112,9 +110,15 @@ def assess_triage(
         pregnant: pregnancy status (for verified triage)
         
     returns:
-        tuple of (risk_level, verification_method) where:
-        - risk_level: "red", "yellow", "green", or "unknown"
+        triage service output with risk_level and verification_method
+        - risk_level: "red", "yellow", or "green"
         - verification_method: "verified" or "llm"
+        
+    raises:
+        ValueError: if urgency is invalid or insufficient data provided
+        FileNotFoundError: if verified triage executable not found
+        TimeoutError: if verified triage executable times out
+        RuntimeError: if verified triage execution fails
     """
     risk_level = None
     verification_method = "llm"
@@ -146,7 +150,8 @@ def assess_triage(
             risk_level = verified_category
             verification_method = "verified"
         else:
-            logger.warning("verified triage failed, falling back to llm assessment")
+            # verified triage failed, will fall back to llm assessment
+            pass
     else:
         # log which vitals are missing
         missing = []
@@ -172,8 +177,7 @@ def assess_triage(
         if urgency and urgency.lower() in ["red", "yellow", "green"]:
             risk_level = urgency.lower()
         else:
-            risk_level = "unknown"
-            logger.warning(f"invalid urgency: {urgency} | result: unknown")
+            raise ValueError(f"insufficient data for triage: urgency must be 'red', 'yellow', or 'green', got: {urgency}")
     
     return TriageServiceOutput(
         risk_level=risk_level,

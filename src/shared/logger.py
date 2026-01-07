@@ -14,7 +14,7 @@ import sys
 # configure root logger once
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)-5s - %(filename)s:%(lineno)d:%(funcName)s - %(name)s - %(message)s",
+    format="[%(asctime)s] [%(levelname)-5s] [%(name)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s",
     datefmt="%H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout)],
     force=True,  # override any existing config
