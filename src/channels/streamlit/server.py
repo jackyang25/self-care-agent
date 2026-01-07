@@ -6,6 +6,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.channels.streamlit.handler import StreamlitHandler
+from src.channels.streamlit.ui import launch_app
 from src.infrastructure.postgres.connection import _get_connection_pool
 
 load_dotenv()
@@ -27,7 +28,7 @@ def main():
     initialize_connections()
 
     handler = StreamlitHandler()
-    handler.launch()
+    launch_app(handler)
 
 
 if __name__ == "__main__":

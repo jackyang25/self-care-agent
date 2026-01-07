@@ -20,10 +20,7 @@ app = FastAPI(title="WhatsApp Webhook")
 
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp handler - session_id passed explicitly in respond()."""
-
-    def get_session_id(self) -> Optional[str]:
-        """not used - session_id passed explicitly to respond()."""
-        return None
+    pass
 
 
 handler = WhatsAppHandler()
