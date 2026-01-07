@@ -271,11 +271,15 @@ def render_chat_interface() -> None:
         st.session_state.messages = []
 
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        role = message["role"]
+        display_name = "Patient" if role == "user" else "Assistant"
+        
+        with st.chat_message(role):
+            st.markdown(f"**{display_name}**")
             st.markdown(message["content"])
-
+            
             # display tools and sources for assistant messages
-            if message["role"] == "assistant":
+            if role == "assistant":
                 tools = message.get("tools")
                 sources = message.get("sources")
 
