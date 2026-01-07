@@ -45,7 +45,7 @@ setup:
 	@echo "Starting first-time setup..."
 	@docker-compose up -d
 	@echo "Waiting for database to be ready..."
-	@sleep 5
+	@sleep 10
 	@$(MAKE) db-create
 	@$(MAKE) db-seed
 	@echo ""
@@ -101,8 +101,8 @@ reset:
 	@echo "Resetting everything..."
 	@docker-compose down -v
 	@docker-compose up -d
-	@echo "Waiting for database..."
-	@sleep 5
+	@echo "Waiting for database to be ready..."
+	@sleep 10
 	@$(MAKE) db-create
 	@$(MAKE) db-seed
 	@echo "✓ Database reset complete"
@@ -115,17 +115,16 @@ reset:
 db-shell:
 	@docker-compose exec postgres psql -U postgres -d selfcare
 
-# create database tables
+# create database tables (handled automatically by init-db/*.sql on first start)
 db-create:
-	@echo "Creating database tables..."
-	@docker-compose exec streamlit python scripts/create_tables.py
-	@echo "✓ Tables created"
+	@echo "Database tables are created automatically from init-db/*.sql files"
+	@echo "✓ Tables ready"
 
-# seed database with demo data
+# seed database with demo data (tables auto-seeded from init-db on first start)
 db-seed:
-	@echo "Seeding database with demo data..."
-	@docker-compose exec streamlit python scripts/seed_database.py
-	@echo "✓ Database seeded"
+	@echo "Database is automatically seeded from init-db/*.sql on first container start"
+	@echo "To re-seed: make reset (will delete all data)"
+	@echo "✓ Database ready"
 
 # open redis command line interface
 redis-shell:

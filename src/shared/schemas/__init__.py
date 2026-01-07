@@ -9,7 +9,7 @@ from .tools import (
     TriageOutput,
     ReferralOutput,
     RAGOutput,
-    DatabaseOutput,
+    ProviderOutput,
 )
 
 __all__ = [
@@ -22,5 +22,5 @@ __all__ = [
     "TriageOutput",
     "ReferralOutput",
     "RAGOutput",
-    "DatabaseOutput",
+    "ProviderOutput",
 ]

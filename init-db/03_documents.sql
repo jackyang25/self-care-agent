@@ -52,12 +52,12 @@ INSERT INTO documents (
     section_path,
     country_context_id,
     conditions,
-    metadata_,
+    metadata,
     created_at,
     updated_at
 ) VALUES
     (
-        'doc-0000-0000-0000-0000-000000000000',
+        'd0c0-0000-0000-0000-0000-000000000000',
         'Fever Management Guidelines',
         'Fever is a common symptom that indicates the body is fighting an infection.
 
@@ -83,7 +83,7 @@ For children with fever:
         NOW()
     ),
     (
-        'doc-0001-0000-0000-0000-000000000001',
+        'd0c0-0001-0000-0000-0000-000000000001',
         'Fever - Red Flags (South Africa)',
         'URGENT REFERRAL REQUIRED if fever with any of the following:
 
@@ -112,7 +112,7 @@ Refer to nearest facility with emergency services if danger signs present.',
         NOW()
     ),
     (
-        'doc-0002-0000-0000-0000-000000000002',
+        'd0c0-0002-0000-0000-0000-000000000002',
         'Chest Pain Red Flags',
         'Chest pain can be a sign of serious medical conditions and requires immediate evaluation in certain situations.
 
@@ -140,7 +140,7 @@ For non-urgent chest pain:
         NOW()
     ),
     (
-        'doc-0003-0000-0000-0000-000000000003',
+        'd0c0-0003-0000-0000-0000-000000000003',
         'Common Cold and Flu Management',
         'The common cold and influenza (flu) are viral respiratory infections. While similar, flu symptoms are typically more severe.
 
@@ -169,7 +169,7 @@ When to seek medical care:
         NOW()
     ),
     (
-        'doc-0004-0000-0000-0000-000000000004',
+        'd0c0-0004-0000-0000-0000-000000000004',
         'Headache Management',
         'Headaches are common and most are not serious. However, certain symptoms require immediate medical attention.
 
@@ -198,7 +198,7 @@ Red flags requiring immediate medical attention:
         NOW()
     ),
     (
-        'doc-0005-0000-0000-0000-000000000005',
+        'd0c0-0005-0000-0000-0000-000000000005',
         'Diarrhea and Dehydration Management',
         'Diarrhea is common and usually resolves within a few days. The main concern is preventing dehydration.
 
@@ -231,7 +231,7 @@ Seek immediate care if diarrhea lasts more than 3 days, severe abdominal pain, b
         NOW()
     ),
     (
-        'doc-0006-0000-0000-0000-000000000006',
+        'd0c0-0006-0000-0000-0000-000000000006',
         'HIV Prevention and Testing',
         'HIV (Human Immunodeficiency Virus) can be prevented and managed effectively with modern treatments.
 
@@ -264,7 +264,7 @@ If you test positive:
         NOW()
     ),
     (
-        'doc-0007-0000-0000-0000-000000000007',
+        'd0c0-0007-0000-0000-0000-000000000007',
         'HIV Testing and Counselling (South Africa)',
         'HIV Testing Services (HTS) in South Africa follow the 2023 National HIV Testing Services Policy.
 
@@ -302,7 +302,7 @@ Helplines:
         NOW()
     ),
     (
-        'doc-0008-0000-0000-0000-000000000008',
+        'd0c0-0008-0000-0000-0000-000000000008',
         'Tuberculosis (TB) Screening and Testing',
         'Tuberculosis (TB) is a bacterial infection that primarily affects the lungs. It is curable with proper treatment.
 
@@ -337,7 +337,7 @@ Treatment:
         NOW()
     ),
     (
-        'doc-0009-0000-0000-0000-000000000009',
+        'd0c0-0009-0000-0000-0000-000000000009',
         'TB Screening Algorithm (South Africa)',
         'TB Screening per SA TB Screening and Testing SOP (June 2022):
 
@@ -376,7 +376,7 @@ Notification: All TB cases must be reported to District TB Coordinator.',
         NOW()
     ),
     (
-        'doc-0010-0000-0000-0000-000000000010',
+        'd0c0-0010-0000-0000-0000-000000000010',
         'Contraception Methods',
         'Various contraception methods are available to prevent pregnancy.
 
@@ -409,7 +409,7 @@ Emergency contraception:
         NOW()
     ),
     (
-        'doc-0011-0000-0000-0000-000000000011',
+        'd0c0-0011-0000-0000-0000-000000000011',
         'Pregnancy Warning Signs',
         'Most pregnancies progress normally, but certain symptoms require immediate medical attention.
 
@@ -444,7 +444,7 @@ Routine prenatal care:
         NOW()
     ),
     (
-        'doc-0012-0000-0000-0000-000000000012',
+        'd0c0-0012-0000-0000-0000-000000000012',
         'Mental Health and Stress Management',
         'Mental health is as important as physical health.
 
@@ -480,7 +480,7 @@ Emergency: If you or someone you know is in crisis, contact emergency services o
         NOW()
     ),
     (
-        'doc-0013-0000-0000-0000-000000000013',
+        'd0c0-0013-0000-0000-0000-000000000013',
         'Mental Health Support (South Africa)',
         'Mental health conditions are common and treatable. Stigma-free care is your right.
 
@@ -515,7 +515,7 @@ Helplines (South Africa):
         NOW()
     ),
     (
-        'doc-0014-0000-0000-0000-000000000014',
+        'd0c0-0014-0000-0000-0000-000000000014',
         'Malaria Prevention and Treatment',
         'Malaria is a serious mosquito-borne disease. Prevention and early treatment are crucial.
 
@@ -550,7 +550,7 @@ Malaria is curable with prompt treatment. Never self-medicate.',
         NOW()
     ),
     (
-        'doc-0015-0000-0000-0000-000000000015',
+        'd0c0-0015-0000-0000-0000-000000000015',
         'Malaria Management (South Africa)',
         'Malaria-endemic areas in South Africa: Limpopo, Mpumalanga, northern KwaZulu-Natal.
 
@@ -587,7 +587,7 @@ All malaria cases must be notified to District within 24 hours.',
         NOW()
     ),
     (
-        'doc-0016-0000-0000-0000-000000000016',
+        'd0c0-0016-0000-0000-0000-000000000016',
         'Diabetes Management and Self-Care',
         'Diabetes is a chronic condition affecting blood sugar processing. With proper management, people can live long, healthy lives.
 
@@ -620,7 +620,7 @@ Hypoglycemia treatment:
         NOW()
     ),
     (
-        'doc-0017-0000-0000-0000-000000000017',
+        'd0c0-0017-0000-0000-0000-000000000017',
         'Hypertension Management',
         'Hypertension (high blood pressure) often has no symptoms but can lead to serious complications if untreated.
 
@@ -655,7 +655,7 @@ Seek immediate care if BP >180/120 with severe headache, chest pain, or vision c
         NOW()
     ),
     (
-        'doc-0018-0000-0000-0000-000000000018',
+        'd0c0-0018-0000-0000-0000-000000000018',
         'South Africa Emergency Helplines',
         'Emergency and crisis helplines available in South Africa:
 
