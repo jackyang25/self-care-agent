@@ -1,13 +1,16 @@
 """triage assessment service."""
 
+import logging
 import os
 import subprocess
 from typing import Optional, Tuple
 
 from src.application.services.schemas.triage import TriageServiceOutput
 
+logger = logging.getLogger(__name__)
 
-def run_verified_triage(
+
+def execute_verified_triage(
     age: int,
     gender: str,
     pregnant: int,
@@ -18,10 +21,10 @@ def run_verified_triage(
     moderate_symptom: int,
 ) -> Tuple[Optional[str], Optional[int]]:
     """run formally verified triage classification.
-    
+
     calls the verified triage executable which provides provably correct
     classification within the verified logic space.
-    
+
     args:
         age: patient age
         gender: patient gender
@@ -31,12 +34,12 @@ def run_verified_triage(
         walking: 1 if can walk, 0 if cannot
         severe_symptom: 1 if severe symptoms present, 0 if not
         moderate_symptom: 1 if moderate symptoms present, 0 if not
-        
+
     returns:
         tuple of (category, exit_code) where:
         - category: "red", "yellow", or "green"
         - exit_code: 0=red, 1=yellow, 2=green
-        
+
     raises:
         FileNotFoundError: if verified triage executable not found
         TimeoutError: if executable times out (>5 seconds)
@@ -44,11 +47,16 @@ def run_verified_triage(
     """
     # get path to verified triage executable
     application_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    executable_path = os.path.join(application_dir, "verifiers", "triage-verifier")
-    
+    # repo/container ships the verifier as src/application/verifiers/triage
+    preferred = os.path.join(application_dir, "verifiers", "triage")
+    legacy = os.path.join(application_dir, "verifiers", "triage-verifier")
+    executable_path = preferred if os.path.exists(preferred) else legacy
+
     if not os.path.exists(executable_path):
-        raise FileNotFoundError(f"verified triage executable not found at {executable_path}")
-    
+        raise FileNotFoundError(
+            f"verified triage executable not found (checked: {preferred}, {legacy})"
+        )
+
     try:
         result = subprocess.run(
             [
@@ -66,12 +74,11 @@ def run_verified_triage(
             text=True,
             timeout=5,
         )
-        
+
         # map exit codes to categories
         categories = {0: "red", 1: "yellow", 2: "green"}
         category = categories.get(result.returncode)
-        
-        
+
         return category, result.returncode
     except subprocess.TimeoutExpired:
         raise TimeoutError("verified triage executable timed out after 5 seconds")
@@ -79,108 +86,54 @@ def run_verified_triage(
         raise RuntimeError(f"error running verified triage: {e}")
 
 
-def assess_triage(
-    symptoms: Optional[str],
-    urgency: Optional[str],
-    age: Optional[int] = None,
-    gender: Optional[str] = None,
-    breathing: Optional[int] = None,
-    conscious: Optional[int] = None,
-    walking: Optional[int] = None,
-    severe_symptom: Optional[int] = None,
-    moderate_symptom: Optional[int] = None,
-    pregnant: Optional[int] = None,
+def assess_verified_triage(
+    *,
+    age: int,
+    gender: str,
+    pregnant: int,
+    breathing: int,
+    conscious: int,
+    walking: int,
+    severe_symptom: int,
+    moderate_symptom: int,
 ) -> TriageServiceOutput:
-    """assess triage level using verified classification or LLM assessment.
-    
-    two modes:
-    1. verified triage: when all vitals + age/gender provided
-    2. llm assessment: when only urgency provided
-    
-    args:
-        symptoms: patient symptoms
-        urgency: llm-assessed urgency ('red', 'yellow', 'green')
-        age: patient age (for verified triage)
-        gender: patient gender (for verified triage)
-        breathing: breathing status (for verified triage)
-        conscious: consciousness status (for verified triage)
-        walking: walking ability (for verified triage)
-        severe_symptom: severe symptom indicator (for verified triage)
-        moderate_symptom: moderate symptom indicator (for verified triage)
-        pregnant: pregnancy status (for verified triage)
-        
-    returns:
-        triage service output with risk_level and verification_method
-        - risk_level: "red", "yellow", or "green"
-        - verification_method: "verified" or "llm"
-        
-    raises:
-        ValueError: if urgency is invalid or insufficient data provided
-        FileNotFoundError: if verified triage executable not found
-        TimeoutError: if verified triage executable times out
-        RuntimeError: if verified triage execution fails
-    """
-    risk_level = None
-    verification_method = "llm"
-    
-    # check if we have enough data for verified triage
-    vitals_available = all(
-        v is not None
-        for v in [breathing, conscious, walking, severe_symptom, moderate_symptom]
-    )
-    
-    if vitals_available and age is not None and gender is not None:
-        
-        # default pregnant to 0 if not provided
-        pregnant_value = pregnant if pregnant is not None else 0
-        
-        # run formally verified triage
-        verified_category, exit_code = run_verified_triage(
-            age,
-            gender,
-            pregnant_value,
-            breathing,
-            conscious,
-            walking,
-            severe_symptom,
-            moderate_symptom,
-        )
-        
-        if verified_category:
-            risk_level = verified_category
-            verification_method = "verified"
-        else:
-            # verified triage failed, will fall back to llm assessment
-            pass
-    else:
-        # log which vitals are missing
-        missing = []
-        if not vitals_available:
-            if breathing is None:
-                missing.append("breathing")
-            if conscious is None:
-                missing.append("conscious")
-            if walking is None:
-                missing.append("walking")
-            if severe_symptom is None:
-                missing.append("severe_symptom")
-            if moderate_symptom is None:
-                missing.append("moderate_symptom")
-        if age is None:
-            missing.append("age")
-        if gender is None:
-            missing.append("gender")
-        
-    
-    # fallback to llm-provided urgency if verified triage not used
-    if risk_level is None:
-        if urgency and urgency.lower() in ["red", "yellow", "green"]:
-            risk_level = urgency.lower()
-        else:
-            raise ValueError(f"insufficient data for triage: urgency must be 'red', 'yellow', or 'green', got: {urgency}")
-    
-    return TriageServiceOutput(
-        risk_level=risk_level,
-        verification_method=verification_method
-    )
+    """Assess triage using the formally verified verifier."""
+    # avoid duplicating full args in logs (tool layer already logs received args)
+    logger.info("Attempting verified triage")
 
+    category, exit_code = execute_verified_triage(
+        age,
+        gender,
+        pregnant,
+        breathing,
+        conscious,
+        walking,
+        severe_symptom,
+        moderate_symptom,
+    )
+    if not category:
+        raise RuntimeError(
+            f"verified triage returned unknown category (exit_code={exit_code})"
+        )
+
+    logger.info(
+        f"Verified triage succeeded {{risk_level={category}, exit_code={exit_code}}}"
+    )
+    return TriageServiceOutput(risk_level=category, verification_method="verified")
+
+
+def assess_fallback_triage(*, fallback_risk_level: str) -> TriageServiceOutput:
+    """Assess triage using the fallback category when verifier inputs are unavailable."""
+    if not fallback_risk_level or fallback_risk_level.lower() not in [
+        "red",
+        "yellow",
+        "green",
+    ]:
+        raise ValueError(
+            "fallback triage requires fallback_risk_level in {'red','yellow','green'}; "
+            f"got: {fallback_risk_level}"
+        )
+
+    risk_level = fallback_risk_level.lower()
+    logger.info(f"Fallback triage used {{risk_level={risk_level}}}")
+    return TriageServiceOutput(risk_level=risk_level, verification_method="fallback")

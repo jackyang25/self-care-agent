@@ -6,7 +6,7 @@ from .pharmacy import PharmacyInput, PharmacyOutput
 from .providers import GetProviderInput, ProviderOutput, SearchProvidersInput
 from .rag import RAGInput, RAGOutput
 from .referrals import ReferralInput, ReferralOutput
-from .triage import TriageInput, TriageOutput
+from .triage import FallbackTriageInput, TriageOutput, VerifiedTriageInput
 
 __all__ = [
     "ToolResponse",
@@ -21,7 +21,7 @@ __all__ = [
     "ReferralInput",
     "ReferralOutput",
     "SearchProvidersInput",
-    "TriageInput",
+    "VerifiedTriageInput",
+    "FallbackTriageInput",
     "TriageOutput",
 ]
-

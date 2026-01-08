@@ -9,7 +9,7 @@ from src.application.tools.schemas.referrals import ReferralInput, ReferralOutpu
 
 
 @tool(args_schema=ReferralInput)
-def referral_tool(
+def recommend_provider_referral_tool(
     specialty: Optional[str] = None,
     provider: Optional[str] = None,
     patient_id: Optional[str] = None,
@@ -19,17 +19,15 @@ def referral_tool(
 ) -> ReferralOutput:
     """recommend healthcare providers for referrals.
 
-use this tool when a user needs to be connected to a healthcare provider or needs information about where to receive care. the tool can find appropriate providers based on specialty and provide facility information.
+    use this tool when a user needs to be connected to a healthcare provider or needs information about where to receive care. the tool can find appropriate providers based on specialty and provide facility information.
 
-important: always specify the 'specialty' parameter based on symptoms:
-- cardiac/heart symptoms → 'cardiology'
-- pregnancy/prenatal → 'obstetrics'
-- children (age < 12) → 'pediatrics'
-- general health concerns → 'general_practice'
+    important:
+    - this tool does not perform symptom triage. if the user is describing symptoms, run triage first (prefer `assess_verified_triage_tool`) to determine urgency.
+    - provide `specialty` when known; otherwise use a general option like 'general_practice'. if the user has date/time preferences, pass them through.
 
-use when: user agrees to or requests a referral to clinical care; user needs information about where to receive care.
+    use when: user agrees to or requests a referral to clinical care; user needs information about where to receive care.
 
-do not use for: ordering commodities or medications; pharmacy refills or retail logistics; symptom triage or risk-level determination."""
+    do not use for: ordering commodities or medications; pharmacy refills or retail logistics; symptom triage or risk-level determination."""
 
     try:
         # call service layer
@@ -41,7 +39,7 @@ do not use for: ordering commodities or medications; pharmacy refills or retail 
             preferred_time=preferred_time,
             reason=reason,
         )
-        
+
         # transform service output to tool output (add presentation layer)
         return ReferralOutput(
             status="recommended",
@@ -53,13 +51,13 @@ do not use for: ordering commodities or medications; pharmacy refills or retail 
             time=result.time,
             reason=reason,
         )
-    
+
     except ValueError as e:
         return ReferralOutput(
             status="error",
             message=str(e),
         )
-    
+
     except Exception as e:
         return ReferralOutput(
             status="error",

@@ -10,7 +10,9 @@ from .base import ToolResponse
 class PharmacyInput(BaseModel):
     """input schema for pharmacy orders."""
 
-    medication: Optional[str] = Field(None, description="medication name or prescription")
+    medication: str = Field(
+        description="medication name or prescription identifier (required)"
+    )
     dosage: Optional[str] = Field(None, description="dosage instructions")
     patient_id: Optional[str] = Field(None, description="patient identifier")
     pharmacy: Optional[str] = Field(None, description="preferred pharmacy location")

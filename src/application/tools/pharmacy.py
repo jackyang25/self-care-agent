@@ -9,19 +9,23 @@ from src.application.tools.schemas.pharmacy import PharmacyInput, PharmacyOutput
 
 
 @tool(args_schema=PharmacyInput)
-def pharmacy_tool(
-    medication: Optional[str] = None,
+def order_pharmacy_tool(
+    medication: str,
     dosage: Optional[str] = None,
     patient_id: Optional[str] = None,
     pharmacy: Optional[str] = None,
 ) -> PharmacyOutput:
     """manage pharmacy-specific orders, including prescription refills and over-the-counter medications that require pharmacy fulfillment.
 
-use this tool when a user wants to refill a prescription, request pharmacy-dispensed commodities, check pharmacy inventory, or arrange pharmacy pickup or delivery. this tool is designed for items that require pharmacy workflows rather than general retail logistics.
+    use this tool when a user wants to refill a prescription, request pharmacy-dispensed commodities, check pharmacy inventory, or arrange pharmacy pickup or delivery. this tool is designed for items that require pharmacy workflows rather than general retail logistics.
 
-use when: user requests a prescription refill or pharmacy-managed medication; user asks about pharmacy availability, stock, or order status; user needs support with pharmacy pickup or home delivery.
+    use when: user requests a prescription refill or pharmacy-managed medication; user asks about pharmacy availability, stock, or order status; user needs support with pharmacy pickup or home delivery.
 
-do not use for: ordering general self-test kits or non-pharmacy commodities; triage, symptom assessment, or risk evaluation; scheduling referrals, labs, or teleconsultations."""
+    safety boundaries:
+    - do not diagnose or choose medications based on this tool alone; use `search_knowledge_base_tool` for dosing/contraindications and triage tools when symptoms suggest urgency.
+    - if the user is requesting a new medication (not a known refill), confirm allergies and current medications before recommending anything.
+
+    do not use for: ordering general self-test kits or non-pharmacy commodities; triage, symptom assessment, or risk evaluation; scheduling referrals, labs, or teleconsultations."""
 
     try:
         # call service layer
@@ -31,7 +35,7 @@ do not use for: ordering general self-test kits or non-pharmacy commodities; tri
             patient_id=patient_id,
             pharmacy=pharmacy,
         )
-        
+
         # transform service output to tool output (add presentation layer)
         return PharmacyOutput(
             status="success",
@@ -43,13 +47,13 @@ do not use for: ordering general self-test kits or non-pharmacy commodities; tri
             dosage=result.dosage,
             patient_id=result.patient_id,
         )
-    
+
     except ValueError as e:
         return PharmacyOutput(
             status="error",
             message=str(e),
         )
-    
+
     except Exception as e:
         return PharmacyOutput(
             status="error",

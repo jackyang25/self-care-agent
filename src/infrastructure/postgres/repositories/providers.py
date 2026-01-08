@@ -1,8 +1,11 @@
 """provider data access functions using ORM."""
 
+import logging
 from typing import Optional, List, Dict, Any
 from src.infrastructure.postgres.connection import get_db_session
 from src.infrastructure.postgres.models import Provider
+
+logger = logging.getLogger(__name__)
 
 
 def search_providers(
@@ -24,7 +27,7 @@ def search_providers(
     """
     try:
         with get_db_session() as session:
-            query = session.query(Provider).filter(Provider.is_active == True)
+            query = session.query(Provider).filter(Provider.is_active)
             
             if specialty:
                 query = query.filter(Provider.specialty == specialty)
@@ -43,6 +46,7 @@ def search_providers(
             
             return [provider.to_dict() for provider in providers]
     except Exception:
+        logger.exception("search_providers failed")
         return []
 
 
@@ -59,10 +63,11 @@ def get_provider_by_id(provider_id: str) -> Optional[Dict[str, Any]]:
         with get_db_session() as session:
             provider = session.query(Provider).filter(
                 Provider.provider_id == provider_id,
-                Provider.is_active == True
+                Provider.is_active
             ).first()
             return provider.to_dict() if provider else None
     except Exception:
+        logger.exception("get_provider_by_id failed")
         return None
 
 
@@ -87,7 +92,7 @@ def find_provider_for_appointment(
             if specialty:
                 provider = session.query(Provider).filter(
                     Provider.specialty == specialty,
-                    Provider.is_active == True
+                    Provider.is_active
                 ).first()
                 if provider:
                     return {
@@ -101,7 +106,7 @@ def find_provider_for_appointment(
             if provider_name:
                 provider = session.query(Provider).filter(
                     Provider.name.ilike(f"%{provider_name}%"),
-                    Provider.is_active == True
+                    Provider.is_active
                 ).first()
                 if provider:
                     return {
@@ -114,7 +119,7 @@ def find_provider_for_appointment(
             # fallback to general practice
             provider = session.query(Provider).filter(
                 Provider.specialty == "general_practice",
-                Provider.is_active == True
+                Provider.is_active
             ).first()
             if provider:
                 return {
@@ -126,4 +131,5 @@ def find_provider_for_appointment(
             
             return None
     except Exception:
+        logger.exception("find_provider_for_appointment failed")
         return None

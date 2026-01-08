@@ -46,7 +46,7 @@ def render_demo_context() -> None:
             "WhatsApp ID (Identity)",
             value=st.session_state.whatsapp_id,
             key="input_whatsapp_id",
-            help="**Identity Assurance**: Phone number used for WhatsApp communication. In production, verified via 3-step handshake: (1) User initiates chat, (2) Agent sends OTP to phone on file at clinic, (3) Correct OTP binds WhatsApp ID to Patient UUID in EMR.\n\n**Shared Phone Exception (LMIC)**: Database allows One-to-Many mapping. Example: A mother uses her WhatsApp (+27123456789) for herself, her husband, and her child. Agent asks: \"Who are you checking for today: (A) Yourself, (B) Kofi, or (C) Baby Zayne?\" before fetching history."
+            help='**Identity Assurance**: Phone number used for WhatsApp communication. In production, verified via 3-step handshake: (1) User initiates chat, (2) Agent sends OTP to phone on file at clinic, (3) Correct OTP binds WhatsApp ID to Patient UUID in EMR.\n\n**Shared Phone Exception (LMIC)**: Database allows One-to-Many mapping. Example: A mother uses her WhatsApp (+27123456789) for herself, her husband, and her child. Agent asks: "Who are you checking for today: (A) Yourself, (B) Kofi, or (C) Baby Zayne?" before fetching history.',
         )
 
     with col2:
@@ -55,15 +55,17 @@ def render_demo_context() -> None:
             "proficient": "Proficient (University/Clinical)",
             "intermediate": "Intermediate (High School)",
             "basic": "Basic (Primary School)",
-            "below-basic": "Below Basic (Narrative/Concrete)"
+            "below-basic": "Below Basic (Narrative/Concrete)",
         }
         st.session_state.literacy_level = st.selectbox(
             "Literacy Level (Socio-Tech)",
             options=literacy_options,
             format_func=lambda x: literacy_display[x],
-            index=literacy_options.index(st.session_state.literacy_level) if st.session_state.literacy_level in literacy_options else 0,
+            index=literacy_options.index(st.session_state.literacy_level)
+            if st.session_state.literacy_level in literacy_options
+            else 0,
             key="input_literacy_level",
-            help="**Adaptive Communication**: Proficient uses technical terms & stats (\"hypertension\"); Intermediate uses plain language; Basic uses short sentences (<15 words, \"high blood pressure\" not \"hypertension\"); Below Basic uses action-only narrative (\"The Pill\", \"The Pain\") with emoji visual anchors 💊☀️"
+            help='**Adaptive Communication**: Proficient uses technical terms & stats ("hypertension"); Intermediate uses plain language; Basic uses short sentences (<15 words, "high blood pressure" not "hypertension"); Below Basic uses action-only narrative ("The Pill", "The Pain") with emoji visual anchors 💊☀️',
         )
 
     with col3:
@@ -75,16 +77,20 @@ def render_demo_context() -> None:
             "ny": "Chichewa (Malawi)",
             "wo": "Wolof (Senegal)",
             "sw": "Swahili (East Africa)",
-            "xh": "Xhosa (South Africa)"
+            "xh": "Xhosa (South Africa)",
         }
-        lang_index = language_options.index(st.session_state.primary_language) if st.session_state.primary_language in language_options else 0
+        lang_index = (
+            language_options.index(st.session_state.primary_language)
+            if st.session_state.primary_language in language_options
+            else 0
+        )
         st.session_state.primary_language = st.selectbox(
             "Primary Language (Linguistics)",
             options=language_options,
             format_func=lambda x: language_display[x],
             index=lang_index,
             key="input_primary_language",
-            help="**Language Adaptation**: Sets the LLM system prompt to communicate in the patient's primary language and dialect. Supports English, French (Senegal), Wolof, Chichewa (Malawi), Zulu, Xhosa, and Swahili. Critical for LMIC contexts where multiple languages coexist."
+            help="**Language Adaptation**: Sets the LLM system prompt to communicate in the patient's primary language and dialect. Supports English, French (Senegal), Wolof, Chichewa (Malawi), Zulu, Xhosa, and Swahili. Critical for LMIC contexts where multiple languages coexist.",
         )
 
     # row 2: connectivity, location, determinants
@@ -95,7 +101,7 @@ def render_demo_context() -> None:
         network_display = {
             "high-speed": "High Speed (4G/5G)",
             "unstable": "Unstable Connection",
-            "edge/2g": "Edge/2G (No Media)"
+            "edge/2g": "Edge/2G (No Media)",
         }
         st.session_state.network_type = st.selectbox(
             "Network Type (Connectivity)",
@@ -103,7 +109,7 @@ def render_demo_context() -> None:
             format_func=lambda x: network_display[x],
             index=network_options.index(st.session_state.network_type),
             key="input_network_type",
-            help="**Bandwidth Optimization**: On Edge/2G networks, agent avoids sending images, videos, or large files. Uses text-only responses with emojis. On Unstable connections, sends compressed assets and provides download links instead of inline media. On High-speed, full multimedia responses are enabled."
+            help="**Bandwidth Optimization**: On Edge/2G networks, agent avoids sending images, videos, or large files. Uses text-only responses with emojis. On Unstable connections, sends compressed assets and provides download links instead of inline media. On High-speed, full multimedia responses are enabled.",
         )
 
     with col2:
@@ -115,7 +121,7 @@ def render_demo_context() -> None:
             "dakar-pikine",
             "dakar-guediawaye",
             "nairobi-kibera",
-            "lagos-makoko"
+            "lagos-makoko",
         ]
         location_display = {
             "cape-town-khayelitsha": "Cape Town - Khayelitsha (ZA)",
@@ -125,15 +131,17 @@ def render_demo_context() -> None:
             "dakar-pikine": "Dakar - Pikine (SN)",
             "dakar-guediawaye": "Dakar - Guediawaye (SN)",
             "nairobi-kibera": "Nairobi - Kibera (KE)",
-            "lagos-makoko": "Lagos - Makoko (NG)"
+            "lagos-makoko": "Lagos - Makoko (NG)",
         }
         st.session_state.geospatial_tag = st.selectbox(
             "Location (Geospatial)",
             options=location_options,
             format_func=lambda x: location_display[x],
-            index=location_options.index(st.session_state.geospatial_tag) if st.session_state.geospatial_tag in location_options else 0,
+            index=location_options.index(st.session_state.geospatial_tag)
+            if st.session_state.geospatial_tag in location_options
+            else 0,
             key="input_geospatial_tag",
-            help="**Proximity Intelligence**: Calculates 'Time to Clinic' based on patient location. Agent can recommend nearest health facility, estimate travel time via public transport, and suggest alternate sites if primary clinic is far. Also enables region-specific health alerts (e.g., malaria risk in specific neighborhoods)."
+            help="**Proximity Intelligence**: Calculates 'Time to Clinic' based on patient location. Agent can recommend nearest health facility, estimate travel time via public transport, and suggest alternate sites if primary clinic is far. Also enables region-specific health alerts (e.g., malaria risk in specific neighborhoods).",
         )
 
     with col3:
@@ -142,14 +150,14 @@ def render_demo_context() -> None:
             "daily-wage-worker",
             "single-parent",
             "no-running-water",
-            "informal-housing"
+            "informal-housing",
         ]
         social_display = {
             "no-refrigeration": "No Refrigeration",
             "daily-wage-worker": "Daily Wage Worker",
             "single-parent": "Single Parent",
             "no-running-water": "No Running Water",
-            "informal-housing": "Informal Housing"
+            "informal-housing": "Informal Housing",
         }
         st.session_state.social_context = st.selectbox(
             "Social Context (Determinants)",
@@ -157,13 +165,13 @@ def render_demo_context() -> None:
             format_func=lambda x: social_display[x],
             index=social_options.index(st.session_state.social_context),
             key="input_social_context",
-            help="**Social Determinants of Health (SDOH)**: Personalizes care based on living conditions. 'No Refrigeration' → non-refrigerated meds. 'Daily Wage Worker' → evening clinic hours. 'Single Parent' → simplified schedules. 'No Running Water' → adapted hygiene instructions.\n\n**How Agent Collects SDOH** (3 methods): (1) **Conversational Extraction**: NLP extracts facts from chat (user says \"can't keep medicine cold\" → agent tags [REFRIGERATION: NONE]). (2) **Self-Reported Profile**: Onboarding questions (\"How far is nearest clinic?\", \"Reliable transport?\"). (3) **Geospatial Lookup**: Cross-references location with National Health Map to infer water shortage, pharmacy distance (20km), etc."
+            help="**Social Determinants of Health (SDOH)**: Personalizes care based on living conditions. 'No Refrigeration' → non-refrigerated meds. 'Daily Wage Worker' → evening clinic hours. 'Single Parent' → simplified schedules. 'No Running Water' → adapted hygiene instructions.\n\n**How Agent Collects SDOH** (3 methods): (1) **Conversational Extraction**: NLP extracts facts from chat (user says \"can't keep medicine cold\" → agent tags [REFRIGERATION: NONE]). (2) **Self-Reported Profile**: Onboarding questions (\"How far is nearest clinic?\", \"Reliable transport?\"). (3) **Geospatial Lookup**: Cross-references location with National Health Map to infer water shortage, pharmacy distance (20km), etc.",
         )
 
 
 def render_patient_summary() -> None:
     """render International Patient Summary (IPS) configuration.
-    
+
     IPS is a curated, FHIR-standardized extract of critical clinical facts
     designed for cross-system sharing and AI clinical reasoning.
     """
@@ -175,7 +183,7 @@ def render_patient_summary() -> None:
             "Patient ID (IPS)",
             value=st.session_state.get("emr_patient_id", "PT-ZA-001234"),
             key="input_emr_patient_id",
-            help="**International Patient Summary (IPS)**: Unique patient identifier following ISO/EN 17269 standard by HL7. This is NOT raw EMR data—it's a curated, FHIR-standardized extract designed for interoperability. IPS represents data the patient carries (mobile-ready, patient-centric), not data 'owned' by a hospital. Enables safe AI reasoning across systems."
+            help="**International Patient Summary (IPS)**: Unique patient identifier following ISO/EN 17269 standard by HL7. This is NOT raw EMR data—it's a curated, FHIR-standardized extract designed for interoperability. IPS represents data the patient carries (mobile-ready, patient-centric), not data 'owned' by a hospital. Enables safe AI reasoning across systems.",
         )
 
     with col2:
@@ -185,7 +193,7 @@ def render_patient_summary() -> None:
             max_value=120,
             value=st.session_state.get("patient_age", 28),
             key="input_patient_age",
-            help="**Dosage & Safety**: Crucial for pediatric vs adult dosing and maternal health triggers. Affects medication recommendations and screening protocols."
+            help="**Dosage & Safety**: Crucial for pediatric vs adult dosing and maternal health triggers. Affects medication recommendations and screening protocols.",
         )
 
     with col3:
@@ -195,9 +203,11 @@ def render_patient_summary() -> None:
             "Gender (Demographics)",
             options=gender_options,
             format_func=lambda x: gender_display[x],
-            index=gender_options.index(st.session_state.get("patient_gender", "female")),
+            index=gender_options.index(
+                st.session_state.get("patient_gender", "female")
+            ),
             key="input_patient_gender",
-            help="**Clinical Context**: Essential for gender-specific screening (cervical/prostate cancer), pregnancy considerations, and hormone-related conditions."
+            help="**Clinical Context**: Essential for gender-specific screening (cervical/prostate cancer), pregnancy considerations, and hormone-related conditions.",
         )
 
     # row 2: conditions and medications
@@ -209,7 +219,7 @@ def render_patient_summary() -> None:
             value=st.session_state.get("active_diagnoses", ""),
             placeholder="e.g., Type 2 Diabetes, HIV, Hypertension",
             key="input_active_diagnoses",
-            help="**Safety Guardrails**: List of chronic conditions (Diabetes, HIV, Asthma, etc.). Prevents AI from suggesting contraindicated advice. Example: Won't recommend high-sugar foods to diabetic patients."
+            help="**Safety Guardrails**: List of chronic conditions (Diabetes, HIV, Asthma, etc.). Prevents AI from suggesting contraindicated advice. Example: Won't recommend high-sugar foods to diabetic patients.",
         )
 
     with col2:
@@ -218,7 +228,7 @@ def render_patient_summary() -> None:
             value=st.session_state.get("current_medications", ""),
             placeholder="e.g., Metformin 500mg, Lisinopril 10mg",
             key="input_current_medications",
-            help="**Drug-Drug Interaction Checks**: Used to prevent dangerous combinations. Example: \"Don't take ibuprofen with your current blood thinner (Warfarin)\"."
+            help='**Drug-Drug Interaction Checks**: Used to prevent dangerous combinations. Example: "Don\'t take ibuprofen with your current blood thinner (Warfarin)".',
         )
 
     # row 3: allergies and vitals
@@ -230,7 +240,7 @@ def render_patient_summary() -> None:
             value=st.session_state.get("allergies", ""),
             placeholder="e.g., Penicillin, Sulfa drugs, Peanuts",
             key="input_allergies",
-            help="**Ultimate Safety Guardrail**: Critical for preventing life-threatening reactions. Agent will never recommend penicillin-based antibiotics if allergy is documented."
+            help="**Ultimate Safety Guardrail**: Critical for preventing life-threatening reactions. Agent will never recommend penicillin-based antibiotics if allergy is documented.",
         )
 
     with col2:
@@ -239,7 +249,7 @@ def render_patient_summary() -> None:
             value=st.session_state.get("latest_vitals", ""),
             placeholder="e.g., BP: 140/90, Weight: 75kg, Glucose: 180mg/dL",
             key="input_latest_vitals",
-            help="**Personalized Monitoring**: Last recorded vitals (BP, Weight, Glucose). Enables contextual responses like \"I see your sugar was high last week - let's discuss your diet\" or \"Your blood pressure needs attention\"."
+            help='**Personalized Monitoring**: Last recorded vitals (BP, Weight, Glucose). Enables contextual responses like "I see your sugar was high last week - let\'s discuss your diet" or "Your blood pressure needs attention".',
         )
 
     # row 4: behavioral health tracking
@@ -252,7 +262,7 @@ def render_patient_summary() -> None:
             max_value=100,
             value=st.session_state.get("adherence_score", 85),
             key="input_adherence_score",
-            help="**Medication Adherence**: Percentage of prescribed doses taken on time. If low (<70%), AI prioritizes \"Habit Building\" strategies and reminder systems over new clinical advice. Example: At 50% adherence, agent focuses on \"Why are you missing doses?\" before adding new medications."
+            help='**Medication Adherence**: Percentage of prescribed doses taken on time. If low (<70%), AI prioritizes "Habit Building" strategies and reminder systems over new clinical advice. Example: At 50% adherence, agent focuses on "Why are you missing doses?" before adding new medications.',
         )
         st.caption(f"{st.session_state.adherence_score}%")
 
@@ -261,7 +271,7 @@ def render_patient_summary() -> None:
             "Refill Due Date (Behavioral)",
             value=st.session_state.get("refill_due_date", None),
             key="input_refill_due_date",
-            help="**Proactive Medication Management**: Triggers \"Nudge\" conversations when refill is approaching. Example: \"I see your Metformin is running low in 3 days - do you have a plan to get more?\" Prevents treatment gaps due to missed refills."
+            help='**Proactive Medication Management**: Triggers "Nudge" conversations when refill is approaching. Example: "I see your Metformin is running low in 3 days - do you have a plan to get more?" Prevents treatment gaps due to missed refills.',
         )
 
 
@@ -273,30 +283,45 @@ def render_chat_interface() -> None:
     for message in st.session_state.messages:
         role = message["role"]
         display_name = "Patient" if role == "user" else "Assistant"
-        
+
         with st.chat_message(role):
             st.markdown(f"**{display_name}**")
             st.markdown(message["content"])
-            
+
             # display tools and sources for assistant messages
             if role == "assistant":
                 tools = message.get("tools")
                 sources = message.get("sources")
 
                 if tools:
-                    st.caption(f"Tools: {', '.join(tools)}")
+                    tool_names = [
+                        t.replace("_", " ").replace(" tool", "").title() for t in tools
+                    ]
+                    st.markdown(
+                        f"<p style='color: #4A90E2; font-size: 0.9em; margin-top: 8px;'><b>Tools:</b> {', '.join(tool_names)}</p>",
+                        unsafe_allow_html=True,
+                    )
 
                 if sources:
-                    with st.expander("Sources", expanded=False):
-                        for i, source in enumerate(sources, 1):
-                            similarity = int(source.get("similarity", 0) * 100)
-                            content_type = source.get("content_type", "")
-                            type_badge = f"`{content_type}`" if content_type else ""
-                            title = source.get("title", "Unknown")
-
-                            st.markdown(
-                                f"**{i}. {title}** {type_badge} *({similarity}% match)*"
-                            )
+                    sources_text = []
+                    for src in sources:
+                        title = src.get("title") or "Unknown"
+                        sim = src.get("similarity")
+                        sim_text = (
+                            f" ({int(sim * 100)}%)"
+                            if isinstance(sim, (int, float))
+                            else ""
+                        )
+                        sources_text.append(f"{title}{sim_text}")
+                    st.markdown(
+                        f"<p style='color: #4A90E2; font-size: 0.9em;'><b>Sources:</b> {' · '.join(sources_text)}</p>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        "<p style='color: #4A90E2; font-size: 0.9em;'><b>Sources:</b> no citations available</p>",
+                        unsafe_allow_html=True,
+                    )
 
 
 def launch_app(handler) -> None:
@@ -308,7 +333,10 @@ def launch_app(handler) -> None:
 
     initialize_session_state()
 
-    st.markdown("<h1 style='text-align: center;'>AI Self-Care Agent Demo</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align: center;'>AI Self-Care Agent Demo</h1>",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     # two-column layout: configuration on left, chat on right
@@ -316,7 +344,7 @@ def launch_app(handler) -> None:
 
     with config_col:
         st.subheader("Configuration")
-        
+
         # create a container with fixed height to match chat column
         config_container = st.container(height=600)
         with config_container:
@@ -325,12 +353,14 @@ def launch_app(handler) -> None:
 
             with st.expander("Patient Summary (IPS)", expanded=False):
                 render_patient_summary()
-            
+
             st.markdown("---")
-            
+
             # informational note about production data sourcing
-            st.caption("Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields.")
-        
+            st.caption(
+                "Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields."
+            )
+
         # action buttons below the container
         col1, col2 = st.columns(2)
         with col1:
@@ -344,17 +374,16 @@ def launch_app(handler) -> None:
 
     with chat_col:
         st.subheader("Chat Interface")
-        
+
         # create a container for chat messages with fixed height
         chat_container = st.container(height=600)
         with chat_container:
             render_chat_interface()
-        
+
         # if we're processing, generate the agent response
         if st.session_state.get("processing", False):
             handler.handle_agent_response()
-        
+
         # chat input stays at the bottom
         if prompt := st.chat_input("Type your message here..."):
             handler.handle_chat_input(prompt)
-

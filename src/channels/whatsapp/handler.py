@@ -1,17 +1,19 @@
 """whatsapp webhook integration."""
 
-import hashlib
-import hmac
 import logging
-import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from src.channels.base import BaseChannelHandler
+from src.shared.config import (
+    WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_VERIFY_TOKEN,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,31 +22,11 @@ app = FastAPI(title="WhatsApp Webhook")
 
 class WhatsAppHandler(BaseChannelHandler):
     """whatsapp handler - session_id passed explicitly in respond()."""
+
     pass
 
 
 handler = WhatsAppHandler()
-
-
-def verify_webhook_signature(
-    payload: bytes, signature: Optional[str], secret: str
-) -> bool:
-    """verify webhook signature from whatsapp.
-    
-    args:
-        payload: raw request body
-        signature: x-hub-signature-256 header value
-        secret: webhook verification token
-    
-    returns:
-        true if signature is valid
-    """
-    if not signature or not signature.startswith("sha256="):
-        return False
-
-    expected_signature = signature[7:]  # remove "sha256=" prefix
-    calculated = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected_signature, calculated)
 
 
 @app.get("/webhook")
@@ -54,7 +36,7 @@ async def verify_webhook(request: Request):
     hub_verify_token = request.query_params.get("hub.verify_token")
     hub_challenge = request.query_params.get("hub.challenge")
 
-    verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
+    verify_token = WHATSAPP_VERIFY_TOKEN
 
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
         return Response(content=hub_challenge, media_type="text/plain")
@@ -64,20 +46,8 @@ async def verify_webhook(request: Request):
 
 
 @app.post("/webhook")
-async def handle_webhook(
-    request: Request,
-    x_hub_signature_256: Optional[str] = Header(None),
-):
+async def handle_webhook(request: Request):
     """handle incoming whatsapp messages."""
-    body = await request.body()
-
-    # verify signature if configured
-    webhook_secret = os.getenv("WHATSAPP_WEBHOOK_SECRET")
-    if webhook_secret:
-        if not verify_webhook_signature(body, x_hub_signature_256, webhook_secret):
-            logger.warning("invalid webhook signature")
-            raise HTTPException(status_code=403, detail="invalid signature")
-
     # parse webhook payload
     try:
         data = await request.json()
@@ -109,8 +79,7 @@ async def handle_webhook(
 
             # process message through agent
             response, sources, _ = handler.respond(
-                user_message=text_body,
-                whatsapp_id=from_number
+                user_message=text_body, whatsapp_id=from_number
             )
 
             # append sources if available
@@ -153,16 +122,16 @@ def format_whatsapp_text(message: str) -> str:
 
 def send_whatsapp_message(phone_number: str, message: str) -> Dict[str, Any]:
     """send message via whatsapp api.
-    
+
     args:
         phone_number: recipient phone number
         message: message text to send
-    
+
     returns:
         api response dict
     """
-    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
-    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+    access_token = WHATSAPP_ACCESS_TOKEN
+    phone_number_id = WHATSAPP_PHONE_NUMBER_ID
 
     if not access_token or not phone_number_id:
         raise ValueError("whatsapp credentials not configured")

@@ -10,7 +10,7 @@ from .base import ToolResponse
 class CommodityInput(BaseModel):
     """input schema for commodity orders."""
 
-    items: Optional[str] = Field(None, description="list of items to order")
+    items: str = Field(description="list of items to order (required)")
     quantity: Optional[str] = Field(None, description="quantities for each item")
     patient_id: Optional[str] = Field(None, description="patient identifier")
     priority: Optional[str] = Field(None, description="order priority: normal, urgent")

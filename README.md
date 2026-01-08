@@ -262,7 +262,7 @@ User Input (Streamlit/WhatsApp)
 │       ├── testing.md             # Testing guide
 │       └── whatsapp.md            # WhatsApp integration
 ├── bin/
-│   └── triage-verifier            # Lean-compiled triage binary
+│   └── triage                     # triage verifier binary
 ├── init-db/
 │   ├── 01_providers.sql           # Provider seed data
 │   ├── 02_sources.sql             # Document source seed data

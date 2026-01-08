@@ -12,6 +12,13 @@ class ReferralInput(BaseModel):
 
     specialty: Optional[str] = Field(None, description="medical specialty or department")
     provider: Optional[str] = Field(None, description="preferred provider name")
+    patient_id: Optional[str] = Field(None, description="patient identifier")
+    preferred_date: Optional[str] = Field(
+        None, description="preferred appointment date (free-text if needed)"
+    )
+    preferred_time: Optional[str] = Field(
+        None, description="preferred appointment time (free-text if needed)"
+    )
     reason: Optional[str] = Field(None, description="reason for referral")
 
 

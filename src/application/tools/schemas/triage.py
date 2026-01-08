@@ -1,50 +1,76 @@
 """triage tool schemas."""
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .base import ToolResponse
 
 
-class TriageInput(BaseModel):
-    """input schema for triage and risk flagging."""
+class VerifiedTriageInput(BaseModel):
+    """input schema for formally verified triage classification."""
 
-    symptoms: Optional[str] = Field(
-        None,
-        description="patient symptoms or complaints. analyze the symptoms to determine urgency level.",
+    # verified triage inputs (all required for verifier execution)
+    age: Optional[int] = Field(
+        None, description="verified triage input: patient age in years"
     )
-    urgency: Optional[str] = Field(
+    gender: Optional[str] = Field(
         None,
-        description="urgency level using who iitt (interagency integrated triage tool). must be exactly one of: 'red', 'yellow', or 'green'. analyze the symptoms first and provide this parameter based on your analysis. consider: severity, duration, red flags, and patient safety.",
-    )
-    patient_id: Optional[str] = Field(None, description="patient identifier")
-    notes: Optional[str] = Field(None, description="additional clinical notes or context")
-    age: Optional[int] = Field(None, description="patient age")
-    gender: Optional[str] = Field(None, description="patient gender")
-    breathing: Optional[int] = Field(
-        None,
-        description="1 if patient is breathing normally, 0 if not breathing or difficulty breathing. gather from conversation.",
-    )
-    conscious: Optional[int] = Field(
-        None,
-        description="1 if patient is conscious and alert, 0 if unconscious or altered mental status. gather from conversation.",
-    )
-    walking: Optional[int] = Field(
-        None,
-        description="1 if patient can walk, 0 if cannot walk or mobility impaired. gather from conversation.",
-    )
-    severe_symptom: Optional[int] = Field(
-        None,
-        description="1 if severe symptoms present (severe pain, severe bleeding, critical condition), 0 if not. assess from symptoms.",
-    )
-    moderate_symptom: Optional[int] = Field(
-        None,
-        description="1 if moderate symptoms present (moderate pain, fever, concerning symptoms), 0 if not. assess from symptoms.",
+        description="verified triage input: patient gender (must normalize to 'male' or 'female').",
     )
     pregnant: Optional[int] = Field(
         None,
-        description="1 if patient is pregnant, 0 if not. ask if patient is female and symptoms warrant.",
+        description="verified triage input: 1 if pregnant, 0 if not.",
+    )
+    breathing: Optional[int] = Field(
+        None,
+        description="verified triage input: 1 if breathing normally, 0 if difficulty/not breathing.",
+    )
+    conscious: Optional[int] = Field(
+        None,
+        description="verified triage input: 1 if conscious/alert, 0 if unconscious/altered.",
+    )
+    walking: Optional[int] = Field(
+        None,
+        description="verified triage input: 1 if can walk, 0 if cannot.",
+    )
+    severe_symptom: Optional[int] = Field(
+        None,
+        description="verified triage input: 1 if severe red-flag symptoms present, 0 if not.",
+    )
+    moderate_symptom: Optional[int] = Field(
+        None,
+        description="verified triage input: 1 if moderate concerning symptoms present, 0 if not.",
+    )
+
+    @field_validator("gender")
+    @classmethod
+    def _normalize_gender(cls, value: Optional[str]) -> Optional[str]:
+        """Normalize gender to 'male' or 'female' for verified triage."""
+        if value is None:
+            return None
+        s = value.strip().lower()
+        if not s:
+            return None
+        if s in ("male", "m", "man"):
+            return "male"
+        if s in ("female", "f", "woman"):
+            return "female"
+        raise ValueError(
+            "gender must be 'male' or 'female' (or common variants like 'm'/'f')"
+        )
+
+
+class FallbackTriageInput(BaseModel):
+    """input schema for fallback triage classification when verifier inputs are unavailable."""
+
+    symptoms: Optional[str] = Field(
+        None,
+        description="patient symptoms or complaints. include duration, severity, and key red flags when available.",
+    )
+    fallback_risk_level: Optional[str] = Field(
+        None,
+        description="fallback triage category: must be exactly one of 'red', 'yellow', or 'green'.",
     )
 
 
@@ -52,12 +78,13 @@ class TriageOutput(ToolResponse):
     """output model for triage tool."""
 
     message: str = Field(..., description="human-readable result message")
-    risk_level: Optional[str] = Field(None, description="risk level: red, yellow, or green")
-    recommendations: Optional[List[str]] = Field(None, description="list of clinical recommendations")
-    triage_score: Optional[float] = Field(None, description="numeric triage score")
+    risk_level: Optional[str] = Field(
+        None, description="risk level: red, yellow, or green"
+    )
+    recommendations: Optional[List[str]] = Field(
+        None, description="list of clinical recommendations"
+    )
     symptoms: Optional[str] = Field(None, description="patient symptoms")
-    patient_id: Optional[str] = Field(None, description="patient identifier")
-    notes: Optional[str] = Field(None, description="additional notes")
-    verification_method: Optional[str] = Field(None, description="triage method used: verified or llm")
-    vitals: Optional[Dict[str, Any]] = Field(None, description="vital signs")
-
+    verification_method: Optional[str] = Field(
+        None, description="triage method used: verified or fallback"
+    )

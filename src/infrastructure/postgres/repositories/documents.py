@@ -1,10 +1,13 @@
 """document data access functions for RAG using ORM."""
 
+import logging
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from sqlalchemy import or_, and_
+from sqlalchemy import select, or_
 from src.infrastructure.postgres.connection import get_db_session
 from src.infrastructure.postgres.models import Document, Source
+
+logger = logging.getLogger(__name__)
 
 
 def insert_document(
@@ -41,10 +44,12 @@ def insert_document(
     try:
         with get_db_session() as session:
             # check if document exists
-            document = session.query(Document).filter(
-                Document.document_id == UUID(document_id)
-            ).first()
-            
+            document = (
+                session.query(Document)
+                .filter(Document.document_id == UUID(document_id))
+                .first()
+            )
+
             if document:
                 # update existing document
                 document.source_id = UUID(source_id) if source_id else None
@@ -73,16 +78,17 @@ def insert_document(
                     metadata_=metadata_json,
                 )
                 session.add(document)
-            
+
+            session.flush()  # ensure document is written to database before returning
             return True
     except Exception:
+        logger.exception("insert_document failed")
         return False
 
 
 def search_documents_by_embedding(
     query_embedding: List[float],
     limit: int = 5,
-    content_type: Optional[str] = None,
     content_types: Optional[List[str]] = None,
     country_context_id: Optional[str] = None,
     conditions: Optional[List[str]] = None,
@@ -93,7 +99,6 @@ def search_documents_by_embedding(
     args:
         query_embedding: query vector embedding
         limit: maximum number of results
-        content_type: optional filter by single content type (deprecated, use content_types)
         content_types: optional filter by multiple content types
         country_context_id: optional filter by country (includes global docs if include_global=True)
         conditions: optional filter by medical conditions (matches any)
@@ -104,72 +109,82 @@ def search_documents_by_embedding(
     """
     try:
         with get_db_session() as session:
-            # build query with joins
+            # build query using ORM
+            similarity = (
+                1 - Document.embedding.cosine_distance(query_embedding)
+            ).label("similarity")
+
             query = (
-                session.query(
-                    Document,
-                    Source,
-                    # calculate cosine similarity
-                    (1 - Document.embedding.cosine_distance(query_embedding)).label("similarity")
+                select(
+                    Document.document_id,
+                    Document.title,
+                    Document.content,
+                    Document.content_type,
+                    Document.section_path,
+                    Document.country_context_id,
+                    Document.conditions,
+                    Document.metadata_,
+                    Document.source_id,
+                    Source.name.label("source_name"),
+                    Source.version.label("source_version"),
+                    similarity,
                 )
                 .outerjoin(Source, Document.source_id == Source.source_id)
+                .where(Document.embedding.isnot(None))
             )
-            
-            # apply filters
-            filters = []
-            
+
             # content type filtering
             if content_types:
-                filters.append(Document.content_type.in_(content_types))
-            elif content_type:
-                filters.append(Document.content_type == content_type)
-            
+                query = query.where(Document.content_type.in_(content_types))
+
             # country filtering
             if country_context_id:
                 if include_global:
-                    filters.append(
+                    query = query.where(
                         or_(
                             Document.country_context_id == country_context_id,
-                            Document.country_context_id.is_(None)
+                            Document.country_context_id.is_(None),
                         )
                     )
                 else:
-                    filters.append(Document.country_context_id == country_context_id)
-            
-            # conditions filtering (matches any condition in the list)
+                    query = query.where(
+                        Document.country_context_id == country_context_id
+                    )
+
+            # conditions filtering (array overlap using && operator)
             if conditions:
-                filters.append(Document.conditions.overlap(conditions))
-            
-            if filters:
-                query = query.filter(and_(*filters))
-            
-            # order by similarity and limit
-            results = (
-                query.order_by(Document.embedding.cosine_distance(query_embedding))
-                .limit(limit)
-                .all()
-            )
-            
+                query = query.where(Document.conditions.bool_op("&&")(conditions))
+
+            # order by distance and limit
+            query = query.order_by(
+                Document.embedding.cosine_distance(query_embedding)
+            ).limit(limit)
+
+            result = session.execute(query)
+            rows = result.fetchall()
+            logger.debug("Got %d rows", len(rows))
+
             output = []
-            for document, source, similarity in results:
+            for row in rows:
                 doc_dict = {
-                    "document_id": str(document.document_id),
-                    "title": document.title,
-                    "content": document.content,
-                    "content_type": document.content_type,
-                    "section_path": document.section_path,
-                    "country_context_id": document.country_context_id,
-                    "conditions": document.conditions,
-                    "metadata": document.metadata,
-                    "source_id": str(document.source_id) if document.source_id else None,
-                    "source_name": source.name if source else None,
-                    "source_version": source.version if source else None,
-                    "similarity": float(similarity),
+                    "document_id": str(row.document_id),
+                    "title": row.title,
+                    "content": row.content,
+                    "content_type": row.content_type,
+                    "section_path": row.section_path,
+                    "country_context_id": row.country_context_id,
+                    "conditions": row.conditions,
+                    "metadata": row.metadata_,
+                    "source_id": str(row.source_id) if row.source_id else None,
+                    "source_name": row.source_name,
+                    "source_version": row.source_version,
+                    "similarity": float(row.similarity),
                 }
                 output.append(doc_dict)
-            
+
             return output
     except Exception:
+        logger.exception("search_documents_by_embedding failed")
         return []
 
 
@@ -184,10 +199,12 @@ def delete_document(document_id: str) -> bool:
     """
     try:
         with get_db_session() as session:
-            document = session.query(Document).filter(
-                Document.document_id == document_id
-            ).first()
-            
+            document = (
+                session.query(Document)
+                .filter(Document.document_id == document_id)
+                .first()
+            )
+
             if document:
                 session.delete(document)
                 return True
@@ -213,7 +230,7 @@ def get_document_by_id(document_id: str) -> Optional[Dict[str, Any]]:
                 .filter(Document.document_id == document_id)
                 .first()
             )
-            
+
             if result:
                 document, source = result
                 return {
@@ -225,8 +242,12 @@ def get_document_by_id(document_id: str) -> Optional[Dict[str, Any]]:
                     "country_context_id": document.country_context_id,
                     "conditions": document.conditions,
                     "metadata": document.metadata,
-                    "source_id": str(document.source_id) if document.source_id else None,
-                    "parent_id": str(document.parent_id) if document.parent_id else None,
+                    "source_id": str(document.source_id)
+                    if document.source_id
+                    else None,
+                    "parent_id": str(document.parent_id)
+                    if document.parent_id
+                    else None,
                     "source_name": source.name if source else None,
                     "source_version": source.version if source else None,
                 }
@@ -252,7 +273,7 @@ def get_documents_by_source(source_id: str) -> List[Dict[str, Any]]:
                 .order_by(Document.section_path, Document.title)
                 .all()
             )
-            
+
             return [
                 {
                     "document_id": str(doc.document_id),
@@ -287,20 +308,17 @@ def get_documents_by_condition(
             query = session.query(Document).filter(
                 Document.conditions.contains([condition])
             )
-            
+
             if country_context_id:
                 query = query.filter(
                     or_(
                         Document.country_context_id == country_context_id,
-                        Document.country_context_id.is_(None)
+                        Document.country_context_id.is_(None),
                     )
                 )
-            
-            documents = query.order_by(
-                Document.content_type,
-                Document.title
-            ).all()
-            
+
+            documents = query.order_by(Document.content_type, Document.title).all()
+
             return [
                 {
                     "document_id": str(doc.document_id),

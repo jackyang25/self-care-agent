@@ -1,12 +1,20 @@
 """database connection using SQLAlchemy."""
 
 import logging
-import os
 from contextlib import contextmanager
 from typing import Iterator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import Session, sessionmaker
+from pgvector.psycopg2 import register_vector
+
+from src.shared.config import (
+    POSTGRES_DB,
+    POSTGRES_HOST,
+    POSTGRES_PASSWORD,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +24,10 @@ _session_factory = None
 
 def _get_database_url() -> str:
     """construct database URL from environment variables."""
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
-    database = os.getenv("POSTGRES_DB", "selfcare")
-    user = os.getenv("POSTGRES_USER", "postgres")
-    password = os.getenv("POSTGRES_PASSWORD", "postgres")
-
-    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+    return (
+        f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+        f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
 
 
 def _get_engine():
@@ -37,6 +42,12 @@ def _get_engine():
             max_overflow=10,
             echo=False,
         )
+
+        # register pgvector types with psycopg2 on each connection
+        @event.listens_for(_engine, "connect")
+        def receive_connect(dbapi_conn, connection_record):
+            register_vector(dbapi_conn)
+
         logger.info(f"database engine initialized: {database_url.split('@')[1]}")
     return _engine
 

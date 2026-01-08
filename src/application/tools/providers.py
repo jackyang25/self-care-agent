@@ -4,7 +4,11 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from src.application.services.providers import search_providers, get_provider
-from src.application.tools.schemas.providers import SearchProvidersInput, GetProviderInput, ProviderOutput
+from src.application.tools.schemas.providers import (
+    SearchProvidersInput,
+    GetProviderInput,
+    ProviderOutput,
+)
 
 
 @tool(args_schema=SearchProvidersInput)
@@ -14,16 +18,20 @@ def search_providers_tool(
 ) -> ProviderOutput:
     """search for healthcare providers in the database.
 
-use this tool when you need to find healthcare providers, optionally filtered by specialty.
+    use this tool when you need to find healthcare providers, optionally filtered by specialty.
 
-use when: user needs to find healthcare providers; user asks about available specialties; user wants to browse provider options.
+    use when: user needs to find healthcare providers; user asks about available specialties; user wants to browse provider options.
 
-do not use for: looking up a specific provider by id (use get_provider_tool); general health questions; symptom assessment."""
+        safety boundaries:
+        - this tool is for provider discovery only; it does not assess urgency or provide medical advice.
+        - if the user is describing symptoms, run triage first (prefer `assess_verified_triage_tool`).
+
+        do not use for: looking up a specific provider by id (use get_provider_tool); general health questions; symptom assessment."""
 
     try:
         # call service layer
         result = search_providers(specialty=specialty, limit=limit)
-        
+
         # transform service output to tool output (add presentation layer)
         if result.count > 0:
             return ProviderOutput(
@@ -37,7 +45,7 @@ do not use for: looking up a specific provider by id (use get_provider_tool); ge
                 message="no providers found matching criteria",
                 data=[],
             )
-    
+
     except Exception as e:
         return ProviderOutput(
             status="error",
@@ -50,30 +58,33 @@ do not use for: looking up a specific provider by id (use get_provider_tool); ge
 def get_provider_tool(provider_id: str) -> ProviderOutput:
     """get details for a specific healthcare provider by id.
 
-use this tool when you need detailed information about a specific provider.
+    use this tool when you need detailed information about a specific provider.
 
-use when: user needs specific provider details; user references a provider by id; follow-up on a previous search result.
+    use when: user needs specific provider details; user references a provider by id; follow-up on a previous search result.
 
-do not use for: searching for providers (use search_providers_tool); general health questions; appointment booking."""
+        safety boundaries:
+        - this tool provides provider metadata only; it does not book appointments or perform triage.
+
+        do not use for: searching for providers (use search_providers_tool); general health questions; appointment booking."""
 
     try:
         # call service layer
         result = get_provider(provider_id=provider_id)
-        
+
         # transform service output to tool output (add presentation layer)
         return ProviderOutput(
             status="success",
             message="provider found",
             data=result.providers[0],  # single provider
         )
-    
+
     except ValueError as e:
         return ProviderOutput(
             status="error",
             message=str(e),
             data=None,
         )
-    
+
     except Exception as e:
         return ProviderOutput(
             status="error",

@@ -1,9 +1,12 @@
 """source data access functions for RAG document provenance using ORM."""
 
+import logging
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from src.infrastructure.postgres.connection import get_db_session
 from src.infrastructure.postgres.models import Source
+
+logger = logging.getLogger(__name__)
 
 
 def insert_source(
@@ -67,6 +70,7 @@ def insert_source(
             
             return True
     except Exception:
+        logger.exception("insert_source failed")
         return False
 
 
@@ -86,6 +90,7 @@ def get_source_by_id(source_id: str) -> Optional[Dict[str, Any]]:
             ).first()
             return source.to_dict() if source else None
     except Exception:
+        logger.exception("get_source_by_id failed")
         return None
 
 
@@ -111,6 +116,7 @@ def get_sources_by_country(country_context_id: Optional[str] = None) -> List[Dic
             sources = query.order_by(Source.created_at.desc()).all()
             return [source.to_dict() for source in sources]
     except Exception:
+        logger.exception("get_sources_by_country failed")
         return []
 
 
@@ -134,4 +140,5 @@ def delete_source(source_id: str) -> bool:
                 return True
             return False
     except Exception:
+        logger.exception("delete_source failed")
         return False

@@ -1,16 +1,16 @@
-"""simple test for triage-verifier executable without dependencies."""
+"""simple test for triage verifier executable without dependencies."""
 
 import subprocess
 import os
 from pathlib import Path
 
 print("=" * 60)
-print("testing triage-verifier executable")
+print("testing triage verifier executable")
 print("=" * 60)
 
-# get path to executable (scripts/tools/ -> scripts/ -> root/)
+# get path to executable (scripts/ -> root/)
 project_root = Path(__file__).resolve().parents[2]
-executable = project_root / "bin" / "triage-verifier"
+executable = project_root / "src" / "application" / "verifiers" / "triage"
 
 
 if not os.path.exists(executable):
