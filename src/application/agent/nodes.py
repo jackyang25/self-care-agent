@@ -7,113 +7,67 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import ToolNode
 
-from src.application.agent.prompt import SYSTEM_PROMPT
 from src.application.agent.state import AgentState
-from src.application.tools import TOOLS
 
 logger = logging.getLogger(__name__)
 
 
-def create_agent_node(llm_with_tools: ChatOpenAI) -> Callable[[AgentState], Dict[str, List[AIMessage]]]:
-    """create agent reasoning node.
+def create_reasoning_node(llm_with_tools: ChatOpenAI) -> Callable[[AgentState], Dict[str, List[AIMessage]]]:
+    """create reasoning node.
     
     args:
         llm_with_tools: llm with tools bound
         
     returns:
-        node function
+        reasoning node function
     """
-    def agent_node(state: AgentState) -> Dict[str, List[AIMessage]]:
-        """llm reasoning and planning."""
-        logger.info("Agent invoking LLM for reasoning")
+    def reasoning_node(state: AgentState) -> Dict[str, List[AIMessage]]:
+        """invoke LLM for reasoning and planning."""
+        logger.info("Invoking LLM")
 
-        system_prompt = state.get("system_prompt", SYSTEM_PROMPT)
+        system_prompt = state["system_prompt"]
         messages = [{"role": "system", "content": system_prompt}, *state["messages"]]
         response = llm_with_tools.invoke(messages)
         
         # log tool calls if present
         if response.tool_calls:
             tool_names = [tc.get("name", "unknown") for tc in response.tool_calls]
-            logger.info(f"Agent planned tool execution {{{', '.join(tool_names)}}}")
-            
-            # log arguments for each tool call
-            for tc in response.tool_calls:
-                tool_name = tc.get("name", "unknown")
-                args = tc.get("args", {})
-                arg_keys = list(args.keys()) if args else []
-                logger.info(f"Tool arguments {{tool={tool_name}, params={arg_keys}}}")
+            logger.info(f"Planned tools {{{', '.join(tool_names)}}}")
 
         return {"messages": [response]}
     
-    return agent_node
+    return reasoning_node
 
 
-def create_execution_node(tool_node: ToolNode) -> Callable[[AgentState], Dict[str, List[ToolMessage]]]:
-    """create tool execution node.
+def create_tools_node(tool_node: ToolNode) -> Callable[[AgentState], Dict[str, List[ToolMessage]]]:
+    """create tools node.
     
     args:
-        tool_node: langgraph tool node
+        tool_node: langgraph tool node that invokes tools
         
     returns:
-        node function
+        tools node function
     """
-    def execution_node(state: AgentState) -> Dict[str, List[ToolMessage]]:
-        """execute tool calls.
+    def tools_node(state: AgentState) -> Dict[str, List[ToolMessage]]:
+        """invoke tools with agent-provided arguments.
         
-        tools receive context directly as parameters.
-        no implicit state - all data flows explicitly through tool parameters.
+        agent has full context via system prompt and decides what to pass to tools.
+        no implicit injection - agent makes explicit, informed decisions.
         """
-        logger.info("Tools node executing tool calls")
-        
-        # get context from state
-        config_ctx = state.get("config_context")
-        
-        # inject context into tool calls
-        if config_ctx:
-            # get the last AI message with tool calls
-            messages = state.get("messages", [])
-            for msg in reversed(messages):
-                if isinstance(msg, AIMessage) and msg.tool_calls:
-                    # inject age, gender, country into tool calls that need them
-                    for tool_call in msg.tool_calls:
-                        tool_name = tool_call.get("name", "")
-                        args = tool_call.get("args", {})
-                        
-                        # inject context for tools that use it
-                        if tool_name == "clinical_triage":
-                            if "age" not in args and config_ctx.get("age"):
-                                args["age"] = config_ctx["age"]
-                            if "gender" not in args and config_ctx.get("gender"):
-                                args["gender"] = config_ctx["gender"]
-                        
-                        elif tool_name == "rag_knowledge_base":
-                            if "country" not in args and config_ctx.get("country"):
-                                args["country"] = config_ctx["country"]
+        logger.info("Invoking tools")
         
         result = tool_node.invoke(state)
-        
-        # log tool outputs
-        if result.get("messages"):
-            for msg in result["messages"]:
-                if isinstance(msg, ToolMessage):
-                    tool_name = msg.name if hasattr(msg, "name") else "unknown"
-                    # truncate content for logging
-                    content_preview = str(msg.content)[:100]
-                    if len(str(msg.content)) > 100:
-                        content_preview += "..."
-                    logger.info(f"Tool returned result {{tool={tool_name}, preview={content_preview}}}")
-        
-        logger.info("Tools node completed execution")
+        logger.info("Completed")
         return result
     
-    return execution_node
+    return tools_node
 
 
-def router(state: AgentState) -> Literal["tools", "end"]:
+def routing_node(state: AgentState) -> Literal["tools", "end"]:
     """route to tools or end based on agent response."""
     last_message = state["messages"][-1]
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
-        logger.info("Router directing flow to tools node")
+        logger.info("Routing to tools")
         return "tools"
-    logger.info("Router directing flow to end (workflow complete)")
+    logger.info("Routing to end")
     return "end"

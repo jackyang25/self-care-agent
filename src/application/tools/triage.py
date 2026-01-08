@@ -1,11 +1,14 @@
 """triage and risk flagging tool."""
 
+import logging
 from typing import Optional
 
 from langchain_core.tools import tool
 
 from src.application.services.triage import assess_triage
 from src.application.tools.schemas.triage import TriageInput, TriageOutput
+
+logger = logging.getLogger(__name__)
 
 
 @tool(args_schema=TriageInput)
@@ -36,6 +39,8 @@ use when: patient describes symptoms requiring urgency assessment; determining i
 
 do not use for: general health questions without symptoms; appointment scheduling without medical urgency; commodity orders."""
 
+    logger.info(f"Received args {{symptoms={symptoms[:50] + '...' if symptoms and len(symptoms) > 50 else symptoms}, urgency={urgency}, age={age}, gender={gender}}}")
+    
     try:
         # assess triage using service layer
         triage_result = assess_triage(

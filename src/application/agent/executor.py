@@ -8,7 +8,7 @@ import logging
 import src.shared.logger  # noqa - initialize logging config
 
 from src.application.agent.graph import create_agent_graph
-from src.application.agent.prompt import SYSTEM_PROMPT
+from src.application.agent.prompt import build_system_prompt_with_context
 from src.shared.config import LLM_MODEL, TEMPERATURE
 from src.shared.schemas.context import RequestContext
 
@@ -30,28 +30,6 @@ def get_agent() -> Any:
             llm_model=LLM_MODEL, temperature=TEMPERATURE
         )
     return _agent_instance
-
-
-def build_patient_context_section(context: RequestContext) -> str:
-    """build patient context section for system prompt.
-    
-    args:
-        context: request context with age, gender, etc.
-        
-    returns:
-        formatted patient context string
-    """
-    if not context.age and not context.gender:
-        return ""
-    
-    parts = []
-    if context.age:
-        parts.append(f"Age: {context.age}")
-    if context.gender:
-        parts.append(f"Gender: {context.gender}")
-    
-    patient_info = ", ".join(parts)
-    return f"\n\nPATIENT CONTEXT:\n{patient_info}\n"
 
 
 def convert_message_dict_to_langchain(msg: Dict[str, str]) -> BaseMessage:
@@ -87,32 +65,14 @@ def extract_rag_sources(messages: list) -> list[dict[str, str]]:
     return sources
 
 
-def extract_tool_info_from_messages(messages: list) -> dict:
-    """extract tool call information from messages."""
+def extract_tool_names_from_messages(messages: list) -> list[str]:
+    """extract tool names called from messages."""
     tools_called = []
-    triage_result = None
-    protocol_invoked = None
-    risk_level = None
-    
     for msg in messages:
         if isinstance(msg, AIMessage) and msg.tool_calls:
             for tool_call in msg.tool_calls:
-                tool_name = tool_call.get("name", "unknown")
-                tools_called.append(tool_name)
-                
-                # extract triage info if present
-                if tool_name == "clinical_triage":
-                    protocol_invoked = "triage"
-                    # would extract from tool response if available
-    
-    return {
-        "tools_called": tools_called if tools_called else None,
-        "protocol_invoked": protocol_invoked,
-        "protocol_version": None,
-        "triage_result": triage_result,
-        "risk_level": risk_level,
-        "recommendations": None,
-    }
+                tools_called.append(tool_call.get("name", "unknown"))
+    return tools_called
 
 
 def process_message(
@@ -137,9 +97,8 @@ def process_message(
     if context is None:
         context = RequestContext()
 
-    # build system prompt with patient context
-    patient_context = build_patient_context_section(context)
-    system_prompt = SYSTEM_PROMPT + patient_context
+    # enrich system prompt with patient context
+    system_prompt = build_system_prompt_with_context(context)
 
     # convert previous messages from frontend (if provided)
     langchain_messages = []
@@ -167,14 +126,12 @@ def process_message(
 
     # extract data from results
     rag_sources = extract_rag_sources(result_messages)
-    tool_data = extract_tool_info_from_messages(result_messages)
+    tools_called = extract_tool_names_from_messages(result_messages)
 
     # log completion
-    tools = tool_data.get("tools_called")
-    tools_str = f" {{tools=[{', '.join(tools)}]}}" if tools else ""
+    tools_str = f" {{tools=[{', '.join(tools_called)}]}}" if tools_called else ""
     logger.info(f"Workflow completed{tools_str}")
     logger.info("=" * 80)
 
     # return response with sources and tools
-    tools_called = tool_data.get("tools_called") or []
     return result_messages[-1].content, rag_sources, tools_called

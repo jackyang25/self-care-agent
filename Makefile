@@ -1,4 +1,4 @@
-.PHONY: help setup start stop restart rebuild logs clean reset db-shell db-create db-seed
+.PHONY: help setup start stop restart rebuild logs clean reset db-shell db-create db-seed embeddings
 
 # ============================================================================
 # Help
@@ -25,6 +25,7 @@ help:
 	@echo "  make db-shell    - Access PostgreSQL command line"
 	@echo "  make db-create   - Create database tables"
 	@echo "  make db-seed     - Seed database with demo data"
+	@echo "  make embeddings  - Generate embeddings for documents"
 	@echo ""
 	@echo "Admin Tools:"
 	@echo "  make redis-shell - Access Redis command line"
@@ -48,6 +49,7 @@ setup:
 	@sleep 10
 	@$(MAKE) db-create
 	@$(MAKE) db-seed
+	@$(MAKE) embeddings
 	@echo ""
 	@echo "✓ Setup complete! Access the app at http://localhost:8501"
 
@@ -105,6 +107,7 @@ reset:
 	@sleep 10
 	@$(MAKE) db-create
 	@$(MAKE) db-seed
+	@$(MAKE) embeddings
 	@echo "✓ Database reset complete"
 
 # ============================================================================
@@ -135,3 +138,9 @@ redis-clear:
 	@echo "Clearing Redis cache..."
 	@docker-compose exec redis redis-cli FLUSHDB
 	@echo "✓ Redis cache cleared"
+
+# generate embeddings for documents
+embeddings:
+	@echo "Generating embeddings for documents..."
+	@docker-compose run --rm streamlit python scripts/generate_embeddings.py
+	@echo "✓ Embeddings generated"

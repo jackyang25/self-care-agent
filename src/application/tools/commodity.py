@@ -1,11 +1,14 @@
 """commodity orders and fulfillment tool."""
 
+import logging
 from typing import Optional
 
 from langchain_core.tools import tool
 
 from src.application.services.commodity import place_commodity_order
 from src.application.tools.schemas.commodity import CommodityInput, CommodityOutput
+
+logger = logging.getLogger(__name__)
 
 
 @tool(args_schema=CommodityInput)

@@ -1,11 +1,14 @@
 """RAG retrieval tool for knowledge base access."""
 
+import logging
 from typing import List, Optional
 
 from langchain_core.tools import tool
 
 from src.application.services.rag import search_documents
 from src.application.tools.schemas.rag import RAGInput, RAGOutput
+
+logger = logging.getLogger(__name__)
 
 
 @tool(args_schema=RAGInput)
@@ -38,6 +41,8 @@ use when: you need clinical evidence or guidelines; patient asks about treatment
 
 do not use for: patient-specific data; scheduling appointments; ordering commodities."""
 
+    logger.info(f"Received args {{query={query[:50] + '...' if len(query) > 50 else query}, content_types={content_types}, conditions={conditions}, country={country}, limit={limit}}}")
+    
     try:
         results = search_documents(
             query=query,
@@ -49,6 +54,7 @@ do not use for: patient-specific data; scheduling appointments; ordering commodi
         )
 
         if not results:
+            logger.info("Completed {found=0}")
             return RAGOutput(
                 status="no_results",
                 message="no relevant documents found",
@@ -68,7 +74,8 @@ do not use for: patient-specific data; scheduling appointments; ordering commodi
                     "similarity": f"{doc.similarity:.2f}",
                 }
             )
-
+        
+        logger.info(f"Completed {{found={len(results)}}}")
         return RAGOutput(
             message=f"found {len(results)} relevant document(s)",
             documents=formatted_docs,

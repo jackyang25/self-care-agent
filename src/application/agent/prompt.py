@@ -1,5 +1,9 @@
 """system prompt for healthcare self-care assistant."""
 
+from typing import Optional
+from src.shared.schemas.context import RequestContext
+
+
 SYSTEM_PROMPT = """you are a healthcare self-care assistant helping users manage their health through self-care when safe and appropriate, reducing unnecessary load on professional healthcare systems.
 
 ## self-care first philosophy
@@ -241,4 +245,70 @@ example: "i need to refill my blood pressure medication"
 - acknowledge tool usage naturally (e.g., "based on clinical guidelines..." not "i called the rag tool...")
 - **important:** when confirming any actions (orders, prescriptions, appointments), mention "this is demonstration data for proof-of-concept purposes"
 """
+
+
+def build_system_prompt_with_context(context: Optional[RequestContext] = None) -> str:
+    """build system prompt enriched with patient context.
+    
+    enriches the base system prompt with patient demographics, clinical summary,
+    and socio-technical context when available.
+    
+    args:
+        context: optional request context with demographics, clinical, and socio-technical data
+        
+    returns:
+        system prompt enriched with patient context
+    """
+    if not context:
+        return SYSTEM_PROMPT
+    
+    sections = []
+    
+    # demographic information
+    demographic = []
+    if context.age:
+        demographic.append(f"Age: {context.age}")
+    if context.gender:
+        demographic.append(f"Gender: {context.gender}")
+    if context.country:
+        demographic.append(f"Country: {context.country}")
+    if demographic:
+        sections.append("DEMOGRAPHICS: " + ", ".join(demographic))
+    
+    # clinical summary (IPS - international patient summary)
+    clinical = []
+    if context.active_diagnoses:
+        clinical.append(f"Active diagnoses: {', '.join(context.active_diagnoses)}")
+    if context.current_medications:
+        clinical.append(f"Current medications: {', '.join(context.current_medications)}")
+    if context.allergies:
+        clinical.append(f"Allergies: {', '.join(context.allergies)}")
+    if context.latest_vitals:
+        vitals_str = ", ".join([f"{k}: {v}" for k, v in context.latest_vitals.items()])
+        clinical.append(f"Latest vitals: {vitals_str}")
+    if context.adherence_score is not None:
+        clinical.append(f"Adherence score: {context.adherence_score}")
+    if context.refill_due_date:
+        clinical.append(f"Refill due: {context.refill_due_date}")
+    if clinical:
+        sections.append("CLINICAL SUMMARY:\n" + "\n".join([f"- {item}" for item in clinical]))
+    
+    # socio-technical context
+    sociotech = []
+    if context.primary_language:
+        sociotech.append(f"Primary language: {context.primary_language}")
+    if context.literacy_level:
+        sociotech.append(f"Literacy level: {context.literacy_level}")
+    if context.network_type:
+        sociotech.append(f"Network: {context.network_type}")
+    if context.social_context:
+        sociotech.append(f"Social context: {context.social_context}")
+    if sociotech:
+        sections.append("SOCIO-TECHNICAL CONTEXT: " + ", ".join(sociotech))
+    
+    if not sections:
+        return SYSTEM_PROMPT
+    
+    patient_context = "\n\n" + "\n\n".join(sections) + "\n"
+    return SYSTEM_PROMPT + patient_context
 
