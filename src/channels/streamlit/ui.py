@@ -372,28 +372,41 @@ def render_saved_chats_panel() -> None:
         return
 
     def render_audit_logs(messages: List[Dict[str, Any]]) -> None:
-        """Render a minimal audit log (tools + sources) for a chat transcript."""
+        """Render a journey-style audit log for a chat transcript."""
         st.markdown("### Audit logs")
-        st.caption("Read-only summary of tools and sources used.")
+        st.caption("Read-only journey view (high-level workflow + technical details).")
 
-        # lightweight flair (not emoji): green check as styled text
+        # stepper styling (numbers, not emojis)
         st.markdown(
             """
 <style>
-.audit-ok {
+.audit-turn-title { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+.audit-block-spacer { height: 10px; }
+.audit-block-spacer-sm { height: 6px; }
+.audit-step {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.06);
+}
+.audit-num {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 9999px;
-  background: #16a34a;
-  color: #ffffff;
+  border: 2px solid #4A90E2;
+  color: #4A90E2;
   font-weight: 800;
   font-size: 12px;
-  margin-right: 8px;
+  flex: 0 0 auto;
 }
-.audit-line { margin: 0.25rem 0; }
+.audit-body { flex: 1 1 auto; }
+.audit-title { font-weight: 700; margin-bottom: 3px; line-height: 1.15; }
+.audit-meta { color: #94a3b8; font-size: 0.86em; line-height: 1.25; }
 </style>
 """,
             unsafe_allow_html=True,
@@ -404,52 +417,137 @@ def render_saved_chats_panel() -> None:
             st.caption("No assistant messages yet.")
             return
 
-        for i, m in enumerate(assistant_msgs, 1):
+        def _journey_steps_for_turn(m: Dict[str, Any]) -> List[Dict[str, Any]]:
             tools = m.get("tools") or []
             sources = m.get("sources") or []
-
-            # Normalize types defensively
+            logs = m.get("audit_logs") or []
             if not isinstance(tools, list):
                 tools = [str(tools)]
             if not isinstance(sources, list):
                 sources = [sources]
+            if not isinstance(logs, list):
+                logs = [str(logs)]
 
-            st.markdown(f"**Turn {i}**")
-            if tools:
+            planned_tools = any("Planned tools" in str(line) for line in logs)
+            executed_tools = any("Tools executed" in str(line) for line in logs) or bool(
+                tools
+            )
+            routed_to_tools = any("Routing to tools" in str(line) for line in logs)
+            routed_to_end = any("Routing to end" in str(line) for line in logs)
+
+            return [
+                {
+                    "title": "Inputs validated",
+                    "meta": "message received and context attached",
+                },
+                {
+                    "title": "Reasoning",
+                    "meta": "LLM invoked"
+                    + (" · tool plan created" if planned_tools else ""),
+                },
+                {
+                    "title": "Route decision",
+                    "meta": "tools"
+                    if routed_to_tools
+                    else ("end" if routed_to_end else "decided"),
+                },
+                {
+                    "title": "Execute tools",
+                    "meta": (", ".join([str(t) for t in tools]) if tools else "none")
+                    if executed_tools
+                    else "none",
+                },
+                {
+                    "title": "Evidence / citations",
+                    "meta": f"{len(sources)} source(s)" if sources else "none",
+                },
+                {
+                    "title": "Completed",
+                    "meta": "response returned",
+                },
+            ]
+
+        for i, m in enumerate(assistant_msgs, 1):
+            st.markdown(f"<div class='audit-turn-title'><b>Turn {i}</b></div>", unsafe_allow_html=True)
+
+            metrics = m.get("audit_metrics") or {}
+            if isinstance(metrics, dict) and metrics:
+                elapsed_ms = metrics.get("elapsed_ms")
+                tools_count = metrics.get("tools_count")
+                sources_count = metrics.get("sources_count")
+                history_len = metrics.get("history_len")
+                bits = []
+                if elapsed_ms is not None:
+                    bits.append(f"{elapsed_ms}ms")
+                if history_len is not None:
+                    bits.append(f"history={history_len}")
+                if tools_count is not None:
+                    bits.append(f"tools={tools_count}")
+                if sources_count is not None:
+                    bits.append(f"sources={sources_count}")
+                if bits:
+                    # keep this clean and avoid separator glyphs that look like "pipes"
+                    st.caption("  ".join(bits))
+
+            steps = _journey_steps_for_turn(m)
+            for idx, step in enumerate(steps, 1):
                 st.markdown(
-                    f"<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Tools</b>: {', '.join([str(t) for t in tools])}</div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    "<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Tools</b>: none</div>",
+                    f"<div class='audit-step'>"
+                    f"<div class='audit-num'>{idx}</div>"
+                    f"<div class='audit-body'>"
+                    f"<div class='audit-title'>{step['title']}</div>"
+                    f"<div class='audit-meta'>{step['meta']}</div>"
+                    f"</div></div>",
                     unsafe_allow_html=True,
                 )
 
-            if sources:
-                source_titles = []
-                for s in sources:
-                    if isinstance(s, dict):
-                        title = s.get("title") or "Unknown"
-                        source_titles.append(str(title))
-                    else:
-                        source_titles.append(str(s))
+            # Add breathing room before expandable sections
+            st.markdown("<div class='audit-block-spacer'></div>", unsafe_allow_html=True)
+
+            # Payload snapshot (what the agent actually received), split for clarity
+            payload = m.get("audit_payload") or {}
+            if isinstance(payload, dict) and payload:
+                config = payload.get("config")
+                history = payload.get("conversation_history")
+                history_len = payload.get("conversation_history_len")
+                user_message = payload.get("user_message")
+
+                with st.expander("Agent payload — Config", expanded=False):
+                    try:
+                        st.json(config or {})
+                    except Exception:
+                        st.code(str(config))
+
                 st.markdown(
-                    f"<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Sources</b>: {', '.join(source_titles[:5])}</div>",
-                    unsafe_allow_html=True,
+                    "<div class='audit-block-spacer-sm'></div>", unsafe_allow_html=True
                 )
-                if len(source_titles) > 5:
-                    st.caption(f"+{len(source_titles) - 5} more")
-            else:
+
+                with st.expander("Agent payload — History", expanded=False):
+                    try:
+                        st.json(
+                            {
+                                "conversation_history_len": history_len,
+                                "conversation_history": history or [],
+                                "user_message": user_message,
+                            }
+                        )
+                    except Exception:
+                        st.code(str({"history_len": history_len, "history": history}))
+
+            # Optional raw trace for engineers
+            raw = m.get("audit_logs") or []
+            if raw:
                 st.markdown(
-                    "<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Sources</b>: none</div>",
-                    unsafe_allow_html=True,
+                    "<div class='audit-block-spacer-sm'></div>", unsafe_allow_html=True
                 )
+                with st.expander("Raw logs", expanded=False):
+                    st.code("\n".join([str(x) for x in raw]))
 
             st.markdown("---")
 
     # Transcript (left) + audit logs (right)
-    left, right = st.columns([2, 1])
+    # Use 50/50 width so audit logs aren't cramped.
+    left, right = st.columns([1, 1])
 
     with left:
         # Render read-only transcript. We use a separate container so it feels “visual”
@@ -471,13 +569,11 @@ def render_saved_chats_panel() -> None:
             render_audit_logs(selected.get("messages", []))
 
 
-def render_chat_history_controls() -> None:
-    """Render live-chat controls and saved chat history.
+def render_chat_controls() -> None:
+    """Render chat control buttons (left column).
 
-    Keeps saved chats visually grouped with the Save flow, while staying decoupled from the
-    live conversation (`st.session_state.messages`).
+    Saved chats are rendered separately in a full-width section.
     """
-    # action buttons
     messages = st.session_state.get("messages", [])
     can_save = bool(messages)
 
@@ -523,6 +619,7 @@ def render_chat_history_controls() -> None:
 
         # Prefer a true modal dialog if available; otherwise fall back to popover.
         if hasattr(st, "dialog"):
+
             @st.dialog("Name this chat")
             def _save_chat_dialog() -> None:
                 name = st.text_input(
@@ -577,7 +674,9 @@ def render_chat_history_controls() -> None:
             st.session_state.save_chat_pending = False
             st.rerun()
 
-    # saved chats viewer (cohesive + decoupled)
+
+def render_chat_history_controls() -> None:
+    """Render the full-width saved chats + audit section."""
     render_saved_chats_panel()
 
 
@@ -616,8 +715,8 @@ def launch_app(handler) -> None:
                 "Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields."
             )
 
-        # saved chats + audit logs (back on the left)
-        render_chat_history_controls()
+        # Buttons stay on the left (below the config "outline")
+        render_chat_controls()
 
     with chat_col:
         st.subheader("Chat Interface")
@@ -625,7 +724,9 @@ def launch_app(handler) -> None:
         # create a container for chat messages with fixed height
         chat_container = st.container(height=600)
         with chat_container:
-            render_chat_interface(show_thinking=st.session_state.get("processing", False))
+            render_chat_interface(
+                show_thinking=st.session_state.get("processing", False)
+            )
 
         # if we're processing, generate the agent response
         if st.session_state.get("processing", False):
@@ -634,3 +735,7 @@ def launch_app(handler) -> None:
         # chat input stays at the bottom
         if prompt := st.chat_input("Type your message here..."):
             handler.handle_chat_input(prompt)
+
+    # Full-width saved chats + audit logs (spans both columns)
+    st.markdown("---")
+    render_chat_history_controls()
