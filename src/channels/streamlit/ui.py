@@ -1,7 +1,10 @@
 """streamlit UI components and configuration screens."""
 
-from datetime import date
+from __future__ import annotations
 
+from datetime import date
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
 import streamlit as st
 
 
@@ -29,6 +32,11 @@ def initialize_session_state() -> None:
         # chat state
         "messages": [],
         "processing": False,
+        # saved chats (read-only snapshots)
+        "saved_chats": [],  # list[dict]: {id, title, messages}
+        # save flow state (kept simple + decoupled)
+        "save_chat_pending": False,
+        "save_chat_nonce": 0,
     }
 
     for key, value in defaults.items():
@@ -324,6 +332,121 @@ def render_chat_interface() -> None:
                     )
 
 
+def render_saved_chats_panel() -> None:
+    """Render a read-only viewer for saved chat snapshots.
+
+    This is intentionally decoupled from the live chat (`st.session_state.messages`):
+    selecting a saved chat does NOT load it into the active conversation.
+    """
+    saved_chats: List[Dict[str, Any]] = st.session_state.get("saved_chats", [])
+
+    st.markdown("### Saved chats")
+    if not saved_chats:
+        st.caption("No saved chats yet.")
+        return
+
+    # Most recent first (insertion order; no timestamps)
+    saved_chats_sorted = list(reversed(saved_chats))
+
+    options = [c["id"] for c in saved_chats_sorted]
+    labels = {c["id"]: c.get("title", "Chat") for c in saved_chats_sorted}
+
+    selected_id: Optional[str] = st.selectbox(
+        "Select",
+        options=options,
+        format_func=lambda chat_id: labels.get(chat_id, str(chat_id)),
+        index=0,
+        key="saved_chat_select",
+        label_visibility="collapsed",
+    )
+
+    selected = next((c for c in saved_chats_sorted if c["id"] == selected_id), None)
+    if not selected:
+        st.warning("Saved chat not found.")
+        return
+
+    # Render read-only transcript. We use a separate container so it feels “visual”
+    # without mixing with the live chat column.
+    transcript_container = st.container(height=350, border=True)
+    with transcript_container:
+        for msg in selected.get("messages", []):
+            role = msg.get("role", "assistant")
+            content = msg.get("content", "")
+            display_name = "Patient" if role == "user" else "Assistant"
+
+            with st.chat_message(role):
+                st.markdown(f"**{display_name}**")
+                st.markdown(content)
+
+
+def render_chat_history_controls() -> None:
+    """Render live-chat controls and saved chat history.
+
+    Keeps saved chats visually grouped with the Save flow, while staying decoupled from the
+    live conversation (`st.session_state.messages`).
+    """
+    # action buttons
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("Reset User", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+    with col2:
+        if st.button("Clear Chat", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.processing = False
+            st.rerun()
+    with col3:
+        if st.button("Save Chat", use_container_width=True):
+            messages = st.session_state.get("messages", [])
+            if not messages:
+                st.warning("Nothing to save yet — start a conversation first.")
+            else:
+                st.session_state.save_chat_pending = True
+                st.session_state.save_chat_nonce = (
+                    int(st.session_state.get("save_chat_nonce", 0)) + 1
+                )
+                st.rerun()
+
+    # save prompt (name + confirm/cancel)
+    if st.session_state.get("save_chat_pending", False):
+        st.markdown("---")
+        st.markdown("**Name this chat**")
+        nonce = int(st.session_state.get("save_chat_nonce", 0))
+        name = st.text_input(
+            "Chat name",
+            key=f"save_chat_name_input_{nonce}",
+            placeholder="e.g., PEP questions, PrEP onboarding, ART refill",
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Confirm save", type="primary", use_container_width=True):
+                chat_name = (name or "").strip()
+                if not chat_name:
+                    st.warning("Please enter a chat name.")
+                else:
+                    chat_id = str(uuid4())
+                    st.session_state.saved_chats.append(
+                        {
+                            "id": chat_id,
+                            "title": chat_name,
+                            # snapshot: do not reference st.session_state.messages directly
+                            "messages": [
+                                dict(m) for m in st.session_state.get("messages", [])
+                            ],
+                        }
+                    )
+                    st.session_state.save_chat_pending = False
+                    st.rerun()
+        with c2:
+            if st.button("Cancel", use_container_width=True):
+                st.session_state.save_chat_pending = False
+                st.rerun()
+
+    # saved chats viewer (cohesive + decoupled)
+    render_saved_chats_panel()
+
+
 def launch_app(handler) -> None:
     """launch the streamlit application."""
     st.set_page_config(
@@ -361,16 +484,8 @@ def launch_app(handler) -> None:
                 "Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields."
             )
 
-        # action buttons below the container
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Reset User", use_container_width=True):
-                st.session_state.clear()
-                st.rerun()
-        with col2:
-            if st.button("Clear Chat", use_container_width=True):
-                st.session_state.messages = []
-                st.rerun()
+        # live-chat controls + saved history (kept cohesive + decoupled)
+        render_chat_history_controls()
 
     with chat_col:
         st.subheader("Chat Interface")
