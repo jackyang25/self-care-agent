@@ -283,7 +283,7 @@ def render_patient_summary() -> None:
         )
 
 
-def render_chat_interface() -> None:
+def render_chat_interface(show_thinking: bool = False) -> None:
     """render chat interface."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -331,6 +331,12 @@ def render_chat_interface() -> None:
                         unsafe_allow_html=True,
                     )
 
+    # UI-only: do not add to st.session_state.messages
+    if show_thinking:
+        with st.chat_message("assistant"):
+            st.markdown("**Assistant**")
+            st.markdown("Thinking...")
+
 
 def render_saved_chats_panel() -> None:
     """Render a read-only viewer for saved chat snapshots.
@@ -365,18 +371,104 @@ def render_saved_chats_panel() -> None:
         st.warning("Saved chat not found.")
         return
 
-    # Render read-only transcript. We use a separate container so it feels “visual”
-    # without mixing with the live chat column.
-    transcript_container = st.container(height=350, border=True)
-    with transcript_container:
-        for msg in selected.get("messages", []):
-            role = msg.get("role", "assistant")
-            content = msg.get("content", "")
-            display_name = "Patient" if role == "user" else "Assistant"
+    def render_audit_logs(messages: List[Dict[str, Any]]) -> None:
+        """Render a minimal audit log (tools + sources) for a chat transcript."""
+        st.markdown("### Audit logs")
+        st.caption("Read-only summary of tools and sources used.")
 
-            with st.chat_message(role):
-                st.markdown(f"**{display_name}**")
-                st.markdown(content)
+        # lightweight flair (not emoji): green check as styled text
+        st.markdown(
+            """
+<style>
+.audit-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.audit-line { margin: 0.25rem 0; }
+</style>
+""",
+            unsafe_allow_html=True,
+        )
+
+        assistant_msgs = [m for m in messages if m.get("role") == "assistant"]
+        if not assistant_msgs:
+            st.caption("No assistant messages yet.")
+            return
+
+        for i, m in enumerate(assistant_msgs, 1):
+            tools = m.get("tools") or []
+            sources = m.get("sources") or []
+
+            # Normalize types defensively
+            if not isinstance(tools, list):
+                tools = [str(tools)]
+            if not isinstance(sources, list):
+                sources = [sources]
+
+            st.markdown(f"**Turn {i}**")
+            if tools:
+                st.markdown(
+                    f"<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Tools</b>: {', '.join([str(t) for t in tools])}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    "<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Tools</b>: none</div>",
+                    unsafe_allow_html=True,
+                )
+
+            if sources:
+                source_titles = []
+                for s in sources:
+                    if isinstance(s, dict):
+                        title = s.get("title") or "Unknown"
+                        source_titles.append(str(title))
+                    else:
+                        source_titles.append(str(s))
+                st.markdown(
+                    f"<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Sources</b>: {', '.join(source_titles[:5])}</div>",
+                    unsafe_allow_html=True,
+                )
+                if len(source_titles) > 5:
+                    st.caption(f"+{len(source_titles) - 5} more")
+            else:
+                st.markdown(
+                    "<div class='audit-line'><span class='audit-ok'>&#10003;</span><b>Sources</b>: none</div>",
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("---")
+
+    # Transcript (left) + audit logs (right)
+    left, right = st.columns([2, 1])
+
+    with left:
+        # Render read-only transcript. We use a separate container so it feels “visual”
+        # without mixing with the live chat column.
+        transcript_container = st.container(height=350, border=True)
+        with transcript_container:
+            for msg in selected.get("messages", []):
+                role = msg.get("role", "assistant")
+                content = msg.get("content", "")
+                display_name = "Patient" if role == "user" else "Assistant"
+
+                with st.chat_message(role):
+                    st.markdown(f"**{display_name}**")
+                    st.markdown(content)
+
+    with right:
+        audit_container = st.container(height=350, border=True)
+        with audit_container:
+            render_audit_logs(selected.get("messages", []))
 
 
 def render_chat_history_controls() -> None:
@@ -386,6 +478,9 @@ def render_chat_history_controls() -> None:
     live conversation (`st.session_state.messages`).
     """
     # action buttons
+    messages = st.session_state.get("messages", [])
+    can_save = bool(messages)
+
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Reset User", use_container_width=True):
@@ -397,51 +492,90 @@ def render_chat_history_controls() -> None:
             st.session_state.processing = False
             st.rerun()
     with col3:
-        if st.button("Save Chat", use_container_width=True):
-            messages = st.session_state.get("messages", [])
-            if not messages:
-                st.warning("Nothing to save yet — start a conversation first.")
-            else:
-                st.session_state.save_chat_pending = True
-                st.session_state.save_chat_nonce = (
-                    int(st.session_state.get("save_chat_nonce", 0)) + 1
-                )
-                st.rerun()
+        if st.button("Save Chat", use_container_width=True, disabled=not can_save):
+            st.session_state.save_chat_pending = True
+            st.session_state.save_chat_nonce = (
+                int(st.session_state.get("save_chat_nonce", 0)) + 1
+            )
+            st.rerun()
 
-    # save prompt (name + confirm/cancel)
+    # save prompt as an overlay (prevents layout shifting)
     if st.session_state.get("save_chat_pending", False):
-        st.markdown("---")
-        st.markdown("**Name this chat**")
         nonce = int(st.session_state.get("save_chat_nonce", 0))
-        name = st.text_input(
-            "Chat name",
-            key=f"save_chat_name_input_{nonce}",
-            placeholder="e.g., PEP questions, PrEP onboarding, ART refill",
-        )
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Confirm save", type="primary", use_container_width=True):
+
+        def _save_chat_confirm(chat_name: str) -> None:
+            """Persist a snapshot of the current live chat."""
+            chat_id = str(uuid4())
+            st.session_state.saved_chats.append(
+                {
+                    "id": chat_id,
+                    "title": chat_name,
+                    # snapshot: do not reference st.session_state.messages directly
+                    "messages": [dict(m) for m in st.session_state.get("messages", [])],
+                }
+            )
+            st.session_state.save_chat_pending = False
+            st.rerun()
+
+        def _save_chat_cancel() -> None:
+            st.session_state.save_chat_pending = False
+            st.rerun()
+
+        # Prefer a true modal dialog if available; otherwise fall back to popover.
+        if hasattr(st, "dialog"):
+            @st.dialog("Name this chat")
+            def _save_chat_dialog() -> None:
+                name = st.text_input(
+                    "Chat name",
+                    key=f"save_chat_name_input_{nonce}",
+                    placeholder="e.g., PEP questions, PrEP onboarding, ART refill",
+                )
                 chat_name = (name or "").strip()
-                if not chat_name:
-                    st.warning("Please enter a chat name.")
-                else:
-                    chat_id = str(uuid4())
-                    st.session_state.saved_chats.append(
-                        {
-                            "id": chat_id,
-                            "title": chat_name,
-                            # snapshot: do not reference st.session_state.messages directly
-                            "messages": [
-                                dict(m) for m in st.session_state.get("messages", [])
-                            ],
-                        }
-                    )
-                    st.session_state.save_chat_pending = False
-                    st.rerun()
-        with c2:
-            if st.button("Cancel", use_container_width=True):
-                st.session_state.save_chat_pending = False
-                st.rerun()
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button(
+                        "Save",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=not bool(chat_name),
+                    ):
+                        _save_chat_confirm(chat_name)
+                with c2:
+                    if st.button("Cancel", use_container_width=True):
+                        _save_chat_cancel()
+
+            _save_chat_dialog()
+
+        elif hasattr(st, "popover"):
+            with st.popover("Name this chat", use_container_width=True):
+                name = st.text_input(
+                    "Chat name",
+                    key=f"save_chat_name_input_{nonce}",
+                    placeholder="e.g., PEP questions, PrEP onboarding, ART refill",
+                )
+                chat_name = (name or "").strip()
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button(
+                        "Save",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=not bool(chat_name),
+                        key=f"save_chat_btn_{nonce}",
+                    ):
+                        _save_chat_confirm(chat_name)
+                with c2:
+                    if st.button(
+                        "Cancel",
+                        use_container_width=True,
+                        key=f"cancel_save_chat_btn_{nonce}",
+                    ):
+                        _save_chat_cancel()
+
+        else:
+            # Last-resort fallback: do nothing (avoids reflowing the layout).
+            st.session_state.save_chat_pending = False
+            st.rerun()
 
     # saved chats viewer (cohesive + decoupled)
     render_saved_chats_panel()
@@ -477,14 +611,12 @@ def launch_app(handler) -> None:
             with st.expander("Patient Summary (IPS)", expanded=False):
                 render_patient_summary()
 
-            st.markdown("---")
-
             # informational note about production data sourcing
             st.caption(
                 "Note: In production, all context fields are dynamically populated from backend systems (EMR, NLP, geospatial APIs) regardless of channel type. This demo allows manual configuration of some fields."
             )
 
-        # live-chat controls + saved history (kept cohesive + decoupled)
+        # saved chats + audit logs (back on the left)
         render_chat_history_controls()
 
     with chat_col:
@@ -493,7 +625,7 @@ def launch_app(handler) -> None:
         # create a container for chat messages with fixed height
         chat_container = st.container(height=600)
         with chat_container:
-            render_chat_interface()
+            render_chat_interface(show_thinking=st.session_state.get("processing", False))
 
         # if we're processing, generate the agent response
         if st.session_state.get("processing", False):

@@ -36,14 +36,18 @@ class StreamlitHandler(BaseChannelHandler):
         
         prompt = last_message["content"]
 
-        with st.spinner("Thinking..."):
+        try:
             # prepare refill date as string if present
             refill_date = st.session_state.get("refill_due_date")
             refill_date_str = refill_date.isoformat() if refill_date else None
-            
+
             # get conversation history (exclude the current message we're responding to)
-            history = st.session_state.messages[:-1] if len(st.session_state.messages) > 1 else None
-            
+            history = (
+                st.session_state.messages[:-1]
+                if len(st.session_state.messages) > 1
+                else None
+            )
+
             response, sources, tools = self.respond(
                 user_message=prompt,
                 conversation_history=history,
@@ -66,12 +70,25 @@ class StreamlitHandler(BaseChannelHandler):
                 refill_due_date=refill_date_str,
             )
 
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response,
-                "tools": tools,
-                "sources": sources
-            })
-            
-            st.session_state.processing = False
-            st.rerun()
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": response,
+                    "tools": tools,
+                    "sources": sources,
+                }
+            )
+
+        except Exception as e:
+            logger.exception("agent response failed")
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": f"Sorry — I ran into an error while responding: {str(e)}",
+                    "tools": [],
+                    "sources": [],
+                }
+            )
+
+        st.session_state.processing = False
+        st.rerun()
