@@ -2,7 +2,7 @@
 
 from src.application.tools.triage import (
     assess_fallback_triage_tool,
-    # assess_verified_triage_tool,  # archived - code remains in triage.py
+    assess_verified_triage_tool,
 )
 from src.application.tools.commodity import order_commodity_tool
 from src.application.tools.pharmacy import order_pharmacy_tool
@@ -12,7 +12,7 @@ from src.application.tools.rag import search_knowledge_base_tool
 
 
 TOOLS = [
-    # assess_verified_triage_tool,  # archived - not available to LLM
+    assess_verified_triage_tool,
     assess_fallback_triage_tool,
     order_commodity_tool,
     order_pharmacy_tool,
